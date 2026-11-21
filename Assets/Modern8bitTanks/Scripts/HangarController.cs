@@ -17,7 +17,7 @@ namespace Modern8bitTanks
     /// - Supports 1v1, 2v2, 5v5, & Survival Wave modes -> launches cleanly into DesertBattle.unity!
     /// - Strictly native 8px / 16px HintedRaster pixel fonts on EVEN pixel rects (zero blurry text!)
     /// </summary>
-    public class HangarController : MonoBehaviour
+    public partial class HangarController : MonoBehaviour
     {
         public const float PPU = 16f;
         private float WorldW => DesertBattleManager.WorldWidthPx / PPU;
@@ -114,11 +114,6 @@ namespace Modern8bitTanks
         private Text _garageTankName;
         private Text _garageSpecLine;
         private Text _garageMatchLine;
-        private Image _btnMode1v1Bg;
-        private Image _btnMode2v2Bg;
-        private Image _btnMode5v5Bg;
-        private Image _btnModeWaveBg;
-        private Image _btnModeRangeBg;
         private Image _btnMapDesertBg;
         private Image _btnMapCityBg;
         private Image _btnMapForestBg;
@@ -197,7 +192,8 @@ namespace Modern8bitTanks
             _postProcess = GetComponent<BattlePostProcess>();
             if (_postProcess == null) _postProcess = gameObject.AddComponent<BattlePostProcess>();
             _postProcess.postProcessEnabled = BattleSessionState.PostProcessEnabled;
-            _postProcess.Initialize(_cam);
+            // Attach URP Post-Processing to PresentCamera so Bloom/Vignette/ACES run AFTER the 480x270 RT at full screen res!
+            _postProcess.Initialize(_windowbox.PresentCamera != null ? _windowbox.PresentCamera : _cam);
 
             LoadResourcesAndCatalog();
             SetupDesertBackdrop();
@@ -210,15 +206,22 @@ namespace Modern8bitTanks
 
             EnsureEventSystem();
             BuildPixelCanvas();
+            BuildTitleAndDeployGroups();
             BuildGarageUI();
             BuildTechTreeUI();
             BuildSettingsUI();
+            BuildTitleUI();
+            BuildDeployModalUI();
+            BuildTitleStage();
 
             VehicleDef cur = GetSelectedVehicle();
             if (cur != null) _treeNation = cur.nation;
             ApplySelectedTankToTurntable();
             SetSettingsOpen(false);
+            SetDeployModalOpen(false);
             SetTechTreeOpen(false);
+            // Show the Sprite-Stacking Title Screen on initial launch; return straight to Garage after battles!
+            SetTitleOpen(!BattleSessionState.HasEnteredGarage);
         }
 
         private void LoadResourcesAndCatalog()
@@ -442,30 +445,53 @@ namespace Modern8bitTanks
                 if (kb.escapeKey.wasPressedThisFrame)
                 {
                     if (_settingsOpen) SetSettingsOpen(false);
+                    else if (_deployOpen) SetDeployModalOpen(false);
                     else if (_treeOpen) SetTechTreeOpen(false);
                     else SetSettingsOpen(true);
                 }
-                else if (kb.oKey.wasPressedThisFrame && !_treeOpen)
+                else if (kb.oKey.wasPressedThisFrame && !_treeOpen && !_deployOpen)
                 {
                     SetSettingsOpen(!_settingsOpen);
                 }
                 else if (!_settingsOpen)
                 {
-                    if (kb.tKey.wasPressedThisFrame)
-                        SetTechTreeOpen(!_treeOpen);
-                    else if (kb.xKey.wasPressedThisFrame && !_treeOpen)
-                        SetXRayMode(!_xrayMode);
-                    else if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)
-                        LaunchBattleScene();
-                    else if (!_treeOpen && kb.leftArrowKey.wasPressedThisFrame)
-                        CycleSelectedInCurrentNation(-1);
-                    else if (!_treeOpen && kb.rightArrowKey.wasPressedThisFrame)
-                        CycleSelectedInCurrentNation(1);
+                    if (_titleOpen)
+                    {
+                        if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame)
+                            BeginEnterGarageFromTitle();
+                    }
+                    else if (_deployOpen)
+                    {
+                        if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)
+                            LaunchBattleScene();
+                    }
+                    else
+                    {
+                        if (kb.tKey.wasPressedThisFrame)
+                            SetTechTreeOpen(!_treeOpen);
+                        else if (kb.xKey.wasPressedThisFrame && !_treeOpen)
+                            SetXRayMode(!_xrayMode);
+                        else if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)
+                            SetDeployModalOpen(true, fromTree: _treeOpen);
+                        else if (!_treeOpen && kb.leftArrowKey.wasPressedThisFrame)
+                            CycleSelectedInCurrentNation(-1);
+                        else if (!_treeOpen && kb.rightArrowKey.wasPressedThisFrame)
+                            CycleSelectedInCurrentNation(1);
+                    }
                 }
             }
 
+            // Live 3D Sprite-Stacking Title Screen Stage
+            if (_titleOpen)
+            {
+                _draggingTank = false;
+                _draggingTree = false;
+                UpdateTitleStage(dt);
+                return;
+            }
+
             // --- HORIZONTAL SCROLLING FOR WoT TECH TREE ---
-            if (_settingsOpen)
+            if (_settingsOpen || _deployOpen)
             {
                 _draggingTank = false;
                 _draggingTree = false;
@@ -686,19 +712,18 @@ namespace Modern8bitTanks
             int W = renderWidth;
             int H = renderHeight;
 
-            // Top slim header bar (y = 242..270, h = 28) — ZERO duplicate buttons!
+            // Top slim header bar (y = 242..270, h = 28) — spacious & zero duplicate buttons!
             CreatePixelSolid(vp, "TopShade", 0, H - 28, W, 28, new Color(0.05f, 0.05f, 0.04f, 0.84f));
             CreatePixelSolid(vp, "TopRule", 0, H - 29, W, 1, PanelBorder);
 
-            CreatePixelButton(vp, hp, "TREE[T]", 4, H - 24, 60, 20, BtnBg, GoldColor, GoldColor, 8, () => SetTechTreeOpen(true));
-            CreatePixelButton(vp, hp, "X-RAY", 66, H - 24, 48, 20, BtnBg, LightCyan, LightCyan, 8, () => SetXRayMode(!_xrayMode), out _btnXrayBg);
-            CreatePixelButton(vp, hp, "SETTINGS", 116, H - 24, 66, 20, BtnBg, PanelBorder, TextLight, 8, () => SetSettingsOpen(true));
-            _garageTopBadge = CreatePixelText(vp, "8-BIT TANKS", 8, GoldColor, TextAnchor.MiddleCenter, 184, H - 24, 122, 20, useTitleFont: false);
+            CreatePixelButton(vp, hp, "TITLE", 6, H - 24, 54, 20, BtnBg, PanelBorder, TextMuted, 8, () => SetTitleOpen(true));
+            CreatePixelButton(vp, hp, "SETTINGS", 64, H - 24, 72, 20, BtnBg, LightCyan, TextLight, 8, () => SetSettingsOpen(true));
+            _garageTopBadge = CreatePixelText(vp, "8-BIT TANKS", 8, GoldColor, TextAnchor.MiddleCenter, 140, H - 24, 144, 20, useTitleFont: false);
 
             // Top-Right Live Biome Map Selector: DESERT / CITY / FOREST!
-            CreatePixelButton(vp, hp, "DESERT", 308, H - 24, 56, 20, BtnSelected, GoldColor, TextLight, 8, () => SelectBattleMap(BattleMap.Desert), out _btnMapDesertBg);
-            CreatePixelButton(vp, hp, "CITY", 366, H - 24, 44, 20, BtnBg, PanelBorder, TextLight, 8, () => SelectBattleMap(BattleMap.City), out _btnMapCityBg);
-            CreatePixelButton(vp, hp, "FOREST", 412, H - 24, 64, 20, BtnBg, MbtGreen, TextLight, 8, () => SelectBattleMap(BattleMap.Forest), out _btnMapForestBg);
+            CreatePixelButton(vp, hp, "DESERT", 288, H - 24, 60, 20, BtnSelected, GoldColor, TextLight, 8, () => SelectBattleMap(BattleMap.Desert), out _btnMapDesertBg);
+            CreatePixelButton(vp, hp, "CITY", 352, H - 24, 52, 20, BtnBg, PanelBorder, TextLight, 8, () => SelectBattleMap(BattleMap.City), out _btnMapCityBg);
+            CreatePixelButton(vp, hp, "FOREST", 408, H - 24, 66, 20, BtnBg, MbtGreen, TextLight, 8, () => SelectBattleMap(BattleMap.Forest), out _btnMapForestBg);
 
             // Centered Live 360 X-Ray Inspection Overlay (160 x 136 EVEN!)
             const int xw = 160, xh = 136;
@@ -732,41 +757,12 @@ namespace Modern8bitTanks
             _garageSpecLine = CreatePixelText(vp, "", 8, TextLight, TextAnchor.MiddleCenter, 8, 44, W - 16, 16);
             _garageMatchLine = CreatePixelText(vp, "", 8, TextMuted, TextAnchor.MiddleCenter, 8, 30, W - 16, 14);
 
-            // Bottom Controls Row (y = 6..26, h = 20 EVEN!) — SINGLE primary BATTLE button + Firing Range!
+            // Bottom Controls Row (y = 6..26, h = 20 EVEN!) — Clean Garage console: BATTLE opens Mode Selection!
             CreatePixelButton(vp, hp, "<", 6, 6, 22, 20, BtnBg, PanelBorder, TextLight, 8, () => CycleSelectedInCurrentNation(-1));
             CreatePixelButton(vp, hp, ">", 30, 6, 22, 20, BtnBg, PanelBorder, TextLight, 8, () => CycleSelectedInCurrentNation(1));
-
-            CreatePixelButton(vp, hp, "1v1", 58, 6, 38, 20, BtnSelected, PanelBorder, TextLight, 8, () =>
-            {
-                BattleSessionState.SelectedBattleMode = BattleMode.Duel1v1;
-                RefreshAllUI();
-            }, out _btnMode1v1Bg);
-
-            CreatePixelButton(vp, hp, "2v2", 98, 6, 38, 20, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                BattleSessionState.SelectedBattleMode = BattleMode.Squad2v2;
-                RefreshAllUI();
-            }, out _btnMode2v2Bg);
-
-            CreatePixelButton(vp, hp, "5v5", 138, 6, 38, 20, BtnBg, GoldColor, GoldColor, 8, () =>
-            {
-                BattleSessionState.SelectedBattleMode = BattleMode.Battle5v5;
-                RefreshAllUI();
-            }, out _btnMode5v5Bg);
-
-            CreatePixelButton(vp, hp, "WAVE", 178, 6, 46, 20, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                BattleSessionState.SelectedBattleMode = BattleMode.SurvivalWave;
-                RefreshAllUI();
-            }, out _btnModeWaveBg);
-
-            CreatePixelButton(vp, hp, "RANGE", 226, 6, 54, 20, BtnBg, LightCyan, LightCyan, 8, () =>
-            {
-                BattleSessionState.SelectedBattleMode = BattleMode.FiringRange;
-                RefreshAllUI();
-            }, out _btnModeRangeBg);
-
-            CreatePixelButton(vp, hp, "BATTLE (ENTER)", 286, 6, 188, 20, GoldColor, GoldColor, DarkInk, 8, LaunchBattleScene, useTitleFont: true);
+            CreatePixelButton(vp, hp, "TECH TREE [T]", 58, 6, 98, 20, BtnBg, GoldColor, GoldColor, 8, () => SetTechTreeOpen(true));
+            CreatePixelButton(vp, hp, "X-RAY [X]", 160, 6, 78, 20, BtnBg, LightCyan, LightCyan, 8, () => SetXRayMode(!_xrayMode), out _btnXrayBg);
+            CreatePixelButton(vp, hp, "BATTLE (ENTER)", 244, 6, 230, 20, GoldColor, GoldColor, DarkInk, 8, () => SetDeployModalOpen(true, fromTree: false), useTitleFont: true);
         }
 
         private void BuildTechTreeUI()
@@ -870,7 +866,7 @@ namespace Modern8bitTanks
                 () => JumpTreeTo(HistoryColumns + VehicleDef.ModernTier - 1));
 
             CreatePixelButton(vp, hp, "VIEW TANK", 352, 28, 118, 20, BtnBg, PanelBorder, TextLight, 8, () => SetTechTreeOpen(false));
-            CreatePixelButton(vp, hp, "BATTLE!", 352, 4, 118, 20, GoldColor, GoldColor, DarkInk, 8, LaunchBattleScene, useTitleFont: true);
+            CreatePixelButton(vp, hp, "BATTLE!", 352, 4, 118, 20, GoldColor, GoldColor, DarkInk, 8, () => SetDeployModalOpen(true, fromTree: true), useTitleFont: true);
         }
 
         private static int TreeColumn(VehicleDef vehicle) =>
@@ -1147,22 +1143,20 @@ namespace Modern8bitTanks
         {
             _settingsOpen = open;
             if (_settingsVisualGroup != null) _settingsVisualGroup.SetActive(open);
-            if (_settingsHitsGroup != null) _settingsHitsGroup.SetActive(open);
-            if (_garageHitsGroup != null) _garageHitsGroup.SetActive(!open && !_treeOpen);
-            if (_treeHitsGroup != null) _treeHitsGroup.SetActive(!open && _treeOpen);
+            SyncActiveHitGroups();
             if (open) RefreshSettingsLabels();
         }
 
         private void SetTechTreeOpen(bool open)
         {
             if (open && _settingsOpen) SetSettingsOpen(false);
+            if (open && _deployOpen) SetDeployModalOpen(false);
             _treeOpen = open;
-            if (_treeVisualGroup != null) _treeVisualGroup.SetActive(open);
-            if (_treeHitsGroup != null) _treeHitsGroup.SetActive(open && !_settingsOpen);
-            if (_garageVisualGroup != null) _garageVisualGroup.SetActive(!open);
-            if (_garageHitsGroup != null) _garageHitsGroup.SetActive(!open && !_settingsOpen);
-            if (_hangarXrayWrap != null) _hangarXrayWrap.SetActive(_xrayMode && !open);
-            if (showcaseTank != null) showcaseTank.gameObject.SetActive(!_xrayMode || open);
+            if (_treeVisualGroup != null) _treeVisualGroup.SetActive(open && !_titleOpen);
+            if (_garageVisualGroup != null) _garageVisualGroup.SetActive(!open && !_titleOpen);
+            if (_hangarXrayWrap != null) _hangarXrayWrap.SetActive(_xrayMode && !open && !_titleOpen);
+            if (showcaseTank != null) showcaseTank.gameObject.SetActive(!_xrayMode || open || _titleOpen);
+            SyncActiveHitGroups();
             if (open)
             {
                 VehicleDef cur = GetSelectedVehicle();
@@ -1223,11 +1217,7 @@ namespace Modern8bitTanks
                     _treeDetailStats.text = $"SPD {(int)sel.speed}  TRN {(int)sel.EffectiveHullTurnSpeed}  TUR {(int)sel.EffectiveTurretTurnSpeed}  PEN {(int)sel.penetration}  RLD {sel.reload:F2}s  {sel.engine.ToUpper()}";
             }
 
-            if (_btnMode1v1Bg != null) _btnMode1v1Bg.color = BattleSessionState.SelectedBattleMode == BattleMode.Duel1v1 ? BtnSelected : BtnBg;
-            if (_btnMode2v2Bg != null) _btnMode2v2Bg.color = BattleSessionState.SelectedBattleMode == BattleMode.Squad2v2 ? BtnSelected : BtnBg;
-            if (_btnMode5v5Bg != null) _btnMode5v5Bg.color = BattleSessionState.SelectedBattleMode == BattleMode.Battle5v5 ? BtnSelected : BtnBg;
-            if (_btnModeWaveBg != null) _btnModeWaveBg.color = BattleSessionState.SelectedBattleMode == BattleMode.SurvivalWave ? BtnSelected : BtnBg;
-            if (_btnModeRangeBg != null) _btnModeRangeBg.color = BattleSessionState.SelectedBattleMode == BattleMode.FiringRange ? BtnSelected : BtnBg;
+            RefreshDeployModalUI();
 
             if (_btnMapDesertBg != null) _btnMapDesertBg.color = BattleSessionState.SelectedBattleMap == BattleMap.Desert ? BtnSelected : BtnBg;
             if (_btnMapCityBg != null) _btnMapCityBg.color = BattleSessionState.SelectedBattleMap == BattleMap.City ? BtnSelected : BtnBg;
@@ -1410,6 +1400,7 @@ namespace Modern8bitTanks
         private void OnDestroy()
         {
             Font.textureRebuilt -= OnFontTextureRebuilt;
+            CleanupTitleStage();
             if (_groundHd2dMat != null) Destroy(_groundHd2dMat);
             if (_hangarBackdropTex != null) Destroy(_hangarBackdropTex);
         }

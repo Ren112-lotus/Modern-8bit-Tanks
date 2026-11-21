@@ -26,6 +26,7 @@ namespace Modern8bitTanks
         public float angleDeg;
         public float hitFlash;
         public bool charred;
+        [Range(0f, 1f)] public float metallicWear = 0.20f;
 
         private const string VisualContainerName = "__StackVisuals";
         private Transform _visualRoot;
@@ -47,6 +48,7 @@ namespace Modern8bitTanks
         private static readonly int FlashAmountId = Shader.PropertyToID("_FlashAmount");
         private static readonly int CharredId = Shader.PropertyToID("_Charred");
         private static readonly int Height01Id = Shader.PropertyToID("_Height01");
+        private static readonly int MetallicWearId = Shader.PropertyToID("_MetallicWear");
 
         public int SliceWidth => _sliceW;
         public int SliceHeight => _sliceH;
@@ -260,6 +262,7 @@ namespace Modern8bitTanks
                     _mpb.SetFloat(FlashAmountId, Mathf.Clamp01(hitFlash * 1.15f));
                     _mpb.SetFloat(CharredId, charred ? 1f : 0f);
                     _mpb.SetFloat(Height01Id, height01);
+                    _mpb.SetFloat(MetallicWearId, metallicWear);
                     _renderers[z].SetPropertyBlock(_mpb);
                 }
 
@@ -282,6 +285,7 @@ namespace Modern8bitTanks
                             _mpb.SetFloat(FlashAmountId, Mathf.Clamp01(hitFlash * 1.15f));
                             _mpb.SetFloat(CharredId, charred ? 1f : 0f);
                             _mpb.SetFloat(Height01Id, fillH01);
+                            _mpb.SetFloat(MetallicWearId, metallicWear);
                             _fillRenderers[z].SetPropertyBlock(_mpb);
                         }
                     }

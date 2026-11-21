@@ -35,6 +35,7 @@ namespace Modern8bitTanks
 
         public static int WinsAlly = 0;
         public static int WinsEnemy = 0;
+        public static bool HasEnteredGarage = false;
 
         private const string PrefPrefix = "M8T_Setting_";
 

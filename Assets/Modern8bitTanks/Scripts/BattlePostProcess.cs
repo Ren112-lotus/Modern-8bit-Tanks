@@ -34,8 +34,8 @@ namespace Modern8bitTanks
         private static readonly Color WarmVignetteColor = new Color(0.08f, 0.06f, 0.05f, 1f);
         private static readonly Color DamageVignetteColor = new Color(0.76f, 0.08f, 0.05f, 1f);
 
-        private const float BaseBloomIntensity = 0.72f;
-        private const float BaseVignetteIntensity = 0.18f;
+        private const float BaseBloomIntensity = 1.18f;
+        private const float BaseVignetteIntensity = 0.24f;
 
         public void Initialize(Camera gameCam)
         {
@@ -58,14 +58,14 @@ namespace Modern8bitTanks
 
             _profile = ScriptableObject.CreateInstance<VolumeProfile>();
 
-            // 1. Selective HDR Bloom tuned for crisp 480x270 pixel art (keeps tanks sharp while shells blaze!)
+            // 1. Silky Full-Screen Post-RT HDR Bloom (runs on PresentCamera AFTER 480x270 pixel RT!)
             _bloom = _profile.Add<Bloom>(true);
             _bloom.threshold.overrideState = true;
-            _bloom.threshold.value = 1.15f;
+            _bloom.threshold.value = 1.05f;
             _bloom.intensity.overrideState = true;
             _bloom.intensity.value = BaseBloomIntensity;
             _bloom.scatter.overrideState = true;
-            _bloom.scatter.value = 0.56f;
+            _bloom.scatter.value = 0.72f;
             _bloom.highQualityFiltering.overrideState = true;
             _bloom.highQualityFiltering.value = true;
             _bloom.tint.overrideState = true;
@@ -123,6 +123,14 @@ namespace Modern8bitTanks
 
         public void ApplyMapTheme(BattleMap map)
         {
+            Color dustTint = map switch
+            {
+                BattleMap.City => new Color(0.54f, 0.53f, 0.50f, 1f),
+                BattleMap.Forest => new Color(0.36f, 0.31f, 0.20f, 1f),
+                _ => new Color(0.78f, 0.65f, 0.43f, 1f)
+            };
+            Shader.SetGlobalColor("_BiomeDustTint", dustTint);
+
             if (_whiteBalance == null || _splitToning == null || _colorAdj == null) return;
             switch (map)
             {

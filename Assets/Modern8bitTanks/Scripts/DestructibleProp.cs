@@ -67,6 +67,9 @@ namespace Modern8bitTanks
                 stack = stackGo.AddComponent<SpriteStackRenderer>();
             }
             stack.angleDeg = angleDeg;
+            stack.metallicWear = (kind == "fuel_tank" || kind == "tank_trap" || kind == "watch_tower" || kind == "city_factory")
+                ? 0.55f
+                : 0.08f;
             stack.Configure(sheet, meta.slices, ppu, mat, 0, 0f, groundShadow: true);
             approxRadiusUnits = (Mathf.Max(meta.width, meta.length) * 0.52f) / ppu;
             UpdateSortOrder();

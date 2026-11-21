@@ -2,53 +2,34 @@ Shader "Modern8bitTanks/URPHd2dScreenComposite"
 {
     Properties
     {
-        [PerRendererData] _MainTex ("Game RenderTexture", 2D) = "white" {}
+        _MainTex ("Game HDR RenderTexture", 2D) = "white" {}
         _Color ("Tint", Color) = (1, 1, 1, 1)
         _TiltShiftStrength ("Tilt-Shift Bokeh Strength", Range(0, 2.5)) = 1.0
         _FocusCenter ("Focus Band Center Y", Range(0.2, 0.8)) = 0.50
         _FocusWidth ("Sharp Focus Half-Width", Range(0.10, 0.45)) = 0.25
-        _TexelSize ("Game RT Texel Size", Vector) = (0.000694, 0.001235, 1440, 810)
-
-        // Standard uGUI RawImage stencil/mask properties
-        _StencilComp ("Stencil Comparison", Float) = 8
-        _Stencil ("Stencil ID", Float) = 0
-        _StencilOp ("Stencil Operation", Float) = 0
-        _StencilWriteMask ("Stencil Write Mask", Float) = 255
-        _StencilReadMask ("Stencil Read Mask", Float) = 255
-        _ColorMask ("Color Mask", Float) = 15
+        _TexelSize ("Game RT Texel Size", Vector) = (0.002083, 0.003704, 480, 270)
     }
 
     SubShader
     {
         Tags
         {
-            "Queue" = "Transparent"
-            "IgnoreProjector" = "True"
-            "RenderType" = "Transparent"
-            "PreviewType" = "Plane"
-            "CanUseSpriteAtlas" = "True"
+            "Queue" = "Opaque"
+            "RenderType" = "Opaque"
             "RenderPipeline" = "UniversalPipeline"
-        }
-
-        Stencil
-        {
-            Ref [_Stencil]
-            Comp [_StencilComp]
-            Pass [_StencilOp]
-            ReadMask [_StencilReadMask]
-            WriteMask [_StencilWriteMask]
+            "IgnoreProjector" = "True"
         }
 
         Cull Off
         Lighting Off
         ZWrite Off
-        ZTest [unity_GUIZTestMode]
-        Blend SrcAlpha OneMinusSrcAlpha
-        ColorMask [_ColorMask]
+        ZTest Always
+        Blend Off
 
         Pass
         {
-            Name "HD2DTiltShiftDOF"
+            Name "HD2DPostRTPresent"
+            Tags { "LightMode" = "UniversalForward" }
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -57,14 +38,12 @@ Shader "Modern8bitTanks/URPHd2dScreenComposite"
             struct Attributes
             {
                 float4 positionOS : POSITION;
-                float4 color      : COLOR;
                 float2 uv         : TEXCOORD0;
             };
 
             struct Varyings
             {
                 float4 positionHCS : SV_POSITION;
-                half4  color       : COLOR;
                 float2 uv          : TEXCOORD0;
             };
 
@@ -103,41 +82,38 @@ Shader "Modern8bitTanks/URPHd2dScreenComposite"
                 Varyings OUT;
                 OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
                 OUT.uv = IN.uv;
-                OUT.color = IN.color * _Color;
                 return OUT;
             }
 
-            half4 frag(Varyings IN) : SV_Target
+            // Outputs full unclamped HDR values (> 1.0) into PresentCamera so URP Bloom, Vignette,
+            // SplitToning, & ACES run cleanly AFTER the low-res 480x270 RenderTexture at native screen res!
+            float4 frag(Varyings IN) : SV_Target
             {
                 float2 uv = IN.uv;
 
                 if (_Hd2dEnabled < 0.5)
-                    return SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uv) * IN.color;
+                    return SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uv) * _Color;
 
-                // Pure Photographic HD-2D Tilt-Shift Depth of Field:
-                // Center combat band stays 100% tack-sharp; top horizon & bottom foreground blur into silky bokeh!
-                // Scale radius proportionally to RT height so 480x270 matches the exact physical blur width of 1440x810!
                 float dy = abs(uv.y - _FocusCenter);
                 float blurMask = smoothstep(_FocusWidth, 0.51, dy);
                 float edgeScale = uv.y > _FocusCenter ? 1.05 : 0.78;
                 float resScale = clamp(_TexelSize.w / 810.0, 0.25, 2.0);
                 float blurPx = blurMask * edgeScale * (6.8 * resScale) * _TiltShiftStrength;
 
-                half3 col;
+                float3 col;
                 if (blurPx > 0.25)
                 {
                     float2 stepUv = _TexelSize.xy * blurPx;
-                    half3 accum = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uv).rgb;
-                    half totalW = 1.0h;
+                    float3 accum = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uv).rgb;
+                    float totalW = 1.0;
 
                     [unroll]
                     for (int i = 0; i < 12; i++)
                     {
                         float2 sampleUv = clamp(uv + BokehTaps[i] * stepUv, float2(0.001, 0.001), float2(0.999, 0.999));
-                        half3 s = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, sampleUv).rgb;
-                        // Bright highlights bloom gently into smooth bokeh discs
-                        half lum = dot(s, half3(0.299h, 0.587h, 0.114h));
-                        half w = 1.0h + smoothstep(0.68h, 1.20h, lum) * 1.25h;
+                        float3 s = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, sampleUv).rgb;
+                        float lum = dot(s, float3(0.299, 0.587, 0.114));
+                        float w = 1.0 + smoothstep(0.68, 1.80, lum) * 0.85;
                         accum += s * w;
                         totalW += w;
                     }
@@ -148,7 +124,7 @@ Shader "Modern8bitTanks/URPHd2dScreenComposite"
                     col = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uv).rgb;
                 }
 
-                return half4(col, 1.0h) * IN.color;
+                return float4(col * _Color.rgb, 1.0);
             }
             ENDHLSL
         }

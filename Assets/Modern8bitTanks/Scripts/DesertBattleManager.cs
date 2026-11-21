@@ -256,7 +256,8 @@ namespace Modern8bitTanks
             _postProcess = GetComponent<BattlePostProcess>();
             if (_postProcess == null) _postProcess = gameObject.AddComponent<BattlePostProcess>();
             _postProcess.postProcessEnabled = postProcessEnabled;
-            _postProcess.Initialize(_cam);
+            // Attach URP Post-Processing to PresentCamera so Bloom/Vignette/ACES run AFTER the 480x270 RT at full screen res!
+            _postProcess.Initialize(_windowbox.PresentCamera != null ? _windowbox.PresentCamera : _cam);
             _postProcess.ApplyMapTheme(battleMap);
 
             LoadVehicleCatalog();

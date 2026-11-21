@@ -421,10 +421,12 @@ namespace Modern8bitTanks
             hullStack.squash = squash;
             hullStack.spacingPx = effectiveSpacing;
             hullStack.angleDeg = hullAngleDeg;
+            hullStack.metallicWear = 1.0f;
             hullStack.ApplyVisuals();
 
             turretStack.squash = squash;
             turretStack.spacingPx = turretTossed ? spacingPx : effectiveSpacing;
+            turretStack.metallicWear = 1.0f;
 
             if (turretTossed)
             {
