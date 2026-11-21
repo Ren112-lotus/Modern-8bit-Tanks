@@ -1,0 +1,280 @@
+using UnityEngine;
+
+namespace Modern8bitTanks
+{
+    public enum SoundBus
+    {
+        Dry,        // 響かない音（装填音・機銃・スモーク・車内メカ音）
+        Reverb,     // 砂漠の岩壁に響く音（主砲・爆発・跳弾・砲塔落下）
+        HeavyReverb // 大爆発・誘爆用の深い残響
+    }
+
+    /// <summary>
+    /// Position-based 2D stereo spatial audio controller with strict separation between:
+    /// - DRY voices (no reverb): cabin reload clank, coaxial MG, smoke pop, engine/tracks/turret servo
+    /// - WET/REVERB voices (outdoor desert canyon AudioReverbFilter + distance air-absorption lowpass):
+    ///   main cannon blasts, explosions, ricochets, and heavy turret crash impacts.
+    /// Uses dedicated voice pools so overlapping sounds at different positions keep independent stereo pan & pitch!
+    /// </summary>
+    public class BattleAudioController : MonoBehaviour
+    {
+        private const int DryPoolSize = 10;
+        private const int WetPoolSize = 12;
+
+        [Header("Audio Mix Balance (Editable Live in Inspector)")]
+        [Range(0f, 1f)] public float engineMaster = 0.35f;
+        [Range(0f, 1f)] public float tracksMaster = 0.28f;
+        [Range(0f, 1f)] public float servoMaster = 0.35f;
+        [Range(0f, 1.2f)] public float combatSfxMaster = 0.95f;
+
+        // Stereo & attenuation tuning (in Unity world units; expanded 1280x860 battlefield is 80 x 53.75 units)
+        private const float FullPanDistance = 16.0f;
+        private const float HalfVolumeDistance = 24.0f;
+        private const float MaxAudibleDistance = 68.0f;
+
+        private struct Voice
+        {
+            public AudioSource source;
+            public AudioLowPassFilter lowPass;
+            public AudioReverbFilter reverb;
+        }
+
+        private Voice[] _dryPool;
+        private Voice[] _wetPool;
+        private int _dryCursor;
+        private int _wetCursor;
+
+        // Continuous dry cabin/chassis loops for the player tank
+        private AudioSource _engineSource;
+        private AudioLowPassFilter _engineLp;
+        private AudioSource _trackSource;
+        private AudioLowPassFilter _trackLp;
+        private AudioSource _servoSource;
+        private AudioSource _missileMotorSource;
+        private AudioLowPassFilter _missileMotorLp;
+
+        public void Initialize(AudioClip trackClip, AudioClip servoClip, AudioClip missileMotorClip = null)
+        {
+            _dryPool = CreatePool("DryVoice", DryPoolSize, withReverb: false);
+            _wetPool = CreatePool("WetReverbVoice", WetPoolSize, withReverb: true);
+
+            _engineSource = CreateLoopSource("Loop_Engine", out _engineLp, 1600f);
+            _trackSource = CreateLoopSource("Loop_Tracks", out _trackLp, 2200f);
+            _servoSource = CreateLoopSource("Loop_TurretServo", out _, 3400f);
+            _missileMotorSource = CreateLoopSource("Loop_MissileMotor", out _missileMotorLp, 6500f);
+
+            _trackSource.clip = trackClip;
+            _servoSource.clip = servoClip;
+            _missileMotorSource.clip = missileMotorClip;
+        }
+
+        private Voice[] CreatePool(string prefix, int count, bool withReverb)
+        {
+            var root = new GameObject(prefix + "Pool").transform;
+            root.SetParent(transform, false);
+            var pool = new Voice[count];
+
+            for (int i = 0; i < count; i++)
+            {
+                var go = new GameObject($"{prefix}_{i:00}");
+                go.transform.SetParent(root, false);
+
+                var src = go.AddComponent<AudioSource>();
+                src.playOnAwake = false;
+                src.loop = false;
+                src.spatialBlend = 0f; // Managed directly via exact 2D stereo panStereo + distance attenuation
+                src.dopplerLevel = 0f;
+
+                var lp = go.AddComponent<AudioLowPassFilter>();
+                lp.cutoffFrequency = 22000f;
+                lp.lowpassResonanceQ = 1.0f;
+
+                AudioReverbFilter rev = null;
+                if (withReverb)
+                {
+                    rev = go.AddComponent<AudioReverbFilter>();
+                    ConfigureDesertCanyonReverb(rev, heavy: false);
+                }
+
+                pool[i] = new Voice { source = src, lowPass = lp, reverb = rev };
+            }
+            return pool;
+        }
+
+        private AudioSource CreateLoopSource(string name, out AudioLowPassFilter lp, float cutoffHz)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(transform, false);
+            var src = go.AddComponent<AudioSource>();
+            src.playOnAwake = false;
+            src.loop = true;
+            src.volume = 0f;
+            src.panStereo = 0f; // Player's own engine/tracks/servo are dry & centered in the tank
+            src.spatialBlend = 0f;
+            lp = go.AddComponent<AudioLowPassFilter>();
+            lp.cutoffFrequency = cutoffHz;
+            return src;
+        }
+
+        private static void ConfigureDesertCanyonReverb(AudioReverbFilter rev, bool heavy)
+        {
+            rev.reverbPreset = AudioReverbPreset.User;
+            rev.dryLevel = 0f;
+            rev.room = heavy ? -180f : -420f;
+            rev.roomHF = -800f;
+            rev.roomLF = -100f;
+            rev.decayTime = heavy ? 2.45f : 1.55f;
+            rev.decayHFRatio = 0.42f;
+            rev.reflectionsLevel = heavy ? -350f : -650f;
+            rev.reflectionsDelay = 0.045f; // Crisp outdoor desert canyon slapback
+            rev.reverbLevel = heavy ? 120f : -180f;
+            rev.reverbDelay = 0.080f;
+            rev.hfReference = 3600f;
+            rev.lfReference = 240f;
+            rev.diffusion = 72f;
+            rev.density = 68f;
+        }
+
+        /// <summary>
+        /// Plays a one-shot sound spatially positioned in stereo relative to listenerPos,
+        /// routed to either the DRY bus (no reverb) or the Desert Canyon REVERB bus.
+        /// </summary>
+        public void PlayAt(
+            AudioClip clip,
+            Vector2 worldPos,
+            Vector2 listenerPos,
+            SoundBus bus,
+            float baseVolume,
+            bool sfxEnabled,
+            float pitchMin = 0.94f,
+            float pitchMax = 1.06f,
+            bool centerPan = false)
+        {
+            if (!sfxEnabled || clip == null) return;
+
+            Vector2 delta = worldPos - listenerPos;
+            float dist = delta.magnitude;
+            if (dist > MaxAudibleDistance && !centerPan) return;
+
+            // 1. Stereo Panning: left of listener -> -1, right of listener -> +1
+            float pan = centerPan ? 0f : Mathf.Clamp(delta.x / FullPanDistance, -0.92f, 0.92f);
+
+            // 2. Natural outdoor distance attenuation
+            float atten = centerPan ? 1f : 1f / (1f + Mathf.Pow(dist / HalfVolumeDistance, 1.35f));
+            float finalVol = Mathf.Clamp01(baseVolume * combatSfxMaster * atten);
+            if (finalVol < 0.015f) return;
+
+            // 3. Distant air-absorption lowpass (faraway blasts lose crisp high end naturally)
+            float dist01 = centerPan ? 0f : Mathf.Clamp01(dist / MaxAudibleDistance);
+            float cutoffHz = Mathf.Lerp(22000f, 2400f, dist01 * dist01);
+
+            Voice voice;
+            if (bus == SoundBus.Dry)
+            {
+                voice = _dryPool[_dryCursor];
+                _dryCursor = (_dryCursor + 1) % _dryPool.Length;
+            }
+            else
+            {
+                voice = _wetPool[_wetCursor];
+                _wetCursor = (_wetCursor + 1) % _wetPool.Length;
+                if (voice.reverb != null)
+                {
+                    ConfigureDesertCanyonReverb(voice.reverb, heavy: bus == SoundBus.HeavyReverb);
+                    // Distant canyon sounds pick up slightly stronger reverb tail relative to direct signal!
+                    if (dist01 > 0.2f)
+                    {
+                        voice.reverb.reverbLevel += dist01 * 260f;
+                        voice.reverb.decayTime += dist01 * 0.55f;
+                    }
+                }
+            }
+
+            voice.lowPass.cutoffFrequency = cutoffHz;
+            voice.source.Stop();
+            voice.source.clip = clip;
+            voice.source.panStereo = pan;
+            voice.source.volume = finalVol;
+            voice.source.pitch = Random.Range(pitchMin, pitchMax);
+            voice.source.Play();
+        }
+
+        public void StartPlayerLoops(AudioClip engineClip)
+        {
+            if (_engineSource == null) return;
+            if (_engineSource.clip != engineClip)
+            {
+                _engineSource.Stop();
+                _engineSource.clip = engineClip;
+            }
+            if (_engineSource.clip != null && !_engineSource.isPlaying) _engineSource.Play();
+            if (_trackSource.clip != null && !_trackSource.isPlaying) _trackSource.Play();
+            if (_servoSource.clip != null && !_servoSource.isPlaying) _servoSource.Play();
+        }
+
+        public void StopLoopsImmediate()
+        {
+            if (_engineSource != null) _engineSource.volume = 0f;
+            if (_trackSource != null) _trackSource.volume = 0f;
+            if (_servoSource != null) _servoSource.volume = 0f;
+            if (_missileMotorSource != null) _missileMotorSource.volume = 0f;
+        }
+
+        /// <summary>
+        /// Spatialized in-flight rocket motor roar following the closest active TOW/ATGM missile!
+        /// </summary>
+        public void UpdateMissileMotorLoop(bool hasActiveMissile, Vector2 missilePos, Vector2 listenerPos, bool sfxEnabled, float dt)
+        {
+            if (_missileMotorSource == null || _missileMotorSource.clip == null) return;
+            if (!hasActiveMissile || !sfxEnabled)
+            {
+                _missileMotorSource.volume = Mathf.MoveTowards(_missileMotorSource.volume, 0f, Time.unscaledDeltaTime * 5.5f);
+                return;
+            }
+            if (!_missileMotorSource.isPlaying) _missileMotorSource.Play();
+
+            Vector2 delta = missilePos - listenerPos;
+            float dist = delta.magnitude;
+            float pan = Mathf.Clamp(delta.x / FullPanDistance, -0.92f, 0.92f);
+            float atten = 1f / (1f + Mathf.Pow(dist / HalfVolumeDistance, 1.2f));
+            float targetVol = Mathf.Clamp01(0.42f * combatSfxMaster * atten);
+            _missileMotorSource.panStereo = Mathf.Lerp(_missileMotorSource.panStereo, pan, dt * 12f);
+            _missileMotorSource.volume = Mathf.Lerp(_missileMotorSource.volume, targetVol, dt * 14f);
+            _missileMotorSource.pitch = 1.18f + Mathf.Clamp01(1f - dist / 30f) * 0.14f;
+            if (_missileMotorLp != null)
+                _missileMotorLp.cutoffFrequency = Mathf.Lerp(14000f, 2600f, Mathf.Clamp01(dist / MaxAudibleDistance));
+        }
+
+        public void UpdatePlayerLoops(bool active, float moving01, float turretTurn01, float dt)
+        {
+            if (!active)
+            {
+                _engineSource.volume = Mathf.MoveTowards(_engineSource.volume, 0f, Time.unscaledDeltaTime * 2.5f);
+                _trackSource.volume = Mathf.MoveTowards(_trackSource.volume, 0f, Time.unscaledDeltaTime * 3.5f);
+                _servoSource.volume = Mathf.MoveTowards(_servoSource.volume, 0f, Time.unscaledDeltaTime * 4.5f);
+                return;
+            }
+
+            // Quiet, warm cabin bed so cannon blasts, ricochets, & reload clanks stay crisp and dominant!
+            float targetEngVol = (0.11f + moving01 * 0.14f) * engineMaster; // ~0.038 idle -> ~0.088 full speed
+            float targetEngPitch = 0.88f + moving01 * 0.30f;
+            _engineSource.volume = Mathf.Lerp(_engineSource.volume, targetEngVol, dt * 6f);
+            _engineSource.pitch = Mathf.Lerp(_engineSource.pitch, targetEngPitch, dt * 5f);
+            if (_engineLp != null)
+                _engineLp.cutoffFrequency = Mathf.Lerp(1350f, 2600f, moving01);
+
+            // Subtle caterpillar clatter underneath the tank
+            float targetTrackVol = moving01 > 0.08f ? (0.07f + moving01 * 0.16f) * tracksMaster : 0f; // max ~0.064
+            _trackSource.volume = Mathf.Lerp(_trackSource.volume, targetTrackVol, dt * 8f);
+            _trackSource.pitch = 0.88f + moving01 * 0.34f;
+            if (_trackLp != null)
+                _trackLp.cutoffFrequency = Mathf.Lerp(1800f, 3200f, moving01);
+
+            // Very subtle turret traverse servo whirr
+            float turn01 = Mathf.Clamp01(turretTurn01);
+            float targetServoVol = turn01 > 0.14f ? turn01 * 0.12f * servoMaster : 0f; // max ~0.042
+            _servoSource.volume = Mathf.Lerp(_servoSource.volume, targetServoVol, dt * 10f);
+            _servoSource.pitch = 0.95f + turn01 * 0.22f;
+        }
+    }
+}

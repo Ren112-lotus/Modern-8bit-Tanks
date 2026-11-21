@@ -1,0 +1,26 @@
+{
+  "abrams": {
+    "name": "abrams",
+    "hullSlices": 11,
+    "hullBaseHeight": 11,
+    "hullWidth": 24,
+    "hullLength": 40,
+    "hullPivotOffsetY": 0.5,
+    "turretSlices": 7,
+    "turretWidth": 25,
+    "turretLength": 57,
+    "muzzleDist": 27
+  },
+  "t90": {
+    "name": "t90",
+    "hullSlices": 13,
+    "hullBaseHeight": 10,
+    "hullWidth": 26,
+    "hullLength": 43,
+    "hullPivotOffsetY": 2.0,
+    "turretSlices": 6,
+    "turretWidth": 27,
+    "turretLength": 63,
+    "muzzleDist": 30
+  }
+}

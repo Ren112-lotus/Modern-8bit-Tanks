@@ -1,0 +1,235 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2160542358105315193
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2818534434855711971}
+  - component: {fileID: 7147499003096871417}
+  m_Layer: 0
+  m_Name: HullStack
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2818534434855711971
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2160542358105315193}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 921700567759093789}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7147499003096871417
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2160542358105315193}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+  sourceSheet: {fileID: 2800000, guid: 9b05075ff0bbe924eb5d701df79645ec, type: 3}
+  sliceCount: 13
+  pixelsPerUnit: 16
+  squash: 0.75
+  spacingPx: 1
+  baseZOffsetSlices: 0
+  baseSortingOrder: 0
+  sliceMaterial: {fileID: 2100000, guid: b53d8785100743345b06df30af2e71d1, type: 2}
+  addGroundShadow: 1
+  angleDeg: -90
+  hitFlash: 0
+  charred: 0
+--- !u!1 &2651725971470899758
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5785599389800133620}
+  - component: {fileID: 2007377720527845401}
+  m_Layer: 0
+  m_Name: TurretStack
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5785599389800133620
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2651725971470899758}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.125, y: 0.0000000040979424, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 921700567759093789}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2007377720527845401
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2651725971470899758}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+  sourceSheet: {fileID: 2800000, guid: 2ec27c7ffa9a64b45a5e5c53efe3e5fe, type: 3}
+  sliceCount: 6
+  pixelsPerUnit: 16
+  squash: 0.75
+  spacingPx: 1
+  baseZOffsetSlices: 10
+  baseSortingOrder: 15
+  sliceMaterial: {fileID: 2100000, guid: b53d8785100743345b06df30af2e71d1, type: 2}
+  addGroundShadow: 0
+  angleDeg: -90
+  hitFlash: 0
+  charred: 0
+--- !u!1 &6306857439493718230
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 921700567759093789}
+  - component: {fileID: 1605460960983815954}
+  - component: {fileID: 3489945655188006765}
+  m_Layer: 0
+  m_Name: T90_Tank
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &921700567759093789
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6306857439493718230}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2818534434855711971}
+  - {fileID: 5785599389800133620}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!210 &1605460960983815954
+SortingGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6306857439493718230}
+  m_Enabled: 1
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_SortAtRoot: 0
+  m_Sort3DAs2D: 0
+--- !u!114 &3489945655188006765
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6306857439493718230}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd9898d7c788da441a75fd321975c129, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.TankEntity
+  tankType: t90
+  factionTeam: ally
+  vehicleDef:
+    id: 
+    name: 
+    nation: 
+    tier: 0
+    tab: 
+    role: 
+    weapon: 
+    engine: 
+    speed: 0
+    reload: 0
+    armorFront: 0
+    hullSlices: 0
+    hullBaseHeight: 0
+    hullWidth: 0
+    hullLength: 0
+    hullPivotOffsetY: 0
+    turretSlices: 0
+    turretWidth: 0
+    turretLength: 0
+    muzzleDist: 0
+  meta:
+    name: t90
+    hullSlices: 13
+    hullBaseHeight: 10
+    hullWidth: 26
+    hullLength: 43
+    hullPivotOffsetY: 2
+    turretSlices: 6
+    turretWidth: 27
+    turretLength: 63
+    muzzleDist: 30
+  hullStack: {fileID: 7147499003096871417}
+  turretStack: {fileID: 2007377720527845401}
+  pixelsPerUnit: 16
+  initialAngleDeg: -90
+  reloadDuration: 1.25
+  smokeDuration: 9
+  atgmDuration: 3.5
+  isPlayer: 0
+  isExtraSpawned: 0
+  hullAngleDeg: -90
+  turretAngleDeg: -90
+  moveSpeed: 0
+  recoilPx: 0
+  suspensionOffset: 1
+  reloadTimer: 0
+  mgCooldown: 0
+  atgmCooldown: 0
+  smokeCooldown: 0
+  twinBarrelToggle: 0
+  alive: 1
+  treadAccum: 0
+  smokeTimer: 0
+  turretTossed: 0
+  aiStrafeDir: 1
+  aiStrafeTimer: 2
+  aiFireDelay: 0.45
+  sortingGroup: {fileID: 1605460960983815954}

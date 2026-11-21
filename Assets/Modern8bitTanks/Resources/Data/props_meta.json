@@ -1,0 +1,144 @@
+{
+  "sandbag_wall": {
+    "slices": 10,
+    "width": 32,
+    "length": 14,
+    "destructible": true,
+    "ricochetHeavy": false
+  },
+  "hesco_barrier": {
+    "slices": 13,
+    "width": 22,
+    "length": 22,
+    "destructible": true,
+    "ricochetHeavy": true
+  },
+  "desert_ruin": {
+    "slices": 14,
+    "width": 36,
+    "length": 14,
+    "destructible": true,
+    "ricochetHeavy": false
+  },
+  "supply_crate": {
+    "slices": 11,
+    "width": 18,
+    "length": 16,
+    "destructible": true,
+    "ricochetHeavy": false
+  },
+  "desert_bunker": {
+    "slices": 14,
+    "width": 34,
+    "length": 26,
+    "destructible": true,
+    "ricochetHeavy": true
+  },
+  "watch_tower": {
+    "slices": 22,
+    "width": 22,
+    "length": 22,
+    "destructible": true,
+    "ricochetHeavy": false
+  },
+  "fuel_tank": {
+    "slices": 13,
+    "width": 30,
+    "length": 18,
+    "destructible": true,
+    "ricochetHeavy": false
+  },
+  "palm_tree": {
+    "slices": 20,
+    "width": 28,
+    "length": 28,
+    "destructible": true,
+    "ricochetHeavy": false
+  },
+  "desert_rock": {
+    "slices": 15,
+    "width": 32,
+    "length": 24,
+    "destructible": true,
+    "ricochetHeavy": true
+  },
+  "tank_trap": {
+    "slices": 12,
+    "width": 18,
+    "length": 18,
+    "destructible": true,
+    "ricochetHeavy": true
+  },
+  "city_apartment": {
+    "slices": 28,
+    "width": 64,
+    "length": 52,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": true
+  },
+  "city_factory": {
+    "slices": 24,
+    "width": 84,
+    "length": 56,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": true
+  },
+  "city_blockhouse": {
+    "slices": 22,
+    "width": 56,
+    "length": 48,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": true
+  },
+  "city_barricade": {
+    "slices": 11,
+    "width": 46,
+    "length": 20,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": false
+  },
+  "pine_cluster": {
+    "slices": 26,
+    "width": 56,
+    "length": 52,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": true
+  },
+  "forest_boulder": {
+    "slices": 22,
+    "width": 68,
+    "length": 54,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": true
+  },
+  "forest_cabin": {
+    "slices": 22,
+    "width": 60,
+    "length": 44,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": true
+  },
+  "desert_mesa": {
+    "slices": 24,
+    "width": 76,
+    "length": 58,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": true
+  },
+  "desert_compound": {
+    "slices": 22,
+    "width": 72,
+    "length": 56,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": true
+  }
+}
