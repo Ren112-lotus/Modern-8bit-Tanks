@@ -27,11 +27,85 @@ namespace Modern8bitTanks
         public static bool ArcadeWASD = false;
         public static bool AiEnabled = true;
         public static bool SfxEnabled = true;
+        public static float SfxVolume = 1.0f;
+        public static bool BgmEnabled = true;
+        public static float BgmVolume = 0.60f;
         public static bool PostProcessEnabled = true;
         public static bool IntegerWindowbox = false;
 
         public static int WinsAlly = 0;
         public static int WinsEnemy = 0;
+
+        private const string PrefPrefix = "M8T_Setting_";
+
+        static BattleSessionState()
+        {
+            LoadSettings();
+        }
+
+        public static void LoadSettings()
+        {
+            ArcadeWASD = PlayerPrefs.GetInt(PrefPrefix + "ArcadeWASD", 0) != 0;
+            AiEnabled = PlayerPrefs.GetInt(PrefPrefix + "AiEnabled", 1) != 0;
+            SfxEnabled = PlayerPrefs.GetInt(PrefPrefix + "SfxEnabled", 1) != 0;
+            SfxVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(PrefPrefix + "SfxVolume", 1.0f));
+            BgmEnabled = PlayerPrefs.GetInt(PrefPrefix + "BgmEnabled", 1) != 0;
+            BgmVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(PrefPrefix + "BgmVolume", 0.60f));
+            PostProcessEnabled = PlayerPrefs.GetInt(PrefPrefix + "PostProcess", 1) != 0;
+            IntegerWindowbox = PlayerPrefs.GetInt(PrefPrefix + "IntWindowbox", 0) != 0;
+        }
+
+        public static void SaveSettings()
+        {
+            PlayerPrefs.SetInt(PrefPrefix + "ArcadeWASD", ArcadeWASD ? 1 : 0);
+            PlayerPrefs.SetInt(PrefPrefix + "AiEnabled", AiEnabled ? 1 : 0);
+            PlayerPrefs.SetInt(PrefPrefix + "SfxEnabled", SfxEnabled ? 1 : 0);
+            PlayerPrefs.SetFloat(PrefPrefix + "SfxVolume", Mathf.Clamp01(SfxVolume));
+            PlayerPrefs.SetInt(PrefPrefix + "BgmEnabled", BgmEnabled ? 1 : 0);
+            PlayerPrefs.SetFloat(PrefPrefix + "BgmVolume", Mathf.Clamp01(BgmVolume));
+            PlayerPrefs.SetInt(PrefPrefix + "PostProcess", PostProcessEnabled ? 1 : 0);
+            PlayerPrefs.SetInt(PrefPrefix + "IntWindowbox", IntegerWindowbox ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+
+        public static void StepSfxVolume(float delta)
+        {
+            float baseVol = SfxEnabled ? SfxVolume : 0f;
+            float next = Mathf.Round(Mathf.Clamp01(baseVol + delta) * 10f) * 0.1f;
+            SfxVolume = next;
+            SfxEnabled = next > 0.001f;
+            SaveSettings();
+        }
+
+        public static void ToggleSfxEnabled()
+        {
+            SfxEnabled = !SfxEnabled;
+            if (SfxEnabled && SfxVolume <= 0.001f) SfxVolume = 0.6f;
+            SaveSettings();
+        }
+
+        public static void StepBgmVolume(float delta)
+        {
+            float baseVol = BgmEnabled ? BgmVolume : 0f;
+            float next = Mathf.Round(Mathf.Clamp01(baseVol + delta) * 10f) * 0.1f;
+            BgmVolume = next;
+            BgmEnabled = next > 0.001f;
+            SaveSettings();
+        }
+
+        public static void ToggleBgmEnabled()
+        {
+            BgmEnabled = !BgmEnabled;
+            if (BgmEnabled && BgmVolume <= 0.001f) BgmVolume = 0.6f;
+            SaveSettings();
+        }
+
+        public static string FormatVolumeLabel(string tag, bool enabled, float volume)
+        {
+            if (!enabled || volume <= 0.001f) return $"{tag}: OFF";
+            int pct = Mathf.RoundToInt(Mathf.Clamp01(volume) * 100f);
+            return $"{tag}: {pct}%";
+        }
 
         /// <summary>
         /// Randomly selects an opposing-nation opponent of the SAME Tier and comparable performance bracket.

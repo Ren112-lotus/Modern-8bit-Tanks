@@ -143,13 +143,26 @@ namespace Modern8bitTanks
     {
         public string id;
         public string name;
-        public string nation; // "USA", "GER", "USSR"
-        public int tier;      // 1..10, 11 = Special
+        public string nation; // "USA", "GER", "USSR", "JPN"
+        public const int LowestTier = -5;
+        public const int ModernTier = 9;
+        public const int LastRegularTier = 13;
+        public const int SpecialTier = LastRegularTier + 1;
+        public int tier;      // Historical matchmaking brackets through Special.
         public string tab;    // "T1_5", "MBT", "LIGHT", "SUPPORT", "HISTORIC"
         public string role;   // "MBT", "LIGHT", "SUPPORT", "SPECIAL", "HEAVY"
         public string weapon; // "MainCannon", "AutocannonATGM", "ATGM", "TwinAutocannonATGM"
         public string engine; // "Turbine", "Diesel", "Gasoline"
+        public int year;
+        public int historyColumn; // 1-based pre-Tier I position; zero for the numbered tree.
+        public int historyRow; // 0 main, 1 upper, 2 lower.
+        public string treeFrom;
+        public int fixedGunTraverse;
+        public int wheelAxles;
+        public bool frontEngine;
         public float speed;
+        public float hullTurnSpeed;   // deg/sec hull traverse rate
+        public float turretTurnSpeed; // deg/sec turret / gun traverse rate
         public float penetration; // Gameplay rating shared with armor, in arbitrary units.
         public int crewCount;
         public float reload;
@@ -165,13 +178,24 @@ namespace Modern8bitTanks
         public int muzzleDist;
         public int muzzleHeight;
 
-        public bool IsSpecial => tier >= 11 || role == "SPECIAL";
-        public string TierBadge => IsSpecial ? "SP" : $"T{tier}";
-        public string TierRoman => tier switch
+        public bool IsSpecial => tier >= SpecialTier || role == "SPECIAL";
+        public string TierBadge => historyColumn > 0 ? $"H{tier + 6}" : (IsSpecial ? "SP" : $"T{tier}");
+        public string TierRoman => historyColumn > 0 ? TierBadge : RomanTier(tier);
+
+        public static string RomanTier(int value) => value switch
         {
             1 => "I", 2 => "II", 3 => "III", 4 => "IV", 5 => "V",
             6 => "VI", 7 => "VII", 8 => "VIII", 9 => "IX", 10 => "X",
+            11 => "XI", 12 => "XII", 13 => "XIII",
             _ => "SP"
+        };
+
+        public string NationLabel => nation switch
+        {
+            "GER" => "GERMANY",
+            "USSR" => "USSR / RU",
+            "JPN" => "JAPAN",
+            _ => "USA"
         };
 
         public string WeaponLabel => weapon switch
@@ -186,11 +210,57 @@ namespace Modern8bitTanks
 
         public bool HasSecondaryAtgm => weapon == "AutocannonATGM" || weapon == "TwinAutocannonATGM";
 
-        public bool IsWheeled => id == "us_m1128" || id == "de_luchs" || id == "de_boxer" || id == "ru_9p148";
+        public float EffectiveHullTurnSpeed => hullTurnSpeed > 0f ? hullTurnSpeed : ComputeDefaultHullTurnSpeed();
+        public float EffectiveTurretTurnSpeed => turretTurnSpeed > 0f ? turretTurnSpeed : ComputeDefaultTurretTurnSpeed();
 
-        public int WheelAxleCount => id == "ru_9p148" ? 2 : (IsWheeled ? 4 : 0);
+        private float ComputeDefaultHullTurnSpeed()
+        {
+            float baseTurn = role switch
+            {
+                "LIGHT" => 176f,
+                "HEAVY" => 88f,
+                "TD" => 118f,
+                "SUPPORT" => 152f,
+                "SPECIAL" => 170f,
+                "MEDIUM" => 116f,
+                _ => 140f
+            };
+            float spdAdj = (speed - 55f) * 1.15f;
+            float eraAdj = historyColumn > 0 ? -18f : (tier >= ModernTier ? 14f : 0f);
+            float wheelPen = IsWheeled ? -24f : 0f;
+            return Mathf.Clamp(Mathf.Round(baseTurn + spdAdj + eraAdj + wheelPen), 56f, 215f);
+        }
 
-        public bool IsFrontEngine => id == "us_m10_booker" || id == "us_m901" ||
+        private float ComputeDefaultTurretTurnSpeed()
+        {
+            if (IsTurretless)
+                return Mathf.Clamp(Mathf.Round(115f + (tier >= ModernTier ? 28f : 0f)), 95f, 155f);
+
+            float baseTur = role switch
+            {
+                "LIGHT" => 260f,
+                "HEAVY" => 110f,
+                "TD" => 140f,
+                "SUPPORT" => 275f,
+                "SPECIAL" => 315f,
+                "MEDIUM" => 148f,
+                _ => 210f
+            };
+            if (weapon == "AutocannonATGM" || weapon == "TwinAutocannonATGM") baseTur += 42f;
+            float eraAdj = historyColumn > 0 ? -32f : (tier >= ModernTier ? 65f : (tier >= 5 ? 18f : -12f));
+            return Mathf.Clamp(Mathf.Round(baseTur + eraAdj), 85f, 360f);
+        }
+
+        public bool IsWheeled => WheelAxleCount > 0;
+
+        public int WheelAxleCount => wheelAxles > 0 ? wheelAxles : id switch
+        {
+            "ru_9p148" => 2,
+            "us_m1128" or "de_luchs" or "de_boxer" => 4,
+            _ => 0
+        };
+
+        public bool IsFrontEngine => frontEngine || id == "us_m10_booker" || id == "us_m901" ||
                                      id == "us_m2" || id == "us_m2a2" || id == "us_m3a3" || id == "us_m2a4" ||
                                      id == "us_m1128" || id == "de_wiesel_mk" || id == "de_wiesel_tow" ||
                                      id == "de_marder" || id == "de_puma" || id == "de_kf41_lynx" ||
@@ -199,7 +269,7 @@ namespace Modern8bitTanks
         public bool IsUnmannedTurret => id == "us_m1e3" || id == "us_m1128" || id == "us_m901" ||
                                         id == "de_puma" || id == "de_boxer" || id == "ru_t14" || id == "ru_bmpt";
 
-        public bool IsTurretless => id == "de_rakjpz2" || id == "de_jaguar2" || id == "de_jaguar1" ||
+        public bool IsTurretless => fixedGunTraverse > 0 || id == "de_rakjpz2" || id == "de_jaguar2" || id == "de_jaguar1" ||
                                     id == "de_wiesel_tow" || id == "ru_9p148" || id == "ru_9p149";
 
         public bool HasGunLaunchedAtgm => id == "ru_t64b" || id == "ru_t72b3" || id == "ru_t80bvm" ||
@@ -214,10 +284,12 @@ namespace Modern8bitTanks
             if (weapon == "ATGM")
                 return new[] { AmmoType.TOW, AmmoType.HE };
             if (HasGunLaunchedAtgm)
-                return tier >= 6
+                return tier >= ModernTier
                     ? new[] { AmmoType.APFSDS, AmmoType.HEATFS, AmmoType.GLATGM }
                     : new[] { AmmoType.HEATFS, AmmoType.HE, AmmoType.GLATGM };
-            return tier >= 6
+            if (historyColumn > 0)
+                return new[] { AmmoType.APHE, AmmoType.HE };
+            return tier >= ModernTier
                 ? new[] { AmmoType.APFSDS, AmmoType.HEATFS, AmmoType.HE }
                 : new[] { AmmoType.APHE, AmmoType.HEATFS, AmmoType.HE };
         }

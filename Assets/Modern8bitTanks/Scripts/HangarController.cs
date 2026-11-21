@@ -31,7 +31,7 @@ namespace Modern8bitTanks
         public int renderWidth = 480;
         public int renderHeight = 270;
         [Range(0.45f, 1.0f)] public float squash = 0.75f;
-        [Range(0f, 2.5f)] public float spacingPx = 1.0f;
+        [Range(0f, 2.5f)] public float spacingPx = 0.65f;
         [Range(1.0f, 2.5f)] public float showcaseZoom = 1.65f;
 
         // Horizontal WoT Tech Tree Layout Constants (all EVEN integer pixels!)
@@ -44,8 +44,9 @@ namespace Modern8bitTanks
         private const int ColGap = 20;
         private const int ColStep = NodeW + ColGap; // 124px per Tier column!
         private const int PadX = 16;
-        private const int ContentW = PadX + 11 * ColStep - ColGap + PadX; // 1376px
-        private const float MaxScrollX = ContentW - ViewW; // 912px
+        private const int HistoryColumns = 8;
+        private const int ContentW = PadX * 2 + (HistoryColumns + VehicleDef.SpecialTier) * ColStep - ColGap;
+        private const float MaxScrollX = ContentW - ViewW;
 
         private Camera _cam;
         private PixelWindowbox _windowbox;
@@ -66,6 +67,7 @@ namespace Modern8bitTanks
 
         private string _treeNation = "USA";
         private bool _treeOpen = false;
+        private bool _settingsOpen = false;
         private bool _xrayMode = false;
         private bool _draggingTank;
         private float _lastDragX;
@@ -94,6 +96,18 @@ namespace Modern8bitTanks
         private GameObject _garageHitsGroup;
         private GameObject _treeVisualGroup;
         private GameObject _treeHitsGroup;
+        private GameObject _settingsVisualGroup;
+        private GameObject _settingsHitsGroup;
+
+        // Settings UI Labels & Preview Audio
+        private Text _setSfxLabel;
+        private Text _setBgmLabel;
+        private Text _setDriveLabel;
+        private Text _setAiLabel;
+        private Text _setGfxLabel;
+        private Text _setViewLabel;
+        private AudioSource _previewAudio;
+        private AudioClip _previewSfxClip;
 
         // Garage UI Labels
         private Text _garageTopBadge;
@@ -113,9 +127,12 @@ namespace Modern8bitTanks
         private const int HangarGroundH = 400;
 
         // Tech Tree UI
-        private Image _btnNationUsaBg;
-        private Image _btnNationGerBg;
-        private Image _btnNationUssrBg;
+        private static readonly (string Code, string Label)[] TreeNations =
+        {
+            ("USA", "USA"), ("GER", "GERMANY"), ("USSR", "USSR / RU"), ("JPN", "JAPAN")
+        };
+        private readonly Dictionary<string, Image> _nationButtons = new();
+        private readonly Dictionary<string, GameObject> _nationLinks = new();
         private Text _treeDetailTitle;
         private Text _treeDetailStats;
 
@@ -134,13 +151,7 @@ namespace Modern8bitTanks
             public int contentY; // local inside viewport [0..ViewH]
         }
 
-        // Trunk, modern branches, and an optional historical vehicle under Tier I.
-        private readonly TreeNodeSlot[] _trunkSlots = new TreeNodeSlot[5];
-        private readonly TreeNodeSlot[] _mbtSlots = new TreeNodeSlot[6];
-        private readonly TreeNodeSlot[] _lightSlots = new TreeNodeSlot[5];
-        private readonly TreeNodeSlot[] _supportSlots = new TreeNodeSlot[5];
-        private readonly TreeNodeSlot[] _historicSlots = new TreeNodeSlot[1];
-        private readonly List<TreeNodeSlot> _allSlots = new();
+        private readonly Dictionary<string, TreeNodeSlot> _treeNodes = new();
 
         // Crisp 8-bit Military Palette
         private static readonly Color TreeBackdrop = new Color(0.05f, 0.06f, 0.05f, 0.96f);
@@ -175,6 +186,8 @@ namespace Modern8bitTanks
             _cam.orthographic = true;
             _cam.clearFlags = CameraClearFlags.SolidColor;
             _cam.backgroundColor = new Color(0.11f, 0.09f, 0.06f, 1f);
+            squash = 0.75f;
+            spacingPx = 0.65f;
 
             _windowbox = GetComponent<PixelWindowbox>();
             if (_windowbox == null) _windowbox = gameObject.AddComponent<PixelWindowbox>();
@@ -199,10 +212,12 @@ namespace Modern8bitTanks
             BuildPixelCanvas();
             BuildGarageUI();
             BuildTechTreeUI();
+            BuildSettingsUI();
 
             VehicleDef cur = GetSelectedVehicle();
             if (cur != null) _treeNation = cur.nation;
             ApplySelectedTankToTurntable();
+            SetSettingsOpen(false);
             SetTechTreeOpen(false);
         }
 
@@ -244,6 +259,13 @@ namespace Modern8bitTanks
             }
             if (!_vehicleMap.ContainsKey(BattleSessionState.SelectedPlayerVehicleId) && _allVehicles.Length > 0)
                 BattleSessionState.SelectedPlayerVehicleId = _allVehicles[0].id;
+
+            _previewSfxClip = Resources.Load<AudioClip>("SFX/reload_clank") ?? TankAudioSynthesizer.CreateReloadClank();
+            var prevGo = new GameObject("HangarUiPreviewAudio");
+            prevGo.transform.SetParent(transform, false);
+            _previewAudio = prevGo.AddComponent<AudioSource>();
+            _previewAudio.playOnAwake = false;
+            _previewAudio.spatialBlend = 0f;
         }
 
         private void OnFontTextureRebuilt(Font f)
@@ -269,6 +291,7 @@ namespace Modern8bitTanks
                 var gGo = new GameObject("DesertGround");
                 desertGroundRenderer = gGo.AddComponent<SpriteRenderer>();
             }
+            desertGroundRenderer.enabled = true;
             desertGroundRenderer.transform.position = new Vector3(WorldW * 0.5f, WorldH * 0.5f, 5f);
             desertGroundRenderer.sortingOrder = -30000;
             if (_groundHd2dMat != null) desertGroundRenderer.sharedMaterial = _groundHd2dMat;
@@ -394,7 +417,7 @@ namespace Modern8bitTanks
             }
             else
             {
-                int col = Mathf.Clamp(sel.tier - 1, 0, 10);
+                int col = TreeColumn(sel);
                 float nodeCenterX = PadX + col * ColStep + NodeW * 0.5f;
                 _targetScrollX = Mathf.Clamp(nodeCenterX - ViewW * 0.5f, 0f, MaxScrollX);
             }
@@ -416,22 +439,38 @@ namespace Modern8bitTanks
 
             if (kb != null)
             {
-                if (kb.tKey.wasPressedThisFrame)
-                    SetTechTreeOpen(!_treeOpen);
-                else if (kb.xKey.wasPressedThisFrame && !_treeOpen)
-                    SetXRayMode(!_xrayMode);
-                else if (kb.escapeKey.wasPressedThisFrame && _treeOpen)
-                    SetTechTreeOpen(false);
-                else if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)
-                    LaunchBattleScene();
-                else if (!_treeOpen && kb.leftArrowKey.wasPressedThisFrame)
-                    CycleSelectedInCurrentNation(-1);
-                else if (!_treeOpen && kb.rightArrowKey.wasPressedThisFrame)
-                    CycleSelectedInCurrentNation(1);
+                if (kb.escapeKey.wasPressedThisFrame)
+                {
+                    if (_settingsOpen) SetSettingsOpen(false);
+                    else if (_treeOpen) SetTechTreeOpen(false);
+                    else SetSettingsOpen(true);
+                }
+                else if (kb.oKey.wasPressedThisFrame && !_treeOpen)
+                {
+                    SetSettingsOpen(!_settingsOpen);
+                }
+                else if (!_settingsOpen)
+                {
+                    if (kb.tKey.wasPressedThisFrame)
+                        SetTechTreeOpen(!_treeOpen);
+                    else if (kb.xKey.wasPressedThisFrame && !_treeOpen)
+                        SetXRayMode(!_xrayMode);
+                    else if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)
+                        LaunchBattleScene();
+                    else if (!_treeOpen && kb.leftArrowKey.wasPressedThisFrame)
+                        CycleSelectedInCurrentNation(-1);
+                    else if (!_treeOpen && kb.rightArrowKey.wasPressedThisFrame)
+                        CycleSelectedInCurrentNation(1);
+                }
             }
 
             // --- HORIZONTAL SCROLLING FOR WoT TECH TREE ---
-            if (_treeOpen)
+            if (_settingsOpen)
+            {
+                _draggingTank = false;
+                _draggingTree = false;
+            }
+            else if (_treeOpen)
             {
                 if (kb != null)
                 {
@@ -511,7 +550,8 @@ namespace Modern8bitTanks
                 if (!_draggingTank)
                     _manualAngleOffset = Mathf.Repeat(_manualAngleOffset + 24f * dt, 360f);
                 showcaseTank.hullAngleDeg = Mathf.Repeat(35f + _manualAngleOffset, 360f);
-                showcaseTank.turretAngleDeg = showcaseTank.hullAngleDeg + Mathf.Sin(Time.time * 0.95f) * 28f;
+                showcaseTank.turretAngleDeg = showcaseTank.hullAngleDeg + Mathf.Sin(Time.time * 0.95f) *
+                    Mathf.Min(28f, showcaseTank.vehicleDef?.fixedGunTraverse is > 0 ? showcaseTank.vehicleDef.fixedGunTraverse : 28f);
                 if (_xrayMode && !_treeOpen)
                 {
                     if (showcaseTank.gameObject.activeSelf) showcaseTank.gameObject.SetActive(false);
@@ -533,6 +573,7 @@ namespace Modern8bitTanks
                 float camX = Mathf.Round((WorldW * 0.5f) * PPU) / PPU;
                 float camY = Mathf.Round((WorldH * 0.5f) * PPU) / PPU;
                 _cam.transform.position = new Vector3(camX, camY, -20f);
+                _cam.transform.rotation = Quaternion.identity;
             }
         }
 
@@ -553,10 +594,10 @@ namespace Modern8bitTanks
             }
 
             // Dynamically sync every visible node's click hitbox clipped cleanly to the scroll viewport!
-            foreach (var slot in _allSlots)
+            foreach (var slot in _treeNodes.Values)
             {
                 if (slot == null || slot.hitGo == null) continue;
-                bool activeItem = !string.IsNullOrEmpty(slot.vehicleId);
+                bool activeItem = _vehicleMap[slot.vehicleId].nation == _treeNation;
                 if (!activeItem)
                 {
                     slot.hitGo.SetActive(false);
@@ -621,8 +662,13 @@ namespace Modern8bitTanks
             _treeVisualGroup.transform.SetParent(_hudRoot, false);
             Stretch(_treeVisualGroup.AddComponent<RectTransform>());
 
+            _settingsVisualGroup = new GameObject("SettingsVisuals") { layer = 5 };
+            _settingsVisualGroup.transform.SetParent(_hudRoot, false);
+            Stretch(_settingsVisualGroup.AddComponent<RectTransform>());
+
             _garageHitsGroup = CreateHitGroup("GarageHits");
             _treeHitsGroup = CreateHitGroup("TreeHits");
+            _settingsHitsGroup = CreateHitGroup("SettingsHits");
         }
 
         private GameObject CreateHitGroup(string name)
@@ -644,14 +690,15 @@ namespace Modern8bitTanks
             CreatePixelSolid(vp, "TopShade", 0, H - 28, W, 28, new Color(0.05f, 0.05f, 0.04f, 0.84f));
             CreatePixelSolid(vp, "TopRule", 0, H - 29, W, 1, PanelBorder);
 
-            CreatePixelButton(vp, hp, "TREE[T]", 6, H - 24, 72, 20, BtnBg, GoldColor, GoldColor, 8, () => SetTechTreeOpen(true));
-            CreatePixelButton(vp, hp, "X-RAY[X]", 82, H - 24, 70, 20, BtnBg, LightCyan, LightCyan, 8, () => SetXRayMode(!_xrayMode), out _btnXrayBg);
-            _garageTopBadge = CreatePixelText(vp, "8-BIT TANKS", 8, GoldColor, TextAnchor.MiddleCenter, 154, H - 24, 120, 20, useTitleFont: true);
+            CreatePixelButton(vp, hp, "TREE[T]", 4, H - 24, 60, 20, BtnBg, GoldColor, GoldColor, 8, () => SetTechTreeOpen(true));
+            CreatePixelButton(vp, hp, "X-RAY", 66, H - 24, 48, 20, BtnBg, LightCyan, LightCyan, 8, () => SetXRayMode(!_xrayMode), out _btnXrayBg);
+            CreatePixelButton(vp, hp, "SETTINGS", 116, H - 24, 66, 20, BtnBg, PanelBorder, TextLight, 8, () => SetSettingsOpen(true));
+            _garageTopBadge = CreatePixelText(vp, "8-BIT TANKS", 8, GoldColor, TextAnchor.MiddleCenter, 184, H - 24, 122, 20, useTitleFont: false);
 
             // Top-Right Live Biome Map Selector: DESERT / CITY / FOREST!
-            CreatePixelButton(vp, hp, "DESERT", 278, H - 24, 64, 20, BtnSelected, GoldColor, TextLight, 8, () => SelectBattleMap(BattleMap.Desert), out _btnMapDesertBg);
-            CreatePixelButton(vp, hp, "CITY", 346, H - 24, 54, 20, BtnBg, PanelBorder, TextLight, 8, () => SelectBattleMap(BattleMap.City), out _btnMapCityBg);
-            CreatePixelButton(vp, hp, "FOREST", 404, H - 24, 70, 20, BtnBg, MbtGreen, TextLight, 8, () => SelectBattleMap(BattleMap.Forest), out _btnMapForestBg);
+            CreatePixelButton(vp, hp, "DESERT", 308, H - 24, 56, 20, BtnSelected, GoldColor, TextLight, 8, () => SelectBattleMap(BattleMap.Desert), out _btnMapDesertBg);
+            CreatePixelButton(vp, hp, "CITY", 366, H - 24, 44, 20, BtnBg, PanelBorder, TextLight, 8, () => SelectBattleMap(BattleMap.City), out _btnMapCityBg);
+            CreatePixelButton(vp, hp, "FOREST", 412, H - 24, 64, 20, BtnBg, MbtGreen, TextLight, 8, () => SelectBattleMap(BattleMap.Forest), out _btnMapForestBg);
 
             // Centered Live 360 X-Ray Inspection Overlay (160 x 136 EVEN!)
             const int xw = 160, xh = 136;
@@ -734,29 +781,20 @@ namespace Modern8bitTanks
             CreatePixelSolid(vp, "TreeTopRule", 0, H - 27, W, 1, PanelBorder);
             CreatePixelSolid(vp, "TreeBotRule", 0, 54, W, 1, PanelBorder);
 
-            // Top Nation Tabs + Close Garage Button (y = 246..266, h = 20 EVEN!)
-            CreatePixelButton(vp, hp, GetNationTabLabel("USA", "USA"), 10, H - 24, 96, 20, BtnSelected, GoldColor, GoldColor, 8, () =>
+            for (int i = 0; i < TreeNations.Length; i++)
             {
-                _treeNation = "USA";
-                RefreshAllUI();
-                ScrollTreeToSelected(instant: false);
-            }, out _btnNationUsaBg);
-
-            CreatePixelButton(vp, hp, GetNationTabLabel("GER", "GERMANY"), 110, H - 24, 114, 20, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _treeNation = "GER";
-                RefreshAllUI();
-                ScrollTreeToSelected(instant: false);
-            }, out _btnNationGerBg);
-
-            CreatePixelButton(vp, hp, GetNationTabLabel("USSR", "USSR / RU"), 228, H - 24, 118, 20, BtnBg, MbtGreen, MbtGreen, 8, () =>
-            {
-                _treeNation = "USSR";
-                RefreshAllUI();
-                ScrollTreeToSelected(instant: false);
-            }, out _btnNationUssrBg);
-
-            CreatePixelButton(vp, hp, "GARAGE [ESC]", W - 118, H - 24, 108, 20, BtnBg, GoldColor, GoldColor, 8, () => SetTechTreeOpen(false));
+                var (nation, title) = TreeNations[i];
+                CreatePixelButton(vp, hp, GetNationTabLabel(nation, title), 8 + 89 * i, H - 24, 86, 20,
+                    BtnBg, PanelBorder, TextLight, 8, () =>
+                    {
+                        _treeNation = nation;
+                        RefreshAllUI();
+                        ScrollTreeToSelected();
+                    }, out var background);
+                _nationButtons.Add(nation, background);
+            }
+            CreatePixelButton(vp, hp, "GARAGE [ESC]", W - 112, H - 24, 104, 20,
+                BtnBg, GoldColor, GoldColor, 8, () => SetTechTreeOpen(false));
 
             // ----------------------------------------------------------
             // Clipped Horizontal Scroll Viewport (RectMask2D!)
@@ -772,78 +810,43 @@ namespace Modern8bitTanks
             _treeContentRt = contentGo.AddComponent<RectTransform>();
             SetPixelRect(_treeContentRt, 0, 0, ContentW, ViewH);
 
-            // Vertical Tier Column Dividers & Tier Roman Headers (I .. X + SPECIAL)
-            string[] colNames = { "TIER I", "TIER II", "TIER III", "TIER IV", "TIER V", "TIER VI", "TIER VII", "TIER VIII", "TIER IX", "TIER X", "SPECIAL" };
-            for (int c = 0; c < 11; c++)
+            string[] eras = { "FIRST TANKS", "INTERWAR", "1930s", "EARLY WAR",
+                "MID WAR", "1943 / 44", "LATE WAR", "TRANSITION" };
+            for (int col = 0; col < HistoryColumns + VehicleDef.SpecialTier; col++)
             {
-                int cx = PadX + c * ColStep;
-                if (c > 0)
-                    CreatePixelSolid(_treeContentRt, $"GridCol_{c}", cx - ColGap / 2, 4, 1, ViewH - 8, GridLine);
-
-                Color hdrCol = c == 10 ? GoldColor : (c >= 5 ? TextLight : TextMuted);
-                CreatePixelText(_treeContentRt, colNames[c], 8, hdrCol, TextAnchor.MiddleCenter, cx, ViewH - 22, NodeW, 16);
+                int x = PadX + col * ColStep;
+                int tier = col - HistoryColumns + 1;
+                if (col > 0)
+                    CreatePixelSolid(_treeContentRt, $"GridCol_{col}", x - ColGap / 2, 4, 1, ViewH - 8, GridLine);
+                string label = col < HistoryColumns ? eras[col] :
+                    tier == VehicleDef.SpecialTier ? "SPECIAL" : $"TIER {VehicleDef.RomanTier(tier)}";
+                Color color = tier == 1 || tier == VehicleDef.SpecialTier ? GoldColor : TextMuted;
+                CreatePixelText(_treeContentRt, label, 8, color, TextAnchor.MiddleCenter, x, ViewH - 22, NodeW, 16);
             }
 
-            // Row Heights inside viewport (0..170):
-            //   MBT row:     y = 108..138 (center 123)
-            //   TRUNK/LIGHT: y = 62..92   (center 77)
-            //   SUPPORT row: y = 16..46   (center 31)
-            const int yMbt = 108;
-            const int yMid = 62;
-            const int ySup = 16;
-
-            // 1) Tier I -> V Horizontal Trunk Connectors (y = 76, h = 2)
-            for (int c = 0; c < 4; c++)
+            foreach (var (nation, _) in TreeNations)
             {
-                int lx = PadX + c * ColStep + NodeW;
-                CreatePixelSolid(_treeContentRt, $"TrunkLine_{c}", lx, yMid + 14, ColGap, 2, LineColor);
+                var links = new GameObject($"TreeLinks_{nation}", typeof(RectTransform)) { layer = 5 };
+                links.transform.SetParent(_treeContentRt, false);
+                SetPixelRect((RectTransform)links.transform, 0, 0, ContentW, ViewH);
+                _nationLinks.Add(nation, links);
+            }
+            foreach (var vehicle in _allVehicles)
+            {
+                int x = PadX + TreeColumn(vehicle) * ColStep;
+                Color border = TreeLineColor(vehicle);
+                var slot = CreateTreeNodeSlot(_treeContentRt, hp, x, TreeRow(vehicle), border);
+                slot.vehicleId = vehicle.id;
+                _treeNodes.Add(vehicle.id, slot);
             }
 
-            // 2) WoT 3-Way Fork right after Tier V (col 4 -> col 5)!
-            int forkX = PadX + 4 * ColStep + NodeW + ColGap / 2; // midpoint between col 4 and col 5
-            CreatePixelSolid(_treeContentRt, "ForkIn", PadX + 4 * ColStep + NodeW, yMid + 14, ColGap / 2, 2, LineColor);
-            CreatePixelSolid(_treeContentRt, "ForkVert", forkX, ySup + 14, 2, (yMbt - ySup) + 2, LineColor);
-            CreatePixelSolid(_treeContentRt, "ForkOutMbt", forkX, yMbt + 14, ColGap / 2, 2, MbtGreen);
-            CreatePixelSolid(_treeContentRt, "ForkOutLgt", forkX, yMid + 14, ColGap / 2, 2, LightCyan);
-            CreatePixelSolid(_treeContentRt, "ForkOutSup", forkX, ySup + 14, ColGap / 2, 2, SupportAmber);
-
-            // 3) Horizontal Branch Lines (VI -> X -> SP)
-            for (int i = 0; i < 5; i++)
+            foreach (var vehicle in _allVehicles)
             {
-                int lx = PadX + (5 + i) * ColStep + NodeW;
-                CreatePixelSolid(_treeContentRt, $"MbtLine_{i}", lx, yMbt + 14, ColGap, 2, i == 4 ? GoldColor : MbtGreen);
+                VehicleDef parent = TreeParent(vehicle);
+                if (parent != null)
+                    ConnectTreeNodes(_nationLinks[vehicle.nation].transform, _treeNodes[parent.id],
+                        _treeNodes[vehicle.id], TreeLineColor(vehicle));
             }
-            for (int i = 0; i < 4; i++)
-            {
-                int lx = PadX + (5 + i) * ColStep + NodeW;
-                CreatePixelSolid(_treeContentRt, $"LgtLine_{i}", lx, yMid + 14, ColGap, 2, LightCyan);
-                CreatePixelSolid(_treeContentRt, $"SupLine_{i}", lx, ySup + 14, ColGap, 2, SupportAmber);
-            }
-
-            // Branch labels on the far right (column 10 under SPECIAL!)
-            int badgeX = PadX + 10 * ColStep;
-            var lgtBadge = CreatePixelBox(_treeContentRt, "BadgeLight", badgeX, yMid, NodeW, NodeH, new Color(0.08f, 0.12f, 0.14f, 0.90f), LightCyan);
-            CreatePixelText(lgtBadge, "LIGHT LINE", 8, LightCyan, TextAnchor.MiddleCenter, 0, 5, NodeW, 20);
-            var supBadge = CreatePixelBox(_treeContentRt, "BadgeSup", badgeX, ySup, NodeW, NodeH, new Color(0.14f, 0.10f, 0.07f, 0.90f), SupportAmber);
-            CreatePixelText(supBadge, "SUPPORT LINE", 8, SupportAmber, TextAnchor.MiddleCenter, 0, 5, NodeW, 20);
-
-            // ----------------------------------------------------------
-            // Create the tree node cards on the existing tier grid.
-            // ----------------------------------------------------------
-            _allSlots.Clear();
-            for (int i = 0; i < 5; i++)
-                _trunkSlots[i] = CreateTreeNodeSlot(_treeContentRt, hp, PadX + i * ColStep, yMid, PanelBorder);
-
-            for (int i = 0; i < 6; i++)
-                _mbtSlots[i] = CreateTreeNodeSlot(_treeContentRt, hp, PadX + (5 + i) * ColStep, yMbt, i == 5 ? SpecialBorder : MbtGreen);
-
-            for (int i = 0; i < 5; i++)
-                _lightSlots[i] = CreateTreeNodeSlot(_treeContentRt, hp, PadX + (5 + i) * ColStep, yMid, LightCyan);
-
-            for (int i = 0; i < 5; i++)
-                _supportSlots[i] = CreateTreeNodeSlot(_treeContentRt, hp, PadX + (5 + i) * ColStep, ySup, SupportAmber);
-
-            _historicSlots[0] = CreateTreeNodeSlot(_treeContentRt, hp, PadX, ySup, PanelBorder);
 
             // Horizontal Scrollbar & Quick Arrows (y = 56..66)
             CreatePixelButton(vp, hp, "<", 8, 55, 20, 12, BtnBg, PanelBorder, TextLight, 8, () =>
@@ -860,10 +863,87 @@ namespace Modern8bitTanks
             // Bottom Selected Vehicle Detail Bar (y = 0..54)
             _treeDetailTitle = CreatePixelText(vp, "", 8, GoldColor, TextAnchor.MiddleLeft, 10, 32, 336, 16);
             _treeDetailStats = CreatePixelText(vp, "", 8, TextLight, TextAnchor.MiddleLeft, 10, 16, 336, 16);
-            CreatePixelText(vp, "WHEEL / DRAG / A-D TO SCROLL  •  CLICK AGAIN FOR GARAGE", 8, TextMuted, TextAnchor.MiddleLeft, 10, 2, 336, 12);
+            CreatePixelButton(vp, hp, "WWI / WWII", 10, 2, 80, 12, BtnBg, PanelBorder, TextLight, 8, () => JumpTreeTo(0));
+            CreatePixelButton(vp, hp, "I - V", 94, 2, 68, 12, BtnBg, PanelBorder, TextLight, 8, () => JumpTreeTo(HistoryColumns));
+            CreatePixelButton(vp, hp, "VI - VIII", 166, 2, 76, 12, BtnBg, PanelBorder, TextLight, 8, () => JumpTreeTo(HistoryColumns + 5));
+            CreatePixelButton(vp, hp, "IX - XIII", 246, 2, 84, 12, BtnBg, PanelBorder, TextLight, 8,
+                () => JumpTreeTo(HistoryColumns + VehicleDef.ModernTier - 1));
 
             CreatePixelButton(vp, hp, "VIEW TANK", 352, 28, 118, 20, BtnBg, PanelBorder, TextLight, 8, () => SetTechTreeOpen(false));
             CreatePixelButton(vp, hp, "BATTLE!", 352, 4, 118, 20, GoldColor, GoldColor, DarkInk, 8, LaunchBattleScene, useTitleFont: true);
+        }
+
+        private static int TreeColumn(VehicleDef vehicle) =>
+            vehicle.historyColumn > 0 ? vehicle.historyColumn - 1 : HistoryColumns + vehicle.tier - 1;
+
+        private void JumpTreeTo(int column) => _targetScrollX = Mathf.Clamp(column * ColStep, 0f, MaxScrollX);
+
+        private static int TreeRow(VehicleDef vehicle)
+        {
+            if (vehicle.historyColumn > 0)
+                return vehicle.historyRow == 1 ? 108 : vehicle.historyRow == 2 ? 16 : 62;
+            return vehicle.tab switch
+            {
+                "MBT" => 108,
+                "LIGHT" => vehicle.tier < VehicleDef.ModernTier ? 108 : 62,
+                "SUPPORT" => 16,
+                _ => 62
+            };
+        }
+
+        private static Color TreeLineColor(VehicleDef vehicle)
+        {
+            if (vehicle.IsSpecial) return SpecialBorder;
+            return vehicle.tab switch
+            {
+                "LIGHT" => LightCyan,
+                "SUPPORT" => SupportAmber,
+                "MBT" => MbtGreen,
+                _ => vehicle.role == "TD" ? SupportAmber : vehicle.role == "LIGHT" ? LightCyan : PanelBorder
+            };
+        }
+
+        private VehicleDef TreeParent(VehicleDef vehicle)
+        {
+            if (!string.IsNullOrEmpty(vehicle.treeFrom))
+                return _vehicleMap.TryGetValue(vehicle.treeFrom, out var linked) && linked.nation == vehicle.nation
+                    ? linked : null;
+
+            if (vehicle.historyColumn > 0) return null;
+            VehicleDef previous = null;
+            foreach (var other in _allVehicles)
+            {
+                if (other.nation != vehicle.nation || other.historyColumn > 0 || other.tier >= vehicle.tier)
+                    continue;
+                if (other.tab == vehicle.tab && (previous == null || previous.tier < other.tier))
+                    previous = other;
+            }
+
+            if (previous != null || vehicle.tab == "T1_5") return previous;
+            foreach (var other in _allVehicles)
+                if (other.nation == vehicle.nation && other.tab == "T1_5" && other.tier < vehicle.tier &&
+                    (previous == null || previous.tier < other.tier))
+                    previous = other;
+            return previous;
+        }
+
+        private static void ConnectTreeNodes(Transform parent, TreeNodeSlot source, TreeNodeSlot target, Color color)
+        {
+            int start = source.contentX + NodeW;
+            int end = target.contentX;
+            if (start >= end) return;
+            int y1 = source.contentY + NodeH / 2;
+            int y2 = target.contentY + NodeH / 2;
+            if (y1 == y2)
+            {
+                CreatePixelSolid(parent, "Link", start, y1, end - start, 2, color);
+                return;
+            }
+
+            int elbow = start + ColGap / 2;
+            CreatePixelSolid(parent, "Link", start, y1, elbow - start + 2, 2, color);
+            CreatePixelSolid(parent, "Elbow", elbow, Math.Min(y1, y2), 2, Math.Abs(y2 - y1) + 2, color);
+            CreatePixelSolid(parent, "Link", elbow, y2, end - elbow, 2, color);
         }
 
         private TreeNodeSlot CreateTreeNodeSlot(Transform contentParent, Transform hitParent, int contentX, int contentY, Color border)
@@ -921,7 +1001,6 @@ namespace Modern8bitTanks
             });
             trigger.triggers.Add(exit);
 
-            _allSlots.Add(slot);
             return slot;
         }
 
@@ -934,13 +1013,154 @@ namespace Modern8bitTanks
             RefreshAllUI();
         }
 
+        private void BuildSettingsUI()
+        {
+            Transform vp = _settingsVisualGroup.transform;
+            Transform hp = _settingsHitsGroup.transform;
+            int W = renderWidth;
+            int H = renderHeight;
+
+            CreatePixelSolid(vp, "SettingsDim", 0, 0, W, H, new Color(0.03f, 0.03f, 0.03f, 0.72f));
+
+            int cw = 240;
+            int ch = 194;
+            int cx = (W - cw) / 2;
+            int cy = (H - ch) / 2;
+            CreatePixelBox(vp, "SettingsCard", cx, cy, cw, ch, new Color(0.08f, 0.09f, 0.09f, 0.98f), LightCyan);
+            CreatePixelText(vp, "SETTINGS", 8, GoldColor, TextAnchor.MiddleCenter, cx, cy + ch - 22, cw, 16, useTitleFont: true);
+
+            // Row 1: SE (SFX) Volume [-] [SE: 100%] [+]
+            CreatePixelButton(vp, hp, "-", cx + 12, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                BattleSessionState.StepSfxVolume(-0.1f);
+                PlayHangarPreviewSfx();
+                RefreshSettingsLabels();
+            });
+            _setSfxLabel = CreatePixelButton(vp, hp, "SE: 100%", cx + 40, cy + 148, 160, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                BattleSessionState.ToggleSfxEnabled();
+                PlayHangarPreviewSfx();
+                RefreshSettingsLabels();
+            });
+            CreatePixelButton(vp, hp, "+", cx + 204, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                BattleSessionState.StepSfxVolume(+0.1f);
+                PlayHangarPreviewSfx();
+                RefreshSettingsLabels();
+            });
+
+            // Row 2: BGM Volume [-] [BGM: 60%] [+]
+            CreatePixelButton(vp, hp, "-", cx + 12, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                BattleSessionState.StepBgmVolume(-0.1f);
+                RefreshSettingsLabels();
+            });
+            _setBgmLabel = CreatePixelButton(vp, hp, "BGM: 60%", cx + 40, cy + 126, 160, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                BattleSessionState.ToggleBgmEnabled();
+                RefreshSettingsLabels();
+            });
+            CreatePixelButton(vp, hp, "+", cx + 204, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                BattleSessionState.StepBgmVolume(+0.1f);
+                RefreshSettingsLabels();
+            });
+
+            // Row 3: Drive Controls
+            _setDriveLabel = CreatePixelButton(vp, hp, "", cx + 12, cy + 104, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                BattleSessionState.ArcadeWASD = !BattleSessionState.ArcadeWASD;
+                BattleSessionState.SaveSettings();
+                RefreshSettingsLabels();
+            });
+
+            // Row 4: Enemy AI
+            _setAiLabel = CreatePixelButton(vp, hp, "", cx + 12, cy + 82, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                BattleSessionState.AiEnabled = !BattleSessionState.AiEnabled;
+                BattleSessionState.SaveSettings();
+                RefreshSettingsLabels();
+            });
+
+            // Row 5: Graphics Mode (applies live in Hangar too!)
+            _setGfxLabel = CreatePixelButton(vp, hp, "", cx + 12, cy + 60, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                BattleSessionState.PostProcessEnabled = !BattleSessionState.PostProcessEnabled;
+                BattleSessionState.SaveSettings();
+                _postProcess?.SetEnabled(BattleSessionState.PostProcessEnabled);
+                _windowbox?.SetHd2dMode(BattleSessionState.PostProcessEnabled);
+                RefreshSettingsLabels();
+            });
+
+            // Row 6: Display Scaling (applies live in Hangar too!)
+            _setViewLabel = CreatePixelButton(vp, hp, "", cx + 12, cy + 38, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                BattleSessionState.IntegerWindowbox = !BattleSessionState.IntegerWindowbox;
+                BattleSessionState.SaveSettings();
+                if (_windowbox != null) _windowbox.integerScale = BattleSessionState.IntegerWindowbox;
+                RefreshSettingsLabels();
+            });
+
+            // Bottom: Close
+            CreatePixelButton(vp, hp, "CLOSE [ESC]", cx + 12, cy + 10, cw - 24, 20, GoldColor, GoldColor, DarkInk, 8, () =>
+            {
+                SetSettingsOpen(false);
+            });
+
+            RefreshSettingsLabels();
+        }
+
+        private void PlayHangarPreviewSfx()
+        {
+            if (_previewAudio == null || _previewSfxClip == null) return;
+            if (!BattleSessionState.SfxEnabled || BattleSessionState.SfxVolume <= 0.001f) return;
+            _previewAudio.Stop();
+            _previewAudio.clip = _previewSfxClip;
+            _previewAudio.volume = Mathf.Clamp01(0.62f * BattleSessionState.SfxVolume);
+            _previewAudio.pitch = 1.0f;
+            _previewAudio.Play();
+        }
+
+        private void RefreshSettingsLabels()
+        {
+            if (_setSfxLabel != null)
+            {
+                _setSfxLabel.text = BattleSessionState.FormatVolumeLabel("SE", BattleSessionState.SfxEnabled, BattleSessionState.SfxVolume);
+                _setSfxLabel.color = (BattleSessionState.SfxEnabled && BattleSessionState.SfxVolume > 0.001f) ? MbtGreen : TextMuted;
+            }
+            if (_setBgmLabel != null)
+            {
+                _setBgmLabel.text = BattleSessionState.FormatVolumeLabel("BGM", BattleSessionState.BgmEnabled, BattleSessionState.BgmVolume);
+                _setBgmLabel.color = (BattleSessionState.BgmEnabled && BattleSessionState.BgmVolume > 0.001f) ? LightCyan : TextMuted;
+            }
+            if (_setDriveLabel != null)
+                _setDriveLabel.text = BattleSessionState.ArcadeWASD ? "DRIVE: ARCADE WASD" : "DRIVE: TANK STEER";
+            if (_setAiLabel != null)
+                _setAiLabel.text = BattleSessionState.AiEnabled ? "ENEMY AI: ON" : "ENEMY AI: OFF";
+            if (_setGfxLabel != null)
+                _setGfxLabel.text = BattleSessionState.PostProcessEnabled ? "GFX: HD-2D" : "GFX: RETRO";
+            if (_setViewLabel != null)
+                _setViewLabel.text = BattleSessionState.IntegerWindowbox ? "VIEW: INT WINDOWBOX" : "VIEW: 16:9 LETTERBOX";
+        }
+
+        private void SetSettingsOpen(bool open)
+        {
+            _settingsOpen = open;
+            if (_settingsVisualGroup != null) _settingsVisualGroup.SetActive(open);
+            if (_settingsHitsGroup != null) _settingsHitsGroup.SetActive(open);
+            if (_garageHitsGroup != null) _garageHitsGroup.SetActive(!open && !_treeOpen);
+            if (_treeHitsGroup != null) _treeHitsGroup.SetActive(!open && _treeOpen);
+            if (open) RefreshSettingsLabels();
+        }
+
         private void SetTechTreeOpen(bool open)
         {
+            if (open && _settingsOpen) SetSettingsOpen(false);
             _treeOpen = open;
             if (_treeVisualGroup != null) _treeVisualGroup.SetActive(open);
-            if (_treeHitsGroup != null) _treeHitsGroup.SetActive(open);
+            if (_treeHitsGroup != null) _treeHitsGroup.SetActive(open && !_settingsOpen);
             if (_garageVisualGroup != null) _garageVisualGroup.SetActive(!open);
-            if (_garageHitsGroup != null) _garageHitsGroup.SetActive(!open);
+            if (_garageHitsGroup != null) _garageHitsGroup.SetActive(!open && !_settingsOpen);
             if (_hangarXrayWrap != null) _hangarXrayWrap.SetActive(_xrayMode && !open);
             if (showcaseTank != null) showcaseTank.gameObject.SetActive(!_xrayMode || open);
             if (open)
@@ -961,16 +1181,16 @@ namespace Modern8bitTanks
             VehicleDef sel = GetSelectedVehicle();
             if (sel != null)
             {
-                string nationName = sel.nation == "GER" ? "GERMANY" : (sel.nation == "USSR" ? "USSR / RU" : "USA");
+                string nationName = sel.NationLabel;
                 if (_garageTopBadge != null)
-                    _garageTopBadge.text = $"{nationName}  TIER {sel.TierRoman}  {sel.role}";
+                    _garageTopBadge.text = $"{nationName} T-{sel.TierRoman} {sel.role}";
                 if (_garageTankName != null)
                 {
                     _garageTankName.text = sel.name.ToUpper();
                     _garageTankName.color = sel.IsSpecial ? new Color(1f, 0.88f, 0.42f) : GoldColor;
                 }
                 if (_garageSpecLine != null)
-                    _garageSpecLine.text = $"CREW {sel.CrewCapacity}  SPD {(int)sel.speed}  PEN {(int)sel.penetration}  RLD {sel.reload:F2}s  {sel.WeaponLabel}";
+                    _garageSpecLine.text = $"CREW {sel.CrewCapacity}  SPD {(int)sel.speed}  TRN {(int)sel.EffectiveHullTurnSpeed}  TUR {(int)sel.EffectiveTurretTurnSpeed}  PEN {(int)sel.penetration}  RLD {sel.reload:F2}s  {sel.WeaponLabel}";
                 if (_garageMatchLine != null)
                 {
                     if (_xrayMode)
@@ -1000,7 +1220,7 @@ namespace Modern8bitTanks
                 if (_treeDetailTitle != null)
                     _treeDetailTitle.text = $"{sel.TierRoman}  {sel.name.ToUpper()}  ({sel.role} / {sel.WeaponLabel})";
                 if (_treeDetailStats != null)
-                    _treeDetailStats.text = $"CREW {sel.CrewCapacity}   SPD {(int)sel.speed}   PEN {(int)sel.penetration}   RLD {sel.reload:F2}s   {sel.engine.ToUpper()}";
+                    _treeDetailStats.text = $"SPD {(int)sel.speed}  TRN {(int)sel.EffectiveHullTurnSpeed}  TUR {(int)sel.EffectiveTurretTurnSpeed}  PEN {(int)sel.penetration}  RLD {sel.reload:F2}s  {sel.engine.ToUpper()}";
             }
 
             if (_btnMode1v1Bg != null) _btnMode1v1Bg.color = BattleSessionState.SelectedBattleMode == BattleMode.Duel1v1 ? BtnSelected : BtnBg;
@@ -1013,15 +1233,27 @@ namespace Modern8bitTanks
             if (_btnMapCityBg != null) _btnMapCityBg.color = BattleSessionState.SelectedBattleMap == BattleMap.City ? BtnSelected : BtnBg;
             if (_btnMapForestBg != null) _btnMapForestBg.color = BattleSessionState.SelectedBattleMap == BattleMap.Forest ? BtnSelected : BtnBg;
 
-            if (_btnNationUsaBg != null) _btnNationUsaBg.color = _treeNation == "USA" ? BtnSelected : BtnBg;
-            if (_btnNationGerBg != null) _btnNationGerBg.color = _treeNation == "GER" ? BtnSelected : BtnBg;
-            if (_btnNationUssrBg != null) _btnNationUssrBg.color = _treeNation == "USSR" ? BtnSelected : BtnBg;
+            foreach (var (nation, button) in _nationButtons)
+                button.color = _treeNation == nation ? BtnSelected : BtnBg;
+            foreach (var (nation, links) in _nationLinks)
+                links.SetActive(_treeNation == nation);
 
-            PopulateTreeRow(_trunkSlots, GetVehiclesFor(_treeNation, "T1_5"));
-            PopulateTreeRow(_mbtSlots, GetVehiclesFor(_treeNation, "MBT"));
-            PopulateTreeRow(_lightSlots, GetVehiclesFor(_treeNation, "LIGHT"));
-            PopulateTreeRow(_supportSlots, GetVehiclesFor(_treeNation, "SUPPORT"));
-            PopulateTreeRow(_historicSlots, GetVehiclesFor(_treeNation, "HISTORIC"));
+            foreach (var (id, slot) in _treeNodes)
+            {
+                VehicleDef vehicle = _vehicleMap[id];
+                bool visible = vehicle.nation == _treeNation;
+                slot.visualGo.SetActive(visible);
+                if (!visible) continue;
+
+                bool selected = vehicle.id == BattleSessionState.SelectedPlayerVehicleId;
+                string tag = vehicle.year > 0 ? vehicle.year.ToString() : vehicle.TierRoman;
+                slot.topText.text = $"{tag}  {vehicle.role}";
+                slot.topText.color = selected || vehicle.IsSpecial ? GoldColor : TextMuted;
+                slot.nameText.text = FormatTreeShortName(vehicle.name, 15);
+                slot.nameText.color = selected ? GoldColor : TextLight;
+                slot.fillImg.color = selected ? BtnSelected : BtnBg;
+                slot.borderImg.color = selected ? GoldColor : slot.idleBorder;
+            }
             if (_treeOpen) ApplyTreeScrollVisuals();
         }
 
@@ -1031,46 +1263,14 @@ namespace Modern8bitTanks
             return $"{title} ({count})";
         }
 
-        private List<VehicleDef> GetVehiclesFor(string nation, string tab)
-        {
-            var list = new List<VehicleDef>();
-            foreach (var v in _allVehicles)
-                if (v != null && v.nation == nation && v.tab == tab) list.Add(v);
-            list.Sort((a, b) => a.tier.CompareTo(b.tier));
-            return list;
-        }
-
-        private void PopulateTreeRow(TreeNodeSlot[] slots, List<VehicleDef> vehicles)
-        {
-            string selId = BattleSessionState.SelectedPlayerVehicleId;
-            for (int i = 0; i < slots.Length; i++)
-            {
-                var slot = slots[i];
-                if (slot == null) continue;
-                bool has = i < vehicles.Count;
-                slot.visualGo.SetActive(has);
-                if (!has) { slot.vehicleId = null; continue; }
-
-                VehicleDef v = vehicles[i];
-                slot.vehicleId = v.id;
-                bool isSel = v.id == selId;
-
-                string tag = v.IsSpecial ? "SP" : v.TierRoman;
-                slot.topText.text = $"{tag}  {v.WeaponLabel}";
-                slot.topText.color = isSel ? GoldColor : (v.IsSpecial ? GoldColor : TextMuted);
-
-                slot.nameText.text = FormatTreeShortName(v.name, 14);
-                slot.nameText.color = isSel ? GoldColor : (v.IsSpecial ? new Color(1f, 0.90f, 0.50f) : TextLight);
-
-                slot.fillImg.color = isSel ? BtnSelected : BtnBg;
-                slot.borderImg.color = isSel ? GoldColor : slot.idleBorder;
-            }
-        }
-
         private static string FormatTreeShortName(string raw, int maxChars)
         {
             if (string.IsNullOrEmpty(raw)) return "";
             string s = raw
+                .Replace("Kanonenjagdpanzer", "KanJPz")
+                .Replace("M41 Walker Bulldog", "M41 Bulldog")
+                .Replace("M41 (Bundeswehr)", "M41 Bundeswehr")
+                .Replace("Ru 251 Prototype", "Ru 251")
                 .Replace("Spahpanzer ", "")
                 .Replace("Raketenjagdpanzer ", "RAKJPZ ")
                 .Replace("M1128 Stryker MGS", "STRYKER MGS")

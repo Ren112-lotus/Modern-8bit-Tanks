@@ -395,7 +395,8 @@ namespace Modern8bitTanks
         {
             if (_allVehicles == null || _allVehicles.Length == 0) return SelectedEnemyVehicle;
             string rivalNation = (playerDef != null && playerDef.nation == "USSR") ? "USA" : "USSR";
-            int desiredTier = Mathf.Clamp((playerDef != null ? playerDef.tier : 8) + tierOffset, 1, 10);
+            int desiredTier = Mathf.Clamp((playerDef != null ? playerDef.tier : 11) + tierOffset,
+                VehicleDef.LowestTier, VehicleDef.LastRegularTier);
 
             VehicleDef best = null;
             int bestScore = int.MaxValue;
@@ -504,7 +505,8 @@ namespace Modern8bitTanks
 
                     float targetHull = slot.patrolDir > 0f ? 180f : 0f;
                     slot.tank.hullAngleDeg = Mathf.MoveTowardsAngle(slot.tank.hullAngleDeg, targetHull, 140f * dt);
-                    slot.tank.turretAngleDeg = Mathf.MoveTowardsAngle(slot.tank.turretAngleDeg, -90f, 90f * dt);
+                    slot.tank.turretAngleDeg = Mathf.MoveTowardsAngle(slot.tank.turretAngleDeg,
+                        LimitGunTraverse(slot.tank, -90f), 90f * dt);
 
                     float spd = (44f / PPU) * slot.tank.DriveFactor;
                     slot.tank.moveSpeed = spd;

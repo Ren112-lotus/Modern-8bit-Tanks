@@ -1,0 +1,336 @@
+{
+  "de_a7v": {
+    "page": "https://en.wikipedia.org/wiki/A7V",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/88/Mephisto_A7V_in_AWM_front_view.jpg/1280px-Mephisto_A7V_in_AWM_front_view.jpg",
+    "label": "1280px-Mephisto_A7V_in_AWM_front_view.jpg",
+    "subject": "German A7V Sturmpanzerwagen 1918 as surviving Mephisto, plank-like sloped rectangular armored casemate with tracks largely hidden beneath the sides, short nose cannon, high central rectangular roof cab with observation slits, muted clay gray patterned armor."
+  },
+  "de_jagdpanther": {
+    "page": "https://en.wikipedia.org/wiki/Jagdpanther",
+    "photo": "https://upload.wikimedia.org/wikipedia/commons/4/41/Jagdpanzer_V_Jagdpanther_1.jpg",
+    "label": "Jagdpanzer_V_Jagdpanther_1.jpg",
+    "subject": "Jagdpanther German production tank destroyer, long continuous inclined glacis into high sloping casemate, no turret, broad tracks and eight interleaved large road wheels, prominent central rounded collar and long thin barrel with brake, olive-ochre camouflage."
+  },
+  "de_kanjpz": {
+    "page": "https://en.wikipedia.org/wiki/Kanonenjagdpanzer",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/49/Bundesarchiv_B_145_Bild-F027425-0001%2C_Kanonenjagdpanzer_%28KanJPz%29_-_Jagdpanzer_Kanone_90_mm.jpg/330px-Bundesarchiv_B_145_Bild-F027425-0001%2C_Kanonenjagdpanzer_%28KanJPz%29_-_Jagdpanzer_Kanone_90_mm.jpg",
+    "label": "330px-Bundesarchiv_B_145_Bild-F027425-0001,_Kanonenjagdpanzer_(KanJPz)_-_Jagdpanzer_Kanone_90_mm.jpg",
+    "subject": "West German Kanonenjagdpanzer 1965, very low and long angular fixed armored casemate with gently sloped bow, five road wheels each side with exposed narrow tracks, forward-mounted offset 90 mm gun with small muzzle brake, muted olive Bundeswehr paint."
+  },
+  "de_m41g": {
+    "service_vehicle_photos": "https://www.panzerbaer.de/types/bw_lkpz_m41-a.htm",
+    "page": "https://en.wikipedia.org/wiki/M41_Walker_Bulldog",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8e/M41_Bulldog_Fort_Meade.jpg/1280px-M41_Bulldog_Fort_Meade.jpg",
+    "label": "1280px-M41_Bulldog_Fort_Meade.jpg",
+    "subject": "West German Bundeswehr M41 Walker Bulldog, five large wheels each side, hull of American M41 with West German olive finish, tapered glacis, angular raised welded turret, single long cannon and rear bustle rack, compact stowage, no modern addon armor."
+  },
+  "de_panther_g": {
+    "page": "https://en.wikipedia.org/wiki/Panther_tank",
+    "photo": "https://upload.wikimedia.org/wikipedia/commons/6/61/Bundesarchiv_Bild_183-H26258%2C_Panzer_V_%22Panther%22.jpg",
+    "label": "Bundesarchiv_Bild_183-H26258,_Panzer_V_\"Panther\".jpg",
+    "subject": "Panther Ausf. G German 1944 production medium tank, long large slope-faced hull, low elongated turret with shallow angled roof and rounded mantlet, exceptionally long slender cannon with muzzle brake, eight overlapping wheel stations and broad tracks, restrained ochre and faded olive camouflage."
+  },
+  "de_pz2c": {
+    "page": "https://en.wikipedia.org/wiki/Panzer_II",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3d/Panzer_II_Saumur.JPG/1280px-Panzer_II_Saumur.JPG",
+    "label": "1280px-Panzer_II_Saumur.JPG",
+    "subject": "Panzer II Ausf. C 1938 German light tank, five medium road wheels and narrow exposed track, compact slightly left offset flat faceted turret, thin short 20 mm barrel and offset smaller coax, stepped tall early bow and gray paint."
+  },
+  "de_pz3j": {
+    "photo": "https://commons.wikimedia.org/wiki/File:Panzer_III_Ausf.J_%E2%80%93_Victory_Park%2C_Moscow_%2838568728076%29.jpg",
+    "label": "Panzer III Ausf.J – Victory Park, Moscow (38568728076).jpg",
+    "subject": "Panzer III Ausf. J German 1941 tank, six small road wheel stations, flat upright stepped rectangular bow plate, angular narrow faceted turret with rear low stowage bin, long thin 50 mm gun with plain muzzle, matte field gray.",
+    "prompt_style": "unmarked studio reconstruction"
+  },
+  "de_pz4f2": {
+    "photo": "https://commons.wikimedia.org/wiki/File:Panzer_IV_F1_%2B_F2.jpg",
+    "label": "Panzer IV F1 + F2.jpg",
+    "subject": "Panzer IV Ausf. F2 German 1942 medium tank, eight small wheels in four paired leaf-spring bogies, straight slab deck nose, bulky welded turret with rear bustle box and prominent cupola, long 75 mm with rounded single baffle brake, no hanging side armor skirts. Dunkelgelb muted ochre.",
+    "prompt_style": "unmarked studio reconstruction"
+  },
+  "de_ru251": {
+    "sprite_correction": "The prototype photograph shows six road-wheel stations per side. The sprite corrects the five-wheel reconstruction and includes the box searchlight above the mantlet.",
+    "photo": "https://pzaufkl.de/wp-content/uploads/2017/07/SpKette_Munster_Pzmuseum_RU251-768x494.jpg",
+    "page": "https://pzaufkl.de/spaehpanzer-ru-251-prototyp",
+    "label": "Ru 251 on display at Munster",
+    "subject": "West German Ru 251 light tank prototype, low wedge hull derived from Kanonenjagdpanzer, five large road wheels and narrow open tracks, shallow angular fully rotating turret with flat mantlet and thin long 90 mm gun, matte dark olive.",
+    "prompt": "Create a NEW four-view orthographic reference plate as one 3:2 image. The output must be a precise 2 by 2 matrix, never a single camera photograph. Top-left overhead nose right, top-right true flat side nose right, bottom-left directly from the front, bottom-right directly from the rear. Each quadrant shows the entire same tank with an ample studio backdrop around it. Exact matched plan and elevations. Input image 1 is the subject's archival or museum photo, only for the hardware. Input image 2 is the sheet layout example, of a completely different vehicle: use only the four-position layout and soft pale background from image 2. Subject in all four cells: West German Ru 251 light tank prototype, low wedge hull derived from Kanonenjagdpanzer, five large road wheels and narrow open tracks, shallow angular fully rotating turret with flat mantlet and thin long 90 mm gun, matte dark olive. Full-size photoreal steel textures with diffuse neutral lighting and subdued matte paint, no markings, words, people, scenery, action, signs or other vehicles."
+  },
+  "de_stug3g": {
+    "page": "https://en.wikipedia.org/wiki/Sturmgesch%C3%BCtz_III",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/18/SNC15697_%285853637442%29_b.jpg/1280px-SNC15697_%285853637442%29_b.jpg",
+    "label": "1280px-SNC15697_(5853637442)_b.jpg",
+    "subject": "StuG III Ausf. G German assault gun with squat polygonal fixed casemate on Panzer III chassis, six small wheels, raised offset cupola and stowage, curved small mantlet, long low 75 mm tube with brake, matte olive-ochre wartime paint."
+  },
+  "de_tiger_i": {
+    "page": "https://en.wikipedia.org/wiki/Tiger_I",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/94/Tiger_131_%287527948486%29.jpg/250px-Tiger_131_%287527948486%29.jpg",
+    "label": "250px-Tiger_131_(7527948486).jpg",
+    "subject": "German Tiger I early production 1942, very wide combat tracks and eight staggered overlapping wheel stations, flat vertical slab hull bow, horseshoe-shaped boxy turret with cast massive front mantlet and roof cupola, long barrel with rounded brake, subdued dark yellow and olive matte steel."
+  },
+  "jp_chiha": {
+    "page": "https://en.wikipedia.org/wiki/Type_97_Chi-Ha",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e8/Type_97_Chi-Ha_in_the_Great_Patriotic_War_Museum_5-jun-2014.jpg/330px-Type_97_Chi-Ha_in_the_Great_Patriotic_War_Museum_5-jun-2014.jpg",
+    "label": "330px-Type_97_Chi-Ha_in_the_Great_Patriotic_War_Museum_5-jun-2014.jpg",
+    "subject": "Japanese Type 97 Chi-Ha original 1937 small cylindrical riveted low turret with conspicuous horseshoe handrail antenna and very short 57 mm cannon, slim hull with stepped bow and six small wheels, restrained tan olive brown camouflage."
+  },
+  "jp_chihe": {
+    "page": "https://en.wikipedia.org/wiki/Type_1_Chi-He",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/Isshikityusensya.jpg/330px-Isshikityusensya.jpg",
+    "label": "330px-Isshikityusensya.jpg",
+    "subject": "Japanese Type 1 Chi-He, cleans up Type 97 geometry with flat boxy welded front bow armor, six wheels, small elongated high-sided asymmetric turret with long thin 47 mm gun, subtle Japanese olive and brown stripes."
+  },
+  "jp_chinu": {
+    "page": "https://en.wikipedia.org/wiki/Type_3_Chi-Nu",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b9/Japanese_Type_3_Chi-Nu_tank_1.jpg/330px-Japanese_Type_3_Chi-Nu_tank_1.jpg",
+    "label": "330px-Japanese_Type_3_Chi-Nu_tank_1.jpg",
+    "subject": "Japanese Type 3 Chi-Nu, six small road wheels, narrow upright flat bow, broad boxy flat-sided six-sided turret and long thin 75 mm gun, dark Japanese khaki olive and brown camouflage."
+  },
+  "jp_chiri": {
+    "page": "https://en.wikipedia.org/wiki/Type_5_Chi-Ri",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/75/Chi-Ri.JPG/330px-Chi-Ri.JPG",
+    "label": "330px-Chi-Ri.JPG",
+    "subject": "Japanese Type 5 Chi-Ri prototype intended completed exterior with enormous polygonal welded tall box turret and long slender main gun, tall hull with eight small road wheels and dedicated small left hull gun port, matte olive tan. Archival photos of sole hull and documented turret reconstruction."
+  },
+  "jp_chito": {
+    "page": "https://en.wikipedia.org/wiki/Type_4_Chi-To",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/Chi-To.JPG/330px-Chi-To.JPG",
+    "label": "330px-Chi-To.JPG",
+    "subject": "Japanese Type 4 Chi-To production prototype late WWII, seven small road wheels, long angled hull glacis and thick tall simple cast angular turret, single long thin 75 mm cannon, matte dark olive and earthy camouflage."
+  },
+  "jp_hago": {
+    "page": "https://en.wikipedia.org/wiki/Type_95_Ha-Go",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/83/Ha-Go_Moscow_%28cropped%29.jpg/330px-Ha-Go_Moscow_%28cropped%29.jpg",
+    "label": "330px-Ha-Go_Moscow_(cropped).jpg",
+    "subject": "Japanese Type 95 Ha-Go early light tank, tiny short steep front and compact riveted cylindrical turret offset left, four small road wheels in two paired bogies, rear raised drive housing, short thin gun, muted period tan olive brown."
+  },
+  "jp_honi3": {
+    "page": "https://en.wikipedia.org/wiki/Type_3_Ho-Ni_III",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ce/Type_3_Ho-Ni_III_superstructure_with_hatches_closed.jpg/250px-Type_3_Ho-Ni_III_superstructure_with_hatches_closed.jpg",
+    "label": "250px-Type_3_Ho-Ni_III_superstructure_with_hatches_closed.jpg",
+    "subject": "Japanese Type 3 Ho-Ni III, fixed fully enclosed tall faceted armored casemate, Chi-Ha chassis with six small wheels and narrow tracks, long low slender 75 mm cannon and small angular hexagonal front, muted khaki olive and brown."
+  },
+  "jp_kami": {
+    "page": "https://en.wikipedia.org/wiki/Type_2_Ka-Mi",
+    "photo": "https://upload.wikimedia.org/wikipedia/commons/a/a0/Type_2_Ka-Mi_amphibious_tank.jpg",
+    "label": "Type_2_Ka-Mi_amphibious_tank.jpg",
+    "subject": "Imperial Japanese Type 2 Ka-Mi as an amphibious light tank with both detachable flotation pontoons fitted, wedge prow, fat rounded flat rear float, four road wheels with exposed steel tracks, small riveted turret and slim short gun. Gray green navy paint."
+  },
+  "jp_m24": {
+    "service_vehicle_photos": "https://aobamil.sakura.ne.jp/shasin/M24/M24.html",
+    "page": "https://en.wikipedia.org/wiki/M24_Chaffee",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7f/M24_Chaffee_tankfest_2023.JPG/330px-M24_Chaffee_tankfest_2023.JPG",
+    "label": "330px-M24_Chaffee_tankfest_2023.JPG",
+    "subject": "Japanese Ground Self-Defense Force M24 Chaffee circa 1954, same compact angular American five-wheel chassis and faceted turret, narrow low cannon, matte dull Japanese olive drab without American stars."
+  },
+  "jp_shinhoto": {
+    "page": "https://en.wikipedia.org/wiki/Shinhoto_Chi-Ha",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f2/Type-97-Shinhoto-ChiHa-Aberdeen.0003dtwq.jpg/330px-Type-97-Shinhoto-ChiHa-Aberdeen.0003dtwq.jpg",
+    "label": "330px-Type-97-Shinhoto-ChiHa-Aberdeen.0003dtwq.jpg",
+    "subject": "Japanese Shinhoto Chi-Ha new turret variant, Type 97 riveted long chassis with six wheels, taller trapezoidal asymmetric welded turret with rear extension and longer thin 47 mm tube, muted ochre olive brown camouflage."
+  },
+  "jp_type16": {
+    "page": "https://en.wikipedia.org/wiki/Type_16_maneuver_combat_vehicle",
+    "photo": "https://www.mod.go.jp/gsdf/assets/images/equipment/ve/pic01_modal.png",
+    "label": "JGSDF photo",
+    "subject": "JGSDF Type 16 maneuver combat vehicle, 8x8 running gear with exactly four large rubber tires per side, tall V-shaped nose and rearward angular polygonal turret with low long gun and small slotted muzzle brake, matte olive brown JGSDF field paint."
+  },
+  "jp_type60": {
+    "page": "https://en.wikipedia.org/wiki/Type_60_Self-propelled_106_mm_Recoilless_Gun",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/JGSDF_Type60_RR%28SP%29.jpg/330px-JGSDF_Type60_RR%28SP%29.jpg",
+    "label": "330px-JGSDF_Type60_RR(SP).jpg",
+    "subject": "JGSDF Type 60 SPRG from 1960, small very low rectangular tracked platform with five small wheels and narrow tracks, two long thin parallel recoilless rifles on right top side, small split roof hatches on left, matte JGSDF olive drab."
+  },
+  "jp_type61": {
+    "photo": "https://www.mod.go.jp/gsdf/nae/7d/siryoukan/tk_history/tk/61tk01.png",
+    "label": "Museum or JGSDF exhibit photo",
+    "subject": "JGSDF Type 61 production tank, tall long cast round turret with distinctive large bustle and roof cupola, broad rounded narrow-profile hull front, six road wheel stations and no armor skirts, long gun with T-shaped muzzle brake, olive drab.",
+    "prompt": "Create a NEW four-view orthographic reference plate as one 3:2 image. The output must be a precise 2 by 2 matrix, never a single camera photograph. Top-left overhead nose right, top-right true flat side nose right, bottom-left directly from the front, bottom-right directly from the rear. Each quadrant shows the entire same tank with an ample studio backdrop around it. Exact matched plan and elevations. Input image 1 is the subject's archival or museum photo, only for the hardware. Input image 2 is the sheet layout example, of a completely different vehicle: use only the four-position layout and soft pale background from image 2. Subject in all four cells: JGSDF Type 61 production tank, tall long cast round turret with distinctive large bustle and roof cupola, broad rounded narrow-profile hull front, six road wheel stations and no armor skirts, long gun with T-shaped muzzle brake, olive drab. Full-size photoreal steel textures with diffuse neutral lighting and subdued matte paint, no markings, words, people, scenery, action, signs or other vehicles."
+  },
+  "jp_type74": {
+    "page": "https://en.wikipedia.org/wiki/Type_74_tank",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/Tank_type74_ja02.jpg/330px-Tank_type74_ja02.jpg",
+    "label": "330px-Tank_type74_ja02.jpg",
+    "subject": "JGSDF Type 74 original, very low domed cast saucer turret with narrow tall offset searchlight, low hull with five large visible road wheels and no skirts, long slender 105 mm gun, olive brown Japanese two-tone field paint."
+  },
+  "jp_type89ifv": {
+    "photo": "https://www.mod.go.jp/gsdf/assets/images/equipment/ve/pic07_modal.png",
+    "label": "Museum or JGSDF exhibit photo",
+    "subject": "JGSDF Type 89 infantry fighting vehicle, NOT the WWII I-Go, six black rubber-rimmed road wheels, tall forward engine hull with steep sharply tapered nose and rear double doors, central angular turret with short slim autocannon and paired side missile boxes, matte Japanese olive-brown.",
+    "prompt": "Create a NEW four-view orthographic reference plate as one 3:2 image. The output must be a precise 2 by 2 matrix, never a single camera photograph. Top-left overhead nose right, top-right true flat side nose right, bottom-left directly from the front, bottom-right directly from the rear. Each quadrant shows the entire same tank with an ample studio backdrop around it. Exact matched plan and elevations. Input image 1 is the subject's archival or museum photo, only for the hardware. Input image 2 is the sheet layout example, of a completely different vehicle: use only the four-position layout and soft pale background from image 2. Subject in all four cells: JGSDF Type 89 infantry fighting vehicle, NOT the WWII I-Go, six black rubber-rimmed road wheels, tall forward engine hull with steep sharply tapered nose and rear double doors, central angular turret with short slim autocannon and paired side missile boxes, matte Japanese olive-brown. Full-size photoreal steel textures with diffuse neutral lighting and subdued matte paint, no markings, words, people, scenery, action, signs or other vehicles."
+  },
+  "jp_type90": {
+    "page": "https://en.wikipedia.org/wiki/Type_90_tank",
+    "photo": "https://www.mod.go.jp/gsdf/assets/images/equipment/ve/pic04_modal.png",
+    "label": "JGSDF photo",
+    "subject": "JGSDF Type 90 angular modern main battle tank with six road wheels and relatively short angular flat fender skirts, broad near-vertical box turret frontal panels and off-center optics, long plain cannon, brown and green Japanese field paint."
+  },
+  "ru_asu57": {
+    "page": "https://en.wikipedia.org/wiki/ASU-57",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/52/ASU-57_US_Army_Armor_and_Cavalry_Collection.jpg/1280px-ASU-57_US_Army_Armor_and_Cavalry_Collection.jpg",
+    "label": "1280px-ASU-57_US_Army_Armor_and_Cavalry_Collection.jpg",
+    "subject": "Soviet ASU-57 airborne tank destroyer, tiny very low exposed open-topped riveted fighting compartment with short platform and low small gun shield, four wheels per side, light unobstructed long 57 mm gun with compact multi-slot muzzle brake, Soviet olive green."
+  },
+  "ru_asu85": {
+    "page": "https://en.wikipedia.org/wiki/ASU-85",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/12/Skar%C5%BCysko_ASU-85_02.jpg/330px-Skar%C5%BCysko_ASU-85_02.jpg",
+    "label": "330px-Skarżysko_ASU-85_02.jpg",
+    "subject": "Soviet ASU-85 airborne tank destroyer, six large road wheels, long and very low sloped armored roof and fixed casemate, offset small rounded mantlet and long thin gun with muzzle brake, matte green."
+  },
+  "ru_bt7": {
+    "page": "https://en.wikipedia.org/wiki/BT-7",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/60/BT-7_model_1935_%E2%80%98%D0%91-3%E2%80%98_-_Central_Armed_Forces_Museum%2C_Moscow_%2837954387135%29.jpg/250px-BT-7_model_1935_%E2%80%98%D0%91-3%E2%80%98_-_Central_Armed_Forces_Museum%2C_Moscow_%2837954387135%29.jpg",
+    "label": "250px-BT-7_model_1935_‘Б-3‘_-_Central_Armed_Forces_Museum,_Moscow_(37954387135).jpg",
+    "subject": "Soviet BT-7 late 1930s fast tank, tapered narrow boat-shaped nose, four large Christie wheels without return rollers, tall conical turret with thin 45 mm cannon, low tracks, faded matte 4BO olive green."
+  },
+  "ru_is2": {
+    "page": "https://en.wikipedia.org/wiki/IS-2",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f7/%D0%9C%D0%B5%D0%BC%D0%BE%D1%80%D1%96%D0%B0%D0%BB%D1%8C%D0%BD%D0%B8%D0%B9_%D0%BA%D0%BE%D0%BC%D0%BF%D0%BB%D0%B5%D0%BA%D1%81_%C2%AB%D0%A1%D0%B0%D0%BF%D1%83%D0%BD-%D0%B3%D0%BE%D1%80%D0%B0%C2%BB2.JPG/330px-%D0%9C%D0%B5%D0%BC%D0%BE%D1%80%D1%96%D0%B0%D0%BB%D1%8C%D0%BD%D0%B8%D0%B9_%D0%BA%D0%BE%D0%BC%D0%BF%D0%BB%D0%B5%D0%BA%D1%81_%C2%AB%D0%A1%D0%B0%D0%BF%D1%83%D0%BD-%D0%B3%D0%BE%D1%80%D0%B0%C2%BB2.JPG",
+    "label": "330px-Меморіальний_комплекс_«Сапун-гора»2.JPG",
+    "subject": "Soviet IS-2 1944 with late straight sloped hull nose, six road wheel stations, broad cast tapering turret with rear bustle and cupola, long barrel and prominent double-baffle brake. Matte faded Soviet olive green."
+  },
+  "ru_it1": {
+    "page": "https://en.wikipedia.org/wiki/IT-1",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cd/IT-1_tank_in_Patriot_park.jpg/1280px-IT-1_tank_in_Patriot_park.jpg",
+    "label": "1280px-IT-1_tank_in_Patriot_park.jpg",
+    "subject": "Soviet IT-1 missile tank on T-62 chassis. Five large road wheels and recognizable low cast rounded turret with no conventional cannon. Compact raised folding rectangular single missile rail at roof on centerline, matte field green."
+  },
+  "ru_kv1": {
+    "page": "https://en.wikipedia.org/wiki/Kliment_Voroshilov_tank",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8c/%D0%9A%D0%92-1_%D1%83_%D0%B4%D0%B8%D0%BE%D1%80%D0%B0%D0%BC%D1%8B_%C2%AB%D0%9F%D1%80%D0%BE%D1%80%D1%8B%D0%B2_%D0%B1%D0%BB%D0%BE%D0%BA%D0%B0%D0%B4%D1%8B_%D0%9B%D0%B5%D0%BD%D0%B8%D0%BD%D0%B3%D1%80%D0%B0%D0%B4%D0%B0%C2%BB._%D0%92%D0%B8%D0%B4_%D1%81%D0%BF%D0%B5%D1%80%D0%B5%D0%B4%D0%B8-%D1%81%D0%BF%D1%80%D0%B0%D0%B2%D0%B0.JPG/1280px-%D0%9A%D0%92-1_%D1%83_%D0%B4%D0%B8%D0%BE%D1%80%D0%B0%D0%BC%D1%8B_%C2%AB%D0%9F%D1%80%D0%BE%D1%80%D1%8B%D0%B2_%D0%B1%D0%BB%D0%BE%D0%BA%D0%B0%D0%B4%D1%8B_%D0%9B%D0%B5%D0%BD%D0%B8%D0%BD%D0%B3%D1%80%D0%B0%D0%B4%D0%B0%C2%BB._%D0%92%D0%B8%D0%B4_%D1%81%D0%BF%D0%B5%D1%80%D0%B5%D0%B4%D0%B8-%D1%81%D0%BF%D1%80%D0%B0%D0%B2%D0%B0.JPG",
+    "label": "1280px-КВ-1_у_диорамы_«Прорыв_блокады_Ленинграда»._Вид_спереди-справа.JPG",
+    "subject": "Early Soviet KV-1 heavy tank 1940-41, vertical wide sides, flat sloping bow of its heavy chassis, six steel road wheels and three small return rollers, broad heavy welded polygon turret with short rear overhang and simple straight gun, dark Soviet 4BO green."
+  },
+  "ru_ms1": {
+    "page": "https://en.wikipedia.org/wiki/T-18_tank",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fb/MS-1.jpg/330px-MS-1.jpg",
+    "label": "330px-MS-1.jpg",
+    "subject": "Soviet MS-1 T-18 early light tank 1928, squat rounded conical riveted turret, short offset cannon, striking small tracked running gear with six small paired wheels, narrow hull and rear trench tail. Tempered dull green."
+  },
+  "ru_obj906": {
+    "photo": "https://commons.wikimedia.org/wiki/File:PT-85_in_the_Kubinka_Museum.jpg",
+    "label": "PT-85 in the Kubinka Museum.jpg",
+    "subject": "Soviet Object 906 PT-85 prototype amphibious light tank, extremely long low boat-shaped hull with sharply pointed bow, six road wheels and narrow track, small rounded central turret and one long thin gun, dark Soviet olive green.",
+    "prompt": "Create a NEW four-view orthographic reference plate as one 3:2 image. The output must be a precise 2 by 2 matrix, never a single camera photograph. Top-left overhead nose right, top-right true flat side nose right, bottom-left directly from the front, bottom-right directly from the rear. Each quadrant shows the entire same tank with an ample studio backdrop around it. Exact matched plan and elevations. Input image 1 is the subject's archival or museum photo, only for the hardware. Input image 2 is the sheet layout example, of a completely different vehicle: use only the four-position layout and soft pale background from image 2. Subject in all four cells: Soviet Object 906 PT-85 prototype amphibious light tank, extremely long low boat-shaped hull with sharply pointed bow, six road wheels and narrow track, small rounded central turret and one long thin gun, dark Soviet olive green. Full-size photoreal steel textures with diffuse neutral lighting and subdued matte paint, no markings, words, people, scenery, action, signs or other vehicles."
+  },
+  "ru_su100": {
+    "page": "https://en.wikipedia.org/wiki/SU-100",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5a/Su-100_-_TankBiathlon2013-07.jpg/330px-Su-100_-_TankBiathlon2013-07.jpg",
+    "label": "330px-Su-100_-_TankBiathlon2013-07.jpg",
+    "subject": "Soviet SU-100 tank destroyer 1944, low sloping fixed casemate on five-wheel T-34 chassis, prominent low frontal gun and compact protruding mantlet, off-center raised commander cupola to vehicle right, long tube with no muzzle brake, subtle Soviet green."
+  },
+  "ru_t26": {
+    "page": "https://en.wikipedia.org/wiki/T-26",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/66/T-26_in_Kirovsk.JPG/1280px-T-26_in_Kirovsk.JPG",
+    "label": "1280px-T-26_in_Kirovsk.JPG",
+    "subject": "Soviet T-26 Model 1933, single tall circular cylindrical riveted turret with 45 mm gun, upright boxy narrow hull and small wheels in horizontal bogies, exposed thin tracks, matte 4BO olive green."
+  },
+  "ru_t28": {
+    "photo": "https://commons.wikimedia.org/wiki/File:T28_parola_1.jpg",
+    "label": "T28 parola 1.jpg",
+    "subject": "Soviet T-28 1930s medium tank, distinctive very long box hull with large central rounded turret and two smaller machine-gun turrets in front side by side, many small bogie wheels with upper steel skirts, stubby large main cannon. Soviet dark green.",
+    "prompt": "Create a NEW four-view orthographic reference plate as one 3:2 image. The output must be a precise 2 by 2 matrix, never a single camera photograph. Top-left overhead nose right, top-right true flat side nose right, bottom-left directly from the front, bottom-right directly from the rear. Each quadrant shows the entire same tank with an ample studio backdrop around it. Exact matched plan and elevations. Input image 1 is the subject's archival or museum photo, only for the hardware. Input image 2 is the sheet layout example, of a completely different vehicle: use only the four-position layout and soft pale background from image 2. Subject in all four cells: Soviet T-28 1930s medium tank, distinctive very long box hull with large central rounded turret and two smaller machine-gun turrets in front side by side, many small bogie wheels with upper steel skirts, stubby large main cannon. Soviet dark green. Full-size photoreal steel textures with diffuse neutral lighting and subdued matte paint, no markings, words, people, scenery, action, signs or other vehicles."
+  },
+  "ru_t3485": {
+    "photo": "https://tankmuseum.org/wp-content/uploads/2023/03/Untitled-528-%C3%97-290-px-8.jpg",
+    "label": "Museum or JGSDF exhibit photo",
+    "subject": "Soviet T-34-85 model 1944 with broad tall cast rounded turret, offset left roof cupola and long plain 85 mm barrel, strongly sloped slim 5-wheel T-34 chassis, mesh rear deck, matte Soviet green.",
+    "prompt": "Create a NEW four-view orthographic reference plate as one 3:2 image. The output must be a precise 2 by 2 matrix, never a single camera photograph. Top-left overhead nose right, top-right true flat side nose right, bottom-left directly from the front, bottom-right directly from the rear. Each quadrant shows the entire same tank with an ample studio backdrop around it. Exact matched plan and elevations. Input image 1 is the subject's archival or museum photo, only for the hardware. Input image 2 is the sheet layout example, of a completely different vehicle: use only the four-position layout and soft pale background from image 2. Subject in all four cells: Soviet T-34-85 model 1944 with broad tall cast rounded turret, offset left roof cupola and long plain 85 mm barrel, strongly sloped slim 5-wheel T-34 chassis, mesh rear deck, matte Soviet green. Full-size photoreal steel textures with diffuse neutral lighting and subdued matte paint, no markings, words, people, scenery, action, signs or other vehicles."
+  },
+  "ru_t34_1941": {
+    "photo": "https://commons.wikimedia.org/wiki/File:T-34_Model_1941_%E2%80%93_Patriot_Museum%2C_Kubinka_%2824524759668%29.jpg",
+    "label": "T-34 Model 1941 – Patriot Museum, Kubinka (24524759668).jpg",
+    "subject": "Soviet T-34 model 1941 straight narrow turret with single broad hatch and long F-34 cannon, strongly sloped hull, five large equally spaced Christie road wheels, minimal stub fenders, olive green.",
+    "prompt": "Create a NEW four-view orthographic reference plate as one 3:2 image. The output must be a precise 2 by 2 matrix, never a single camera photograph. Top-left overhead nose right, top-right true flat side nose right, bottom-left directly from the front, bottom-right directly from the rear. Each quadrant shows the entire same tank with an ample studio backdrop around it. Exact matched plan and elevations. Input image 1 is the subject's archival or museum photo, only for the hardware. Input image 2 is the sheet layout example, of a completely different vehicle: use only the four-position layout and soft pale background from image 2. Subject in all four cells: Soviet T-34 model 1941 straight narrow turret with single broad hatch and long F-34 cannon, strongly sloped hull, five large equally spaced Christie road wheels, minimal stub fenders, olive green. Full-size photoreal steel textures with diffuse neutral lighting and subdued matte paint, no markings, words, people, scenery, action, signs or other vehicles."
+  },
+  "ru_t44": {
+    "page": "https://en.wikipedia.org/wiki/T-44",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/T_44_in_Linija_Stalina_%28Belarus%29.jpg/330px-T_44_in_Linija_Stalina_%28Belarus%29.jpg",
+    "label": "330px-T_44_in_Linija_Stalina_(Belarus).jpg",
+    "subject": "Soviet T-44 wartime medium tank, squat central rounded turret with roof cupola, sloped short hull lower than T-34, five large road wheels, broad low front glacis and forward driver hatch, long plain gun, matte dark green."
+  },
+  "us_m103": {
+    "page": "https://en.wikipedia.org/wiki/M103_heavy_tank",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/34/M103_tankfest_2024.JPG/1280px-M103_tankfest_2024.JPG",
+    "label": "1280px-M103_tankfest_2024.JPG",
+    "subject": "M103 early American Cold War heavy tank, seven wheel stations each side, long very heavy rounded hull, unusually broad elongated cast turret with long projecting rear bustle and high low-profile cupola, very long single barrel, olive drab."
+  },
+  "us_m1917": {
+    "photo": "https://commons.wikimedia.org/wiki/File:Six_Ton_Tank_M1917_%2824239118123%29.jpg",
+    "label": "Six Ton Tank M1917 (24239118123).jpg",
+    "subject": "Six-ton M1917 American 37 mm gun tank of 1918, angular octagonal rotating turret, narrow exposed articulated high-mounted tracks, long rear trench tail, short compact front cannon, riveted olive-brown armor.",
+    "prompt": "Create a NEW four-view orthographic reference plate as one 3:2 image. The output must be a precise 2 by 2 matrix, never a single camera photograph. Top-left overhead nose right, top-right true flat side nose right, bottom-left directly from the front, bottom-right directly from the rear. Each quadrant shows the entire same tank with an ample studio backdrop around it. Exact matched plan and elevations. Input image 1 is the subject's archival or museum photo, only for the hardware. Input image 2 is the sheet layout example, of a completely different vehicle: use only the four-position layout and soft pale background from image 2. Subject in all four cells: Six-ton M1917 American 37 mm gun tank of 1918, angular octagonal rotating turret, narrow exposed articulated high-mounted tracks, long rear trench tail, short compact front cannon, riveted olive-brown armor. Full-size photoreal steel textures with diffuse neutral lighting and subdued matte paint, no markings, words, people, scenery, action, signs or other vehicles."
+  },
+  "us_m24": {
+    "page": "https://en.wikipedia.org/wiki/M24_Chaffee",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7f/M24_Chaffee_tankfest_2023.JPG/330px-M24_Chaffee_tankfest_2023.JPG",
+    "label": "330px-M24_Chaffee_tankfest_2023.JPG",
+    "subject": "M24 Chaffee light tank US WWII, low sharply sloping glacis and evenly spaced five large road wheels, compact six-sided turret with small mantlet and slim 75 mm gun, rear engine grilles, muted US olive drab."
+  },
+  "us_m26": {
+    "page": "https://en.wikipedia.org/wiki/M26_Pershing",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/Flickr_-_davehighbury_-_Bovington_Tank_Museum_246_M26.jpg/1280px-Flickr_-_davehighbury_-_Bovington_Tank_Museum_246_M26.jpg",
+    "label": "1280px-Flickr_-_davehighbury_-_Bovington_Tank_Museum_246_M26.jpg",
+    "subject": "M26 Pershing original 1945 US production tank, six paired road wheels, curved cast hull front with wide straight fenders, broad rounded turret and long 90 mm gun with tubular double-baffle brake, olive drab."
+  },
+  "us_m2a4_light": {
+    "page": "https://en.wikipedia.org/wiki/M2_light_tank",
+    "photo": "https://upload.wikimedia.org/wikipedia/commons/3/32/The_British_Army_in_the_United_Kingdom_1939-45_H17816.jpg",
+    "label": "The_British_Army_in_the_United_Kingdom_1939-45_H17816.jpg",
+    "subject": "M2A4 American light tank 1940, single small octagonal riveted turret on tall narrow hull, four road wheels in two external volute bogies on each side, no side skirts, compact gun extending ahead."
+  },
+  "us_m36": {
+    "page": "https://en.wikipedia.org/wiki/M36_tank_destroyer",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/American_tank_destroyers.jpg/1280px-American_tank_destroyers.jpg",
+    "label": "1280px-American_tank_destroyers.jpg",
+    "subject": "M36 Jackson US tank destroyer with open-top broad cast turret and visible dark recessed fighting compartment, classic M10 angular hull, three VVSS bogie pairs each side, long 90 mm gun, olive drab."
+  },
+  "us_m3_lee": {
+    "page": "https://en.wikipedia.org/wiki/M3_Lee",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/aa/AlfredPalmerM3tank1942b_crop2.jpg/1280px-AlfredPalmerM3tank1942b_crop2.jpg",
+    "label": "1280px-AlfredPalmerM3tank1942b_crop2.jpg",
+    "subject": "M3 Lee American production medium tank 1941, important right-front 75 mm offset hull sponson gun, small offset left turret with 37 mm gun and machine-gun cupola above, tall riveted hull, six wheels in three VVSS bogies, olive drab."
+  },
+  "us_m3_stuart": {
+    "photo": "https://commons.wikimedia.org/wiki/File:M3_serial_1.JPG",
+    "label": "M3 serial 1.JPG",
+    "subject": "Early M3 Stuart 1941 37 mm single riveted polygonal turret, high stepped bow, four road wheels in two bogies, large rear trailing idler at ground, metal exposed tracks, olive drab.",
+    "prompt": "Create a NEW four-view orthographic reference plate as one 3:2 image. The output must be a precise 2 by 2 matrix, never a single camera photograph. Top-left overhead nose right, top-right true flat side nose right, bottom-left directly from the front, bottom-right directly from the rear. Each quadrant shows the entire same tank with an ample studio backdrop around it. Exact matched plan and elevations. Input image 1 is the subject's archival or museum photo, only for the hardware. Input image 2 is the sheet layout example, of a completely different vehicle: use only the four-position layout and soft pale background from image 2. Subject in all four cells: Early M3 Stuart 1941 37 mm single riveted polygonal turret, high stepped bow, four road wheels in two bogies, large rear trailing idler at ground, metal exposed tracks, olive drab. Full-size photoreal steel textures with diffuse neutral lighting and subdued matte paint, no markings, words, people, scenery, action, signs or other vehicles."
+  },
+  "us_m41": {
+    "page": "https://en.wikipedia.org/wiki/M41_Walker_Bulldog",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8e/M41_Bulldog_Fort_Meade.jpg/1280px-M41_Bulldog_Fort_Meade.jpg",
+    "label": "1280px-M41_Bulldog_Fort_Meade.jpg",
+    "subject": "American M41 Walker Bulldog early production 1950s light tank, five large wheels each side, low long glacis, tall welded polygonal rotating turret with bustle rack, narrow long gun, olive drab."
+  },
+  "us_m46": {
+    "page": "https://en.wikipedia.org/wiki/M46_Patton",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Marines-tank-Korea-19530705.JPEG/1280px-Marines-tank-Korea-19530705.JPEG",
+    "label": "1280px-Marines-tank-Korea-19530705.JPEG",
+    "subject": "M46 Patton Korean War production tank, Pershing-derived cast turret and hull, distinct externally visible exhaust mufflers on upper rear fenders, six road wheels with small additional track tension wheel near the rear, 90 mm gun, olive drab."
+  },
+  "us_m4a1": {
+    "page": "https://en.wikipedia.org/wiki/M4_Sherman",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/M4_Sherman_tank_-_Flickr_-_Joost_J._Bakker_IJmuiden.jpg/1280px-M4_Sherman_tank_-_Flickr_-_Joost_J._Bakker_IJmuiden.jpg",
+    "label": "1280px-M4_Sherman_tank_-_Flickr_-_Joost_J._Bakker_IJmuiden.jpg",
+    "subject": "M4A1 Sherman with early rounded cast upper hull and small hatch arrangement, oval cast turret with short 75 mm gun, three VVSS bogie pairs per side, olive drab. Round curved cast shoulders conspicuous."
+  },
+  "us_m4a3e8": {
+    "photo": "https://commons.wikimedia.org/wiki/File:M4A3E8.jpg",
+    "label": "M4A3E8.jpg",
+    "subject": "Late wartime M4A3E8 Easy Eight Sherman, sharp welded sloped hull, distinctive HVSS paired suspension with broad tracks, oval T23-type turret, long 76 mm gun and modest two-baffle muzzle brake, olive drab.",
+    "prompt": "Create a NEW four-view orthographic reference plate as one 3:2 image. The output must be a precise 2 by 2 matrix, never a single camera photograph. Top-left overhead nose right, top-right true flat side nose right, bottom-left directly from the front, bottom-right directly from the rear. Each quadrant shows the entire same tank with an ample studio backdrop around it. Exact matched plan and elevations. Input image 1 is the subject's archival or museum photo, only for the hardware. Input image 2 is the sheet layout example, of a completely different vehicle: use only the four-position layout and soft pale background from image 2. Subject in all four cells: Late wartime M4A3E8 Easy Eight Sherman, sharp welded sloped hull, distinctive HVSS paired suspension with broad tracks, oval T23-type turret, long 76 mm gun and modest two-baffle muzzle brake, olive drab. Full-size photoreal steel textures with diffuse neutral lighting and subdued matte paint, no markings, words, people, scenery, action, signs or other vehicles."
+  },
+  "us_m50": {
+    "page": "https://en.wikipedia.org/wiki/M50_Ontos",
+    "photo": "https://upload.wikimedia.org/wikipedia/commons/3/34/Ontos.jpg",
+    "label": "Ontos.jpg",
+    "subject": "M50 Ontos US Marine tracked tank destroyer, short light sharp-sided low hull, FOUR small wheels per side, exact six externally mounted slender parallel recoilless tubes in two stacks of three framing a central low mounting plate, green olive paint."
+  },
+  "us_m56": {
+    "page": "https://en.wikipedia.org/wiki/M56_Scorpion",
+    "photo": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/37/M56_at_AAF_Tank_Museum.JPG/330px-M56_at_AAF_Tank_Museum.JPG",
+    "label": "330px-M56_at_AAF_Tank_Museum.JPG",
+    "subject": "M56 Scorpion early US airborne tank destroyer, compact low open tracked platform with four large rubber-tired wheels, large raised breech and long 90 mm barrel through a very small flat shield. Minimal upper structure. Olive drab."
+  }
+}

@@ -519,7 +519,7 @@ def narrow_soviet_barrel(turret, vehicle, profile):
             raised.putpixel((x, y), (0, 0, 0, 0))
 
 
-def build_fleet(catalog, png_dir):
+def build_fleet(catalog, png_dir, *, skip=()):
     rebuilt = set()
     if not SEEDS.is_file():
         return rebuilt
@@ -527,7 +527,7 @@ def build_fleet(catalog, png_dir):
         originals = {v["id"]:v for v in json.loads(archive.read("vehicles_catalog.json"))["vehicles"]}
         for vehicle in catalog["vehicles"]:
             name = vehicle["id"]
-            if name in KEEP:
+            if name in KEEP or name in skip:
                 continue
             if name not in RUNNING_GEAR:
                 continue

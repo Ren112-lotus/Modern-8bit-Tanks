@@ -8,6 +8,7 @@ namespace Modern8bitTanks
     /// Renders a horizontal sprite-stack sheet (ground slice on left -> top slice on right)
     /// both in Edit Mode (Scene View / Prefab Stage preview, DontSave) and Play Mode
     /// (mutable per-slice Texture2Ds supporting localized voxel/pixel crumbling and red hit flash).
+    /// Supports tall vehicle profiles cleanly without horizontal slice gaps via sub-layer doubling.
     /// </summary>
     [ExecuteAlways]
     public class SpriteStackRenderer : MonoBehaviour
@@ -16,7 +17,7 @@ namespace Modern8bitTanks
         public int sliceCount = 10;
         public float pixelsPerUnit = 16f;
         [Range(0.2f, 1.0f)] public float squash = 0.75f;
-        [Range(0f, 3.0f)] public float spacingPx = 1.0f;
+        [Range(0f, 3.0f)] public float spacingPx = 0.65f;
         public float baseZOffsetSlices = 0f;
         public int baseSortingOrder = 0;
         public Material sliceMaterial;
@@ -31,6 +32,8 @@ namespace Modern8bitTanks
         private readonly List<Texture2D> _sliceTextures = new();
         private readonly List<SpriteRenderer> _renderers = new();
         private readonly List<Transform> _holders = new();
+        private readonly List<SpriteRenderer> _fillRenderers = new();
+        private readonly List<Transform> _fillHolders = new();
         private SpriteRenderer _shadowSr;
         private Transform _shadowHolder;
         private SpriteRenderer _aoShadowSr;
@@ -161,13 +164,6 @@ namespace Modern8bitTanks
                 tex.Apply(false, false);
                 _sliceTextures.Add(tex);
 
-                var holder = new GameObject($"Holder_{z:00}").transform;
-                holder.SetParent(_visualRoot, false);
-                _holders.Add(holder);
-
-                var sGo = new GameObject($"Slice_{z:00}");
-                sGo.transform.SetParent(holder, false);
-                var sr = sGo.AddComponent<SpriteRenderer>();
                 var spr = Sprite.Create(
                     tex,
                     new Rect(0, 0, _sliceW, _sliceH),
@@ -177,10 +173,32 @@ namespace Modern8bitTanks
                     SpriteMeshType.FullRect
                 );
                 spr.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
+
+                // Primary slice layer
+                var holder = new GameObject($"Holder_{z:00}").transform;
+                holder.SetParent(_visualRoot, false);
+                _holders.Add(holder);
+
+                var sGo = new GameObject($"Slice_{z:00}");
+                sGo.transform.SetParent(holder, false);
+                var sr = sGo.AddComponent<SpriteRenderer>();
                 sr.sprite = spr;
-                sr.sortingOrder = baseSortingOrder + z;
+                sr.sortingOrder = baseSortingOrder + z * 2;
                 if (sliceMaterial != null) sr.sharedMaterial = sliceMaterial;
                 _renderers.Add(sr);
+
+                // Half-step gap-fill sub-layer (shares exact same Sprite — keeps tall vehicle spacing 100% solid!)
+                var fHolder = new GameObject($"FillHolder_{z:00}").transform;
+                fHolder.SetParent(_visualRoot, false);
+                _fillHolders.Add(fHolder);
+
+                var fGo = new GameObject($"FillSlice_{z:00}");
+                fGo.transform.SetParent(fHolder, false);
+                var fSr = fGo.AddComponent<SpriteRenderer>();
+                fSr.sprite = spr;
+                fSr.sortingOrder = baseSortingOrder + z * 2 + 1;
+                if (sliceMaterial != null) fSr.sharedMaterial = sliceMaterial;
+                _fillRenderers.Add(fSr);
 
                 if (addGroundShadow && z == 1)
                 {
@@ -205,6 +223,7 @@ namespace Modern8bitTanks
             Vector2 camUp = Application.isPlaying ? SpriteStackCamera.CamUp : Vector2.up;
             Quaternion holderRot = Quaternion.Euler(0f, 0f, camRoll);
             Quaternion sliceRot = Quaternion.Euler(0f, 0f, angleDeg - camRoll);
+            bool useFill = spacingPx > 1.06f;
 
             if (_aoShadowHolder != null && _aoShadowSr != null)
             {
@@ -217,7 +236,7 @@ namespace Modern8bitTanks
             if (_shadowHolder != null && _shadowSr != null)
             {
                 // Height-scaled directional afternoon shadow matching upper-left sun (-0.66, 0.75) -> lower-right cast
-                float hScale = Mathf.Clamp(sliceCount / 10f, 0.75f, 2.2f);
+                float hScale = Mathf.Clamp((sliceCount * spacingPx) / 10f, 0.85f, 2.4f);
                 _shadowHolder.localPosition = new Vector3(3.6f * hScale * unitPerPx, -2.7f * hScale * unitPerPx, 0.05f);
                 _shadowHolder.localRotation = holderRot;
                 _shadowHolder.localScale = new Vector3(1.04f, squash * 0.96f, 1f);
@@ -227,21 +246,45 @@ namespace Modern8bitTanks
             for (int z = 0; z < _renderers.Count; z++)
             {
                 if (_renderers[z] == null || _holders[z] == null) continue;
-                float liftY = Mathf.Round((baseZOffsetSlices + z) * spacingPx) * unitPerPx;
+                float liftY = (baseZOffsetSlices + z) * spacingPx * unitPerPx;
                 float sliceZ = -(baseZOffsetSlices + z) * 0.002f;
                 _holders[z].localPosition = new Vector3(camUp.x * liftY, camUp.y * liftY, sliceZ);
                 _holders[z].localRotation = holderRot;
                 _holders[z].localScale = new Vector3(1f, squash, 1f);
                 _renderers[z].transform.localRotation = sliceRot;
 
+                float height01 = _renderers.Count > 1 ? (float)z / (_renderers.Count - 1) : 1f;
                 if (_mpb != null)
                 {
-                    float height01 = _renderers.Count > 1 ? (float)z / (_renderers.Count - 1) : 1f;
                     _renderers[z].GetPropertyBlock(_mpb);
                     _mpb.SetFloat(FlashAmountId, Mathf.Clamp01(hitFlash * 1.15f));
                     _mpb.SetFloat(CharredId, charred ? 1f : 0f);
                     _mpb.SetFloat(Height01Id, height01);
                     _renderers[z].SetPropertyBlock(_mpb);
+                }
+
+                if (z < _fillRenderers.Count && _fillRenderers[z] != null && _fillHolders[z] != null)
+                {
+                    _fillRenderers[z].enabled = useFill;
+                    if (useFill)
+                    {
+                        float fillLiftY = (baseZOffsetSlices + z + 0.5f) * spacingPx * unitPerPx;
+                        float fillZ = -(baseZOffsetSlices + z + 0.5f) * 0.002f;
+                        _fillHolders[z].localPosition = new Vector3(camUp.x * fillLiftY, camUp.y * fillLiftY, fillZ);
+                        _fillHolders[z].localRotation = holderRot;
+                        _fillHolders[z].localScale = new Vector3(1f, squash, 1f);
+                        _fillRenderers[z].transform.localRotation = sliceRot;
+
+                        if (_mpb != null)
+                        {
+                            float fillH01 = _renderers.Count > 1 ? Mathf.Clamp01((z + 0.5f) / (_renderers.Count - 1)) : 1f;
+                            _fillRenderers[z].GetPropertyBlock(_mpb);
+                            _mpb.SetFloat(FlashAmountId, Mathf.Clamp01(hitFlash * 1.15f));
+                            _mpb.SetFloat(CharredId, charred ? 1f : 0f);
+                            _mpb.SetFloat(Height01Id, fillH01);
+                            _fillRenderers[z].SetPropertyBlock(_mpb);
+                        }
+                    }
                 }
             }
         }
@@ -360,11 +403,11 @@ namespace Modern8bitTanks
 
         private void ClearStack()
         {
-            // Clean up any leftover preview container too
+            // Clean up any leftover preview/voxel container too
             for (int i = transform.childCount - 1; i >= 0; i--)
             {
                 Transform child = transform.GetChild(i);
-                if (child.name == VisualContainerName)
+                if (child.name == VisualContainerName || child.name == "__VoxelMeshVisual")
                 {
                     if (Application.isPlaying) Destroy(child.gameObject);
                     else DestroyImmediate(child.gameObject);
@@ -384,6 +427,8 @@ namespace Modern8bitTanks
             }
             _holders.Clear();
             _renderers.Clear();
+            _fillHolders.Clear();
+            _fillRenderers.Clear();
             _sliceTextures.Clear();
         }
 

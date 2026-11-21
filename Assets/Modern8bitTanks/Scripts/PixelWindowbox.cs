@@ -15,7 +15,7 @@ namespace Modern8bitTanks
     {
         public int renderWidth = 480;
         public int renderHeight = 270;
-        public int hd2dScale = 3; // 480x270 * 3 = 1440x810 HD-2D HDR world buffer
+        public int hd2dScale = 1; // Strict 480x270 native pixel-art HDR buffer (crisp 1:1 dot grid!)
         public bool hd2dEnabled = true;
         public bool integerScale = false; // Default: 16:9 Letterbox
         public Color matteColor = new Color(0.05f, 0.05f, 0.04f, 1f);
@@ -139,11 +139,11 @@ namespace Modern8bitTanks
             int gw = renderWidth * scale;
             int gh = renderHeight * scale;
 
-            // HD-2D HDR RenderTexture for Game World + URP Bloom / Lighting / Tilt-Shift
+            // Native 480x270 Point-filtered HDR RenderTexture: razor-sharp pixel art + selective HDR Bloom!
             _gameRt = new RenderTexture(gw, gh, 24, RenderTextureFormat.DefaultHDR)
             {
-                name = hd2dEnabled ? "Modern8bitTanks_HD2D_GameHDR_RT" : "Modern8bitTanks_Retro_GameHDR_RT",
-                filterMode = hd2dEnabled ? FilterMode.Bilinear : FilterMode.Point,
+                name = hd2dEnabled ? "Modern8bitTanks_PixelHDR_RT" : "Modern8bitTanks_Retro_RT",
+                filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp,
                 antiAliasing = 1,
                 useMipMap = false,

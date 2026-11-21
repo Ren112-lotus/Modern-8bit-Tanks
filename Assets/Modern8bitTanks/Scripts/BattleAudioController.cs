@@ -26,6 +26,7 @@ namespace Modern8bitTanks
         [Range(0f, 1f)] public float tracksMaster = 0.28f;
         [Range(0f, 1f)] public float servoMaster = 0.35f;
         [Range(0f, 1.2f)] public float combatSfxMaster = 0.95f;
+        [Range(0f, 1.2f)] public float bgmMaster = 0.65f;
 
         // Stereo & attenuation tuning (in Unity world units; expanded 1280x860 battlefield is 80 x 53.75 units)
         private const float FullPanDistance = 16.0f;
@@ -53,6 +54,9 @@ namespace Modern8bitTanks
         private AudioSource _missileMotorSource;
         private AudioLowPassFilter _missileMotorLp;
 
+        // Dedicated full-bandwidth stereo Battle BGM player (completely independent of SE/SFX!)
+        private AudioSource _bgmSource;
+
         public void Initialize(AudioClip trackClip, AudioClip servoClip, AudioClip missileMotorClip = null)
         {
             _dryPool = CreatePool("DryVoice", DryPoolSize, withReverb: false);
@@ -62,6 +66,16 @@ namespace Modern8bitTanks
             _trackSource = CreateLoopSource("Loop_Tracks", out _trackLp, 2200f);
             _servoSource = CreateLoopSource("Loop_TurretServo", out _, 3400f);
             _missileMotorSource = CreateLoopSource("Loop_MissileMotor", out _missileMotorLp, 6500f);
+
+            var bgmGo = new GameObject("BattleBGM");
+            bgmGo.transform.SetParent(transform, false);
+            _bgmSource = bgmGo.AddComponent<AudioSource>();
+            _bgmSource.playOnAwake = false;
+            _bgmSource.loop = true;
+            _bgmSource.volume = 0f;
+            _bgmSource.panStereo = 0f;
+            _bgmSource.spatialBlend = 0f;
+            _bgmSource.dopplerLevel = 0f;
 
             _trackSource.clip = trackClip;
             _servoSource.clip = servoClip;
@@ -148,9 +162,11 @@ namespace Modern8bitTanks
             bool sfxEnabled,
             float pitchMin = 0.94f,
             float pitchMax = 1.06f,
-            bool centerPan = false)
+            bool centerPan = false,
+            float sfxVolume = 1f)
         {
-            if (!sfxEnabled || clip == null) return;
+            float volScale = Mathf.Clamp01(sfxVolume);
+            if (!sfxEnabled || volScale <= 0.001f || clip == null) return;
 
             Vector2 delta = worldPos - listenerPos;
             float dist = delta.magnitude;
@@ -161,7 +177,7 @@ namespace Modern8bitTanks
 
             // 2. Natural outdoor distance attenuation
             float atten = centerPan ? 1f : 1f / (1f + Mathf.Pow(dist / HalfVolumeDistance, 1.35f));
-            float finalVol = Mathf.Clamp01(baseVolume * combatSfxMaster * atten);
+            float finalVol = Mathf.Clamp01(baseVolume * combatSfxMaster * volScale * atten);
             if (finalVol < 0.015f) return;
 
             // 3. Distant air-absorption lowpass (faraway blasts lose crisp high end naturally)
@@ -212,6 +228,43 @@ namespace Modern8bitTanks
             if (_servoSource.clip != null && !_servoSource.isPlaying) _servoSource.Play();
         }
 
+        public void StartBattleBgm(AudioClip bgmClip)
+        {
+            if (_bgmSource == null || bgmClip == null) return;
+            if (_bgmSource.clip != bgmClip)
+            {
+                _bgmSource.Stop();
+                _bgmSource.clip = bgmClip;
+            }
+            if (!_bgmSource.isPlaying)
+                _bgmSource.Play();
+        }
+
+        public void StopBattleBgm()
+        {
+            if (_bgmSource != null)
+            {
+                _bgmSource.Stop();
+                _bgmSource.volume = 0f;
+            }
+        }
+
+        public void UpdateBgm(bool active, bool bgmEnabled, float bgmVolume, bool duckForMenu)
+        {
+            if (_bgmSource == null || _bgmSource.clip == null) return;
+
+            float vol01 = Mathf.Clamp01(bgmVolume);
+            float targetVol = (!active || !bgmEnabled || vol01 <= 0.001f)
+                ? 0f
+                : Mathf.Clamp01(vol01 * bgmMaster * (duckForMenu ? 0.55f : 1f));
+
+            if (targetVol > 0.001f && !_bgmSource.isPlaying)
+                _bgmSource.Play();
+
+            float rate = targetVol > _bgmSource.volume ? 2.4f : 4.2f;
+            _bgmSource.volume = Mathf.MoveTowards(_bgmSource.volume, targetVol, Time.unscaledDeltaTime * rate);
+        }
+
         public void StopLoopsImmediate()
         {
             if (_engineSource != null) _engineSource.volume = 0f;
@@ -223,10 +276,11 @@ namespace Modern8bitTanks
         /// <summary>
         /// Spatialized in-flight rocket motor roar following the closest active TOW/ATGM missile!
         /// </summary>
-        public void UpdateMissileMotorLoop(bool hasActiveMissile, Vector2 missilePos, Vector2 listenerPos, bool sfxEnabled, float dt)
+        public void UpdateMissileMotorLoop(bool hasActiveMissile, Vector2 missilePos, Vector2 listenerPos, bool sfxEnabled, float dt, float sfxVolume = 1f)
         {
             if (_missileMotorSource == null || _missileMotorSource.clip == null) return;
-            if (!hasActiveMissile || !sfxEnabled)
+            float volScale = Mathf.Clamp01(sfxVolume);
+            if (!hasActiveMissile || !sfxEnabled || volScale <= 0.001f)
             {
                 _missileMotorSource.volume = Mathf.MoveTowards(_missileMotorSource.volume, 0f, Time.unscaledDeltaTime * 5.5f);
                 return;
@@ -237,7 +291,7 @@ namespace Modern8bitTanks
             float dist = delta.magnitude;
             float pan = Mathf.Clamp(delta.x / FullPanDistance, -0.92f, 0.92f);
             float atten = 1f / (1f + Mathf.Pow(dist / HalfVolumeDistance, 1.2f));
-            float targetVol = Mathf.Clamp01(0.42f * combatSfxMaster * atten);
+            float targetVol = Mathf.Clamp01(0.42f * combatSfxMaster * volScale * atten);
             _missileMotorSource.panStereo = Mathf.Lerp(_missileMotorSource.panStereo, pan, dt * 12f);
             _missileMotorSource.volume = Mathf.Lerp(_missileMotorSource.volume, targetVol, dt * 14f);
             _missileMotorSource.pitch = 1.18f + Mathf.Clamp01(1f - dist / 30f) * 0.14f;
@@ -245,9 +299,10 @@ namespace Modern8bitTanks
                 _missileMotorLp.cutoffFrequency = Mathf.Lerp(14000f, 2600f, Mathf.Clamp01(dist / MaxAudibleDistance));
         }
 
-        public void UpdatePlayerLoops(bool active, float moving01, float turretTurn01, float dt)
+        public void UpdatePlayerLoops(bool active, float moving01, float turretTurn01, float dt, float sfxVolume = 1f)
         {
-            if (!active)
+            float volScale = Mathf.Clamp01(sfxVolume);
+            if (!active || volScale <= 0.001f)
             {
                 _engineSource.volume = Mathf.MoveTowards(_engineSource.volume, 0f, Time.unscaledDeltaTime * 2.5f);
                 _trackSource.volume = Mathf.MoveTowards(_trackSource.volume, 0f, Time.unscaledDeltaTime * 3.5f);
@@ -256,7 +311,7 @@ namespace Modern8bitTanks
             }
 
             // Quiet, warm cabin bed so cannon blasts, ricochets, & reload clanks stay crisp and dominant!
-            float targetEngVol = (0.11f + moving01 * 0.14f) * engineMaster; // ~0.038 idle -> ~0.088 full speed
+            float targetEngVol = (0.11f + moving01 * 0.14f) * engineMaster * volScale; // ~0.038 idle -> ~0.088 full speed
             float targetEngPitch = 0.88f + moving01 * 0.30f;
             _engineSource.volume = Mathf.Lerp(_engineSource.volume, targetEngVol, dt * 6f);
             _engineSource.pitch = Mathf.Lerp(_engineSource.pitch, targetEngPitch, dt * 5f);
@@ -264,7 +319,7 @@ namespace Modern8bitTanks
                 _engineLp.cutoffFrequency = Mathf.Lerp(1350f, 2600f, moving01);
 
             // Subtle caterpillar clatter underneath the tank
-            float targetTrackVol = moving01 > 0.08f ? (0.07f + moving01 * 0.16f) * tracksMaster : 0f; // max ~0.064
+            float targetTrackVol = moving01 > 0.08f ? (0.07f + moving01 * 0.16f) * tracksMaster * volScale : 0f; // max ~0.064
             _trackSource.volume = Mathf.Lerp(_trackSource.volume, targetTrackVol, dt * 8f);
             _trackSource.pitch = 0.88f + moving01 * 0.34f;
             if (_trackLp != null)
@@ -272,7 +327,7 @@ namespace Modern8bitTanks
 
             // Very subtle turret traverse servo whirr
             float turn01 = Mathf.Clamp01(turretTurn01);
-            float targetServoVol = turn01 > 0.14f ? turn01 * 0.12f * servoMaster : 0f; // max ~0.042
+            float targetServoVol = turn01 > 0.14f ? turn01 * 0.12f * servoMaster * volScale : 0f; // max ~0.042
             _servoSource.volume = Mathf.Lerp(_servoSource.volume, targetServoVol, dt * 10f);
             _servoSource.pitch = 0.95f + turn01 * 0.22f;
         }

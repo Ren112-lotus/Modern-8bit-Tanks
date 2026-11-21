@@ -28,6 +28,10 @@ namespace Modern8bitTanks
         public float smokeDuration = 9.0f;
         public float atgmDuration = 3.5f;
 
+        [Header("Mobility & Traverse (deg/sec)")]
+        public float hullTurnSpeed = 145f;
+        public float turretTurnSpeed = 240f;
+
         [Header("Runtime State")]
         public bool isPlayer;
         public bool isExtraSpawned; // True for dynamically spawned 2v2 / Survival wave tanks
@@ -59,14 +63,17 @@ namespace Modern8bitTanks
             }
         }
         public float treadAccum;
+        public float dustTimer;
         public float smokeTimer;
 
         // Telemetry for audio & feedback
         public bool JustFinishedReloading { get; private set; }
         public float TurretTurnRateDeg { get; private set; }
+        public float HullTurnRateDeg { get; private set; }
         public float HullTurnInput { get; set; }
         private bool _wasReloading;
         private float _prevTurretAngle;
+        private float _prevHullAngle;
 
         // Turret Toss state
         public bool turretTossed;
@@ -171,13 +178,13 @@ namespace Modern8bitTanks
                 turretGo.transform.SetParent(transform, false);
                 turretStack = turretGo.AddComponent<SpriteStackRenderer>();
             }
-            turretStack.Configure(turretSheet, meta.turretSlices, ppu, mat, meta.hullSlices + 2, meta.hullBaseHeight, groundShadow: false);
+            turretStack.Configure(turretSheet, meta.turretSlices, ppu, mat, meta.hullSlices * 2 + 4, meta.hullBaseHeight, groundShadow: false);
 
             SyncEditModePreview();
         }
 
         /// <summary>
-        /// Dynamically swaps this tank's Sprite-Stack slices, stats, & weapon profile to any of the 63 VehicleDefs!
+        /// Swaps this tank's sprite slices, stats, and weapon profile to a catalog vehicle.
         /// </summary>
         public void ApplyVehicleDef(VehicleDef def, Texture2D hullSheet, Texture2D turretSheet, Material mat = null)
         {
@@ -186,6 +193,8 @@ namespace Modern8bitTanks
             tankType = def.id;
             meta = def.ToTankMeta();
             reloadDuration = def.reload;
+            hullTurnSpeed = def.EffectiveHullTurnSpeed;
+            turretTurnSpeed = def.EffectiveTurretTurnSpeed;
 
             sortingGroup = GetComponent<SortingGroup>();
             Material useMat = mat != null ? mat : (hullStack != null ? hullStack.sliceMaterial : null);
@@ -206,7 +215,7 @@ namespace Modern8bitTanks
                 turretStack = turretGo.AddComponent<SpriteStackRenderer>();
             }
             if (turretSheet != null)
-                turretStack.Configure(turretSheet, meta.turretSlices, pixelsPerUnit, useMat, meta.hullSlices + 2, meta.hullBaseHeight, groundShadow: false);
+                turretStack.Configure(turretSheet, meta.turretSlices, pixelsPerUnit, useMat, meta.hullSlices * 2 + 4, meta.hullBaseHeight, groundShadow: false);
 
             _turretHeightSlices = meta.hullBaseHeight;
             SyncEditModePreview();
@@ -228,12 +237,17 @@ namespace Modern8bitTanks
             if (vehicleDef != null)
             {
                 reloadDuration = vehicleDef.reload;
+                hullTurnSpeed = vehicleDef.EffectiveHullTurnSpeed;
+                turretTurnSpeed = vehicleDef.EffectiveTurretTurnSpeed;
             }
 
             float ang = overrideAngle ?? initialAngleDeg;
             hullAngleDeg = ang;
             turretAngleDeg = ang;
             _prevTurretAngle = ang;
+            _prevHullAngle = ang;
+            HullTurnRateDeg = 0f;
+            TurretTurnRateDeg = 0f;
             moveSpeed = 0f;
             recoilPx = 0f;
             suspensionOffset = 1f;
@@ -249,6 +263,7 @@ namespace Modern8bitTanks
             alive = true;
             ResetCombat();
             treadAccum = 0f;
+            dustTimer = 0f;
             smokeTimer = 0f;
             HullTurnInput = 0f;
 
@@ -384,7 +399,9 @@ namespace Modern8bitTanks
             atgmCooldown = Mathf.Max(0f, atgmCooldown - dt);
             smokeCooldown = Mathf.Max(0f, smokeCooldown - dt);
 
-            // Track turret turn velocity for servo audio
+            // Track hull & turret turn velocities for dust FX and servo audio
+            HullTurnRateDeg = dt > 0.0001f ? Mathf.DeltaAngle(_prevHullAngle, hullAngleDeg) / dt : 0f;
+            _prevHullAngle = hullAngleDeg;
             TurretTurnRateDeg = dt > 0.0001f ? Mathf.Abs(Mathf.DeltaAngle(_prevTurretAngle, turretAngleDeg)) / dt : 0f;
             _prevTurretAngle = turretAngleDeg;
 

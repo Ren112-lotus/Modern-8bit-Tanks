@@ -47,10 +47,13 @@ namespace Modern8bitTanks
         public bool arcadeWASD = false;
         public bool aiEnabled = true;
         public bool sfxEnabled = true;
+        [Range(0f, 1f)] public float sfxVolume = 1.0f;
+        public bool bgmEnabled = true;
+        [Range(0f, 1f)] public float bgmVolume = 0.60f;
 
         [Header("Sprite Stacking Settings")]
         [Range(0.45f, 1.0f)] public float squash = 0.75f;
-        [Range(0f, 2.5f)] public float spacingPx = 1.0f;
+        [Range(0f, 2.5f)] public float spacingPx = 0.65f;
         [Range(0.7f, 1.5f)] public float cameraZoom = 1.0f;
 
         [Header("Fixed RenderTexture Letterbox")]
@@ -87,6 +90,7 @@ namespace Modern8bitTanks
         private AudioClip _sfxMissileLaunch;
         private AudioClip _sfxMissileHeavy;
         private AudioClip _sfxMissileMotor;
+        private AudioClip _sfxBattleBgm;
 
         private BattleAudioController _audio;
 
@@ -190,6 +194,11 @@ namespace Modern8bitTanks
             public float life;
             public float maxLife;
             public float baseSize;
+            public Color baseColor;
+            public bool expandAndFade;
+            public float endScaleMul;
+            public float drag;
+            public float zPos;
             public GameObject go;
             public SpriteRenderer sr;
         }
@@ -218,6 +227,10 @@ namespace Modern8bitTanks
             _cam.clearFlags = CameraClearFlags.SolidColor;
             _cam.backgroundColor = new Color(0.11f, 0.09f, 0.06f, 1f);
 
+            // Sleek, low-slung hull/turret height matching the ~0.62x oblique 3D profile!
+            squash = 0.75f;
+            spacingPx = 0.65f;
+
             // Pull player's Hangar selection & persistent settings from BattleSessionState!
             selectedPlayerVehicleId = BattleSessionState.SelectedPlayerVehicleId;
             battleMode = BattleSessionState.SelectedBattleMode;
@@ -227,6 +240,9 @@ namespace Modern8bitTanks
             arcadeWASD = BattleSessionState.ArcadeWASD;
             aiEnabled = BattleSessionState.AiEnabled;
             sfxEnabled = BattleSessionState.SfxEnabled;
+            sfxVolume = BattleSessionState.SfxVolume;
+            bgmEnabled = BattleSessionState.BgmEnabled;
+            bgmVolume = BattleSessionState.BgmVolume;
             postProcessEnabled = BattleSessionState.PostProcessEnabled;
             integerWindowbox = BattleSessionState.IntegerWindowbox;
             _winsAlly = BattleSessionState.WinsAlly;
@@ -249,6 +265,7 @@ namespace Modern8bitTanks
             _audio = GetComponent<BattleAudioController>();
             if (_audio == null) _audio = gameObject.AddComponent<BattleAudioController>();
             _audio.Initialize(_sfxTrackClatter, _sfxTurretServo, _sfxMissileMotor);
+            _audio.StartBattleBgm(_sfxBattleBgm);
 
             _atmosphere = GetComponent<DesertAtmosphere>();
             if (_atmosphere == null) _atmosphere = gameObject.AddComponent<DesertAtmosphere>();
@@ -404,6 +421,7 @@ namespace Modern8bitTanks
             _sfxMissileLaunch = Resources.Load<AudioClip>("SFX/missile_launch") ?? _sfxSmokePop;
             _sfxMissileHeavy = Resources.Load<AudioClip>("SFX/missile_heavy") ?? _sfxMissileLaunch;
             _sfxMissileMotor = Resources.Load<AudioClip>("SFX/missile_motor");
+            _sfxBattleBgm = Resources.Load<AudioClip>("SFX/battle_bgm");
 
             var whiteTex = new Texture2D(1, 1, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };
             whiteTex.SetPixel(0, 0, Color.white);
@@ -479,6 +497,7 @@ namespace Modern8bitTanks
                 var gGo = new GameObject("DesertGround");
                 desertGroundRenderer = gGo.AddComponent<SpriteRenderer>();
             }
+            desertGroundRenderer.enabled = true;
             desertGroundRenderer.transform.position = new Vector3(WorldW * 0.5f, WorldH * 0.5f, 5f);
             desertGroundRenderer.sortingOrder = -30000;
             if (_groundHd2dMat != null) desertGroundRenderer.sharedMaterial = _groundHd2dMat;
@@ -570,10 +589,58 @@ namespace Modern8bitTanks
             BattleSessionState.ArcadeWASD = arcadeWASD;
             BattleSessionState.AiEnabled = aiEnabled;
             BattleSessionState.SfxEnabled = sfxEnabled;
+            BattleSessionState.SfxVolume = sfxVolume;
+            BattleSessionState.BgmEnabled = bgmEnabled;
+            BattleSessionState.BgmVolume = bgmVolume;
             BattleSessionState.PostProcessEnabled = postProcessEnabled;
             BattleSessionState.IntegerWindowbox = integerWindowbox;
             BattleSessionState.WinsAlly = _winsAlly;
             BattleSessionState.WinsEnemy = _winsEnemy;
+            BattleSessionState.SaveSettings();
+        }
+
+        public void ToggleSfxEnabled()
+        {
+            BattleSessionState.SfxEnabled = sfxEnabled;
+            BattleSessionState.SfxVolume = sfxVolume;
+            BattleSessionState.ToggleSfxEnabled();
+            sfxEnabled = BattleSessionState.SfxEnabled;
+            sfxVolume = BattleSessionState.SfxVolume;
+            PlayUiPreviewSfx();
+        }
+
+        public void StepSfxVolume(float delta)
+        {
+            BattleSessionState.SfxEnabled = sfxEnabled;
+            BattleSessionState.SfxVolume = sfxVolume;
+            BattleSessionState.StepSfxVolume(delta);
+            sfxEnabled = BattleSessionState.SfxEnabled;
+            sfxVolume = BattleSessionState.SfxVolume;
+            PlayUiPreviewSfx();
+        }
+
+        public void ToggleBgmEnabled()
+        {
+            BattleSessionState.BgmEnabled = bgmEnabled;
+            BattleSessionState.BgmVolume = bgmVolume;
+            BattleSessionState.ToggleBgmEnabled();
+            bgmEnabled = BattleSessionState.BgmEnabled;
+            bgmVolume = BattleSessionState.BgmVolume;
+        }
+
+        public void StepBgmVolume(float delta)
+        {
+            BattleSessionState.BgmEnabled = bgmEnabled;
+            BattleSessionState.BgmVolume = bgmVolume;
+            BattleSessionState.StepBgmVolume(delta);
+            bgmEnabled = BattleSessionState.BgmEnabled;
+            bgmVolume = BattleSessionState.BgmVolume;
+        }
+
+        public void PlayUiPreviewSfx()
+        {
+            if (sfxEnabled && sfxVolume > 0.001f && _sfxReloadClank != null)
+                PlaySFXAt(_sfxReloadClank, GetAudioListenerPos(), SoundBus.Dry, 0.65f, centerPan: true, pitchMin: 0.98f, pitchMax: 1.02f);
         }
 
         public void EnterTitleScreen()
@@ -585,6 +652,7 @@ namespace Modern8bitTanks
         {
             Time.timeScale = 1f;
             StopLoopingAudio();
+            _audio?.StopBattleBgm();
             SyncSettingsToSession();
             if (Application.CanStreamedLevelBeLoaded(BattleSessionState.HangarSceneName))
             {
@@ -780,7 +848,8 @@ namespace Modern8bitTanks
             string nation = baseEnemy.nation;
 
             // Wave 1 = chosen rival; Wave 2+ escalates tiers across the rival nation, bringing Special Bosses on Wave 4+!
-            int targetTier = Mathf.Clamp(baseEnemy.tier + (wave - 2) + (slotIndex == 0 && wave >= 4 ? 2 : 0), 1, 11);
+            int targetTier = Mathf.Clamp(baseEnemy.tier + (wave - 2) + (slotIndex == 0 && wave >= 4 ? 2 : 0),
+                VehicleDef.LowestTier, VehicleDef.SpecialTier);
             var candidates = new List<VehicleDef>();
             foreach (var v in _allVehicles)
             {
@@ -877,17 +946,17 @@ namespace Modern8bitTanks
         private void UpdateMechanicalAudio(TankEntity player, float dt)
         {
             if (_audio == null) return;
-            bool active = sfxEnabled && _phase == GamePhase.Playing && player != null && player.alive && (_hud == null || !_hud.IsMenuOpen);
+            bool active = sfxEnabled && sfxVolume > 0.001f && _phase == GamePhase.Playing && player != null && player.alive && (_hud == null || !_hud.IsMenuOpen);
             if (!active)
             {
-                _audio.UpdatePlayerLoops(false, 0f, 0f, dt);
+                _audio.UpdatePlayerLoops(false, 0f, 0f, dt, sfxVolume);
                 return;
             }
 
             float speed01 = Mathf.Clamp01(Mathf.Abs(player.moveSpeed) / (64f / PPU));
             float moving01 = Mathf.Max(speed01, Mathf.Abs(player.HullTurnInput) * 0.7f);
             float turn01 = Mathf.Clamp01(player.TurretTurnRateDeg / 220f);
-            _audio.UpdatePlayerLoops(true, moving01, turn01, dt);
+            _audio.UpdatePlayerLoops(true, moving01, turn01, dt, sfxVolume);
 
             // Crisp metallic breech-lock CLANK inside the turret for main cannons / ATGMs (DRY, centered!)
             if (player.JustFinishedReloading && player.reloadDuration >= 0.65f)
@@ -909,10 +978,13 @@ namespace Modern8bitTanks
 
             if (kb != null && kb.escapeKey.wasPressedThisFrame && _hud != null)
             {
-                _hud.ToggleMenu();
+                _hud.HandleEscapeKey();
             }
 
-            if (_hud != null && _hud.IsMenuOpen)
+            bool menuOpen = _hud != null && _hud.IsMenuOpen;
+            _audio?.UpdateBgm(active: true, bgmEnabled, bgmVolume, duckForMenu: menuOpen);
+
+            if (menuOpen)
             {
                 StopLoopingAudio();
                 PushHudUpdate(GetPlayerTank(), 0f);
@@ -1038,6 +1110,8 @@ namespace Modern8bitTanks
                     t.treadAccum = 0f;
                     StampTankTreads(t);
                 }
+
+                UpdateTrackDust(t, dt);
 
                 if (t.OnFire || t.HasDisabled(TankModule.Engine) || t.Loss == TankLoss.Fire || t.Loss == TankLoss.Ammo)
                 {
@@ -1227,7 +1301,8 @@ namespace Modern8bitTanks
             if (kb.fKey.wasPressedThisFrame || (t.Repairing && driving)) t.RequestService();
 
             float maxSpeed = rawSpd / PPU * t.DriveFactor;
-            float turnDegPerSec = (rawSpd >= 74f ? 185f : 155f) * t.TurnFactor;
+            float turnDegPerSec = t.hullTurnSpeed * t.TurnFactor;
+            float turretDegPerSec = t.turretTurnSpeed * t.TraverseFactor;
             float initialHullAngle = t.hullAngleDeg;
             t.HullTurnInput = 0f;
 
@@ -1245,7 +1320,7 @@ namespace Modern8bitTanks
                     // Align WASD screen input with the rotated camera basis (W always moves UP on screen!)
                     Vector2 worldInp = (SpriteStackCamera.CamRight * inp.x + SpriteStackCamera.CamUp * inp.y).normalized;
                     float targetHull = TankEntity.TargetDeltaToSliceAngle(worldInp, squash);
-                    t.hullAngleDeg = Mathf.MoveTowardsAngle(t.hullAngleDeg, targetHull, turnDegPerSec * 1.9f * dt);
+                    t.hullAngleDeg = Mathf.MoveTowardsAngle(t.hullAngleDeg, targetHull, turnDegPerSec * 1.45f * dt);
                     t.Position2D += worldInp * (maxSpeed * dt);
                     t.moveSpeed = maxSpeed;
                     t.treadAccum += maxSpeed * dt;
@@ -1266,7 +1341,10 @@ namespace Modern8bitTanks
 
                 t.HullTurnInput = steer * t.TurnFactor;
                 if (Mathf.Abs(steer) > 0.01f)
+                {
                     t.hullAngleDeg = Mathf.Repeat(t.hullAngleDeg + steer * turnDegPerSec * dt, 360f);
+                    t.treadAccum += Mathf.Abs(steer * turnDegPerSec * dt) * 0.0085f;
+                }
 
                 float targetSpd = throttle * maxSpeed;
                 t.moveSpeed = Mathf.Lerp(t.moveSpeed, targetSpd, Mathf.Clamp01(dt * 8f));
@@ -1284,7 +1362,9 @@ namespace Modern8bitTanks
             if (t.HasDisabled(TankModule.Traverse))
                 t.turretAngleDeg += Mathf.DeltaAngle(initialHullAngle, t.hullAngleDeg);
             else
-                t.turretAngleDeg = Mathf.MoveTowardsAngle(t.turretAngleDeg, desiredTurret, 310f * t.TraverseFactor * dt);
+                t.turretAngleDeg = Mathf.MoveTowardsAngle(t.turretAngleDeg,
+                    LimitGunTraverse(t, desiredTurret), turretDegPerSec * dt);
+            t.turretAngleDeg = LimitGunTraverse(t, t.turretAngleDeg);
 
             bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
             bool fireMain = (!overUI && mouse != null && mouse.leftButton.isPressed) || kb.spaceKey.isPressed;
@@ -1383,6 +1463,13 @@ namespace Modern8bitTanks
         // ============================================================
         // Multi-Tank AI (Smoke-aware LOS, Flanking, Squad-safe)
         // ============================================================
+        private static float LimitGunTraverse(TankEntity tank, float angle)
+        {
+            int limit = tank.vehicleDef?.fixedGunTraverse ?? 0;
+            return limit > 0 ? tank.hullAngleDeg + Mathf.Clamp(Mathf.DeltaAngle(tank.hullAngleDeg, angle), -limit, limit)
+                : angle;
+        }
+
         private void UpdateAI(TankEntity t, TankEntity target, float dt)
         {
             if (!t.alive || !target.alive || !aiEnabled || _phase != GamePhase.Playing) return;
@@ -1394,15 +1481,16 @@ namespace Modern8bitTanks
             bool losClear = HasLineOfSight(t.Position2D, target.Position2D);
 
             // Only lock turret tightly if enemy isn't hidden behind smoke/cover
+            float aiTurretDegPerSec = t.turretTurnSpeed * t.TraverseFactor;
             if (losClear)
             {
                 float desiredTurret = TankEntity.TargetDeltaToSliceAngle(delta, squash);
-                t.turretAngleDeg = Mathf.MoveTowardsAngle(t.turretAngleDeg, desiredTurret, 155f * t.TraverseFactor * dt);
+                t.turretAngleDeg = Mathf.MoveTowardsAngle(t.turretAngleDeg, desiredTurret, aiTurretDegPerSec * 0.72f * dt);
             }
             else
             {
                 // Slowly sweep turret while flanking around cover/smoke
-                t.turretAngleDeg = Mathf.MoveTowardsAngle(t.turretAngleDeg, t.hullAngleDeg, 75f * t.TraverseFactor * dt);
+                t.turretAngleDeg = Mathf.MoveTowardsAngle(t.turretAngleDeg, t.hullAngleDeg, aiTurretDegPerSec * 0.40f * dt);
             }
 
             t.aiStrafeTimer -= dt;
@@ -1445,17 +1533,23 @@ namespace Modern8bitTanks
             t.moveSpeed = 0f;
             if (move.sqrMagnitude > 0.02f)
             {
-                float targetHull = TankEntity.TargetDeltaToSliceAngle(move.normalized, squash);
+                bool aimWithHull = t.vehicleDef?.fixedGunTraverse is > 0 && losClear && dist < 38f;
+                float targetHull = TankEntity.TargetDeltaToSliceAngle(aimWithHull ? delta : move.normalized, squash);
                 float initialHullAngle = t.hullAngleDeg;
-                t.hullAngleDeg = Mathf.MoveTowardsAngle(t.hullAngleDeg, targetHull, 125f * t.TurnFactor * dt);
+                float aiHullDegPerSec = t.hullTurnSpeed * 0.85f * t.TurnFactor;
+                t.hullAngleDeg = Mathf.MoveTowardsAngle(t.hullAngleDeg, targetHull, aiHullDegPerSec * dt);
+                float turnedDeg = Mathf.Abs(Mathf.DeltaAngle(initialHullAngle, t.hullAngleDeg));
                 if (t.HasDisabled(TankModule.Traverse))
                     t.turretAngleDeg += Mathf.DeltaAngle(initialHullAngle, t.hullAngleDeg);
                 t.moveSpeed = ((t.vehicleDef != null ? t.vehicleDef.speed : 60f) * 0.68f) / PPU * t.DriveFactor;
-                Vector2 dir = TankEntity.SliceAngleToDir(t.hullAngleDeg);
+                if (aimWithHull && dist >= 8f && dist <= 19.5f)
+                    t.moveSpeed = 0f;
+                Vector2 dir = TankEntity.SliceAngleToDir(t.hullAngleDeg) * (aimWithHull && dist < 8f ? -1f : 1f);
                 t.Position2D += SpriteStackCamera.Squash(dir * (t.moveSpeed * dt), squash);
-                t.treadAccum += t.moveSpeed * dt;
+                t.treadAccum += (Mathf.Abs(t.moveSpeed) * dt) + (turnedDeg * 0.0085f);
             }
 
+            t.turretAngleDeg = LimitGunTraverse(t, t.turretAngleDeg);
             if (losClear && dist < 38f)
             {
                 float desiredTurret = TankEntity.TargetDeltaToSliceAngle(delta, squash);
@@ -2086,7 +2180,7 @@ namespace Modern8bitTanks
                 }
             }
 
-            _audio?.UpdateMissileMotorLoop(hasGuidedMissile && _phase == GamePhase.Playing, closestMissilePos, listenerPos, sfxEnabled, dt);
+            _audio?.UpdateMissileMotorLoop(hasGuidedMissile && _phase == GamePhase.Playing, closestMissilePos, listenerPos, sfxEnabled, dt, sfxVolume);
         }
 
         private void ApplyHeOverpressureSplash(Vector2 origin, string ownerFaction, float blastRadius, TankEntity excludeTank = null)
@@ -2293,7 +2387,7 @@ namespace Modern8bitTanks
         {
             Vector2 d = TankEntity.SliceAngleToDir(t.hullAngleDeg);
             Vector2 perp = new Vector2(-d.y, d.x);
-            float trackOff = 8.5f / PPU;
+            float trackOff = ((t.meta != null && t.meta.hullWidth > 0 ? t.meta.hullWidth * 0.38f : 8.5f)) / PPU;
             Color32 treadCol = battleMap switch
             {
                 BattleMap.City => new Color32(44, 45, 48, 255),
@@ -2304,6 +2398,151 @@ namespace Modern8bitTanks
             {
                 Vector2 tp = t.Position2D + SpriteStackCamera.Squash(perp * (trackOff * side), squash);
                 StampGroundRect(Mathf.RoundToInt(tp.x * PPU), Mathf.RoundToInt(tp.y * PPU), 2, 2, treadCol, 0.36f);
+            }
+        }
+
+        /// <summary>
+        /// Kicks up biome-aware dust clouds, dirt clods, and grit particles directly from left & right tracks
+        /// (or tires on wheeled vehicles) proportional to forward speed and pivot-turn track slip!
+        /// </summary>
+        private void UpdateTrackDust(TankEntity t, float dt)
+        {
+            if (t == null || !t.alive || _phase != GamePhase.Playing) return;
+
+            float speedAbs = Mathf.Abs(t.moveSpeed);
+            float turnRate = t.HullTurnRateDeg;
+            float turnAbs = Mathf.Abs(turnRate);
+
+            float move01 = Mathf.Clamp01(speedAbs / 3.8f);
+            float turn01 = Mathf.Clamp01(turnAbs / 115f);
+            float intensity = Mathf.Clamp01(Mathf.Max(move01, turn01 * 0.92f) + move01 * turn01 * 0.35f);
+            if (intensity < 0.07f)
+            {
+                t.dustTimer = Mathf.Min(t.dustTimer, 0.03f);
+                return;
+            }
+
+            t.dustTimer -= dt;
+            if (t.dustTimer > 0f) return;
+
+            float biomeCadence = battleMap switch
+            {
+                BattleMap.Desert => 0.88f,
+                BattleMap.City => 1.25f,
+                _ => 1.02f
+            };
+            t.dustTimer = Mathf.Lerp(0.115f, 0.042f, intensity) * biomeCadence * Random.Range(0.85f, 1.15f);
+
+            // Particle budget guard so 5v5 multi-tank skirmishes remain butter-smooth
+            if (_particles.Count > 420) return;
+
+            Vector2 fwd = TankEntity.SliceAngleToDir(t.hullAngleDeg);
+            Vector2 right = new Vector2(-fwd.y, fwd.x);
+            bool isWheeled = t.vehicleDef != null && t.vehicleDef.IsWheeled;
+
+            float hullW = (t.meta != null && t.meta.hullWidth > 0 ? t.meta.hullWidth : 22) / PPU;
+            float hullL = (t.meta != null && t.meta.hullLength > 0 ? t.meta.hullLength : 38) / PPU;
+            float trackHalfW = hullW * (isWheeled ? 0.39f : 0.43f);
+            float trackHalfL = hullL * 0.37f;
+
+            bool pivotOnly = speedAbs < 0.35f && turnAbs > 18f;
+            float moveSign = t.moveSpeed >= 0f ? 1f : -1f;
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                // During in-place pivot turns, left & right tracks counter-rotate and throw dust in opposite directions!
+                float localTrackDir = pivotOnly
+                    ? (turnRate > 0f ? -side : side)
+                    : moveSign;
+
+                float alongSign = -localTrackDir; // Dust exits behind the driving end of the track
+                float alongJitter = Random.Range(-0.18f, 0.14f) * hullL;
+                Vector2 localOff = right * (side * trackHalfW) + fwd * (alongSign * trackHalfL + alongJitter);
+                Vector2 emitPos = t.Position2D + SpriteStackCamera.Squash(localOff, squash);
+
+                Vector2 kickDir = SpriteStackCamera.Squash(
+                    (fwd * alongSign * Random.Range(0.55f, 1.05f) + right * (side * Random.Range(0.22f, 0.65f))).normalized,
+                    squash
+                );
+                float kickSpd = Mathf.Lerp(0.45f, 1.55f, intensity) * Random.Range(0.8f, 1.25f);
+                Vector2 puffVel = kickDir * kickSpd + SpriteStackCamera.CamUp * Random.Range(0.12f, 0.34f);
+
+                Color puffCol;
+                Color gritCol;
+                float puffScale;
+                float puffLife;
+                float gritChance;
+
+                if (battleMap == BattleMap.Forest)
+                {
+                    float shade = Random.Range(0.86f, 1.08f);
+                    puffCol = new Color(0.46f * shade, 0.39f * shade, 0.28f * shade, Mathf.Lerp(0.24f, 0.44f, intensity));
+                    gritCol = Random.value < 0.38f
+                        ? new Color(0.24f, 0.44f, 0.18f, 0.92f)  // Torn grass flecks
+                        : new Color(0.32f, 0.23f, 0.14f, 0.95f); // Wet dark mud clods
+                    puffScale = Mathf.Lerp(0.30f, 0.56f, intensity) * (isWheeled ? 0.85f : 1.0f);
+                    puffLife = Random.Range(0.36f, 0.62f);
+                    gritChance = 0.58f;
+                }
+                else if (battleMap == BattleMap.City)
+                {
+                    float shade = Random.Range(0.90f, 1.08f);
+                    puffCol = new Color(0.62f * shade, 0.61f * shade, 0.58f * shade, Mathf.Lerp(0.18f, 0.34f, intensity));
+                    gritCol = new Color(0.46f * shade, 0.45f * shade, 0.43f * shade, 0.85f); // Concrete / asphalt grit
+                    puffScale = Mathf.Lerp(0.26f, 0.48f, intensity) * (isWheeled ? 0.82f : 1.0f);
+                    puffLife = Random.Range(0.32f, 0.54f);
+                    gritChance = 0.32f;
+                }
+                else // Desert — thick sunlit sand plumes & flying sand grains!
+                {
+                    float shade = Random.Range(0.90f, 1.08f);
+                    puffCol = new Color(0.84f * shade, 0.72f * shade, 0.50f * shade, Mathf.Lerp(0.30f, 0.54f, intensity));
+                    gritCol = new Color(0.90f * shade, 0.77f * shade, 0.50f * shade, 0.94f);
+                    puffScale = Mathf.Lerp(0.34f, 0.68f, intensity) * (isWheeled ? 0.86f : 1.05f);
+                    puffLife = Random.Range(0.42f, 0.74f);
+                    gritChance = 0.54f;
+                }
+
+                // Sort gently under the tank's SortingGroup (-pos.y * 100) so dust billows out from beneath the treads!
+                int dustOrder = Mathf.Clamp(Mathf.RoundToInt(-emitPos.y * 100f) - 18, -10500, 10500);
+
+                SpawnParticle(
+                    emitPos + Random.insideUnitCircle * 0.08f,
+                    puffVel,
+                    gravity: 0.14f,
+                    life: puffLife,
+                    size: puffScale * Random.Range(0.85f, 1.18f),
+                    color: puffCol,
+                    emissionIntensity: 1.0f,
+                    customSprite: _smokePuffSprite,
+                    sortingOrder: dustOrder,
+                    expandAndFade: true,
+                    endScaleMul: 2.15f,
+                    drag: 0.92f,
+                    zPos: -0.4f
+                );
+
+                // Crisp pixel sand grains / mud clods / gravel chips kicked up by the sprockets
+                if (Random.value < gritChance * (0.45f + intensity * 0.75f))
+                {
+                    Vector2 gritVel = kickDir * (kickSpd * Random.Range(1.1f, 1.9f))
+                                      + SpriteStackCamera.CamUp * Random.Range(0.65f, 1.45f);
+                    SpawnParticle(
+                        emitPos + Random.insideUnitCircle * 0.06f,
+                        gritVel,
+                        gravity: -4.8f,
+                        life: Random.Range(0.18f, 0.34f),
+                        size: Random.value < 0.35f ? 0.10f : 0.065f,
+                        color: gritCol,
+                        emissionIntensity: 1.0f,
+                        customSprite: _whitePxSprite,
+                        sortingOrder: dustOrder + 4,
+                        expandAndFade: false,
+                        endScaleMul: 0.35f,
+                        drag: 0.96f,
+                        zPos: -0.6f
+                    );
+                }
             }
         }
 
@@ -2419,16 +2658,30 @@ namespace Modern8bitTanks
             StampScorchMark(groundPos, big ? 13 : 5, big ? 0.52f : 0.30f);
         }
 
-        private void SpawnParticle(Vector2 pos, Vector2 vel, float gravity, float life, float size, Color color, float emissionIntensity = 1.0f, Sprite customSprite = null)
+        private void SpawnParticle(
+            Vector2 pos,
+            Vector2 vel,
+            float gravity,
+            float life,
+            float size,
+            Color color,
+            float emissionIntensity = 1.0f,
+            Sprite customSprite = null,
+            int sortingOrder = 16000,
+            bool expandAndFade = false,
+            float endScaleMul = 0.3f,
+            float drag = 0.965f,
+            float zPos = -2.5f)
         {
             var go = new GameObject("Pt");
             go.transform.SetParent(_fxRoot, false);
-            go.transform.position = new Vector3(pos.x, pos.y, -2.5f);
-            go.transform.localScale = new Vector3(size, size, 1f);
+            go.transform.position = new Vector3(pos.x, pos.y, zPos);
+            float initScale = expandAndFade ? size * 0.72f : size;
+            go.transform.localScale = new Vector3(initScale, initScale, 1f);
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = customSprite != null ? customSprite : _whitePxSprite;
             sr.color = color;
-            sr.sortingOrder = 16000;
+            sr.sortingOrder = sortingOrder;
             if (_emissiveFxMat != null)
             {
                 sr.sharedMaterial = _emissiveFxMat;
@@ -2440,6 +2693,8 @@ namespace Modern8bitTanks
             {
                 pos = pos, vel = vel, gravity = gravity,
                 life = life, maxLife = life, baseSize = size,
+                baseColor = color, expandAndFade = expandAndFade,
+                endScaleMul = endScaleMul, drag = drag, zPos = zPos,
                 go = go, sr = sr
             });
         }
@@ -2457,11 +2712,30 @@ namespace Modern8bitTanks
                     continue;
                 }
                 pt.vel += SpriteStackCamera.CamUp * (pt.gravity * dt);
-                pt.vel *= 0.965f;
+                pt.vel *= Mathf.Pow(pt.drag > 0f ? pt.drag : 0.965f, dt * 60f);
                 pt.pos += pt.vel * dt;
-                pt.go.transform.position = new Vector3(pt.pos.x, pt.pos.y, -2.5f);
-                float sc = pt.baseSize * (pt.life / pt.maxLife + 0.3f);
-                pt.go.transform.localScale = new Vector3(sc, sc, 1f);
+                pt.go.transform.position = new Vector3(pt.pos.x, pt.pos.y, pt.zPos);
+
+                float remain01 = Mathf.Clamp01(pt.life / Mathf.Max(0.001f, pt.maxLife));
+                if (pt.expandAndFade)
+                {
+                    float t01 = 1f - remain01;
+                    float sc = pt.baseSize * Mathf.Lerp(0.72f, pt.endScaleMul, Mathf.Sqrt(t01));
+                    pt.go.transform.localScale = new Vector3(sc, sc, 1f);
+                    if (pt.sr != null)
+                    {
+                        float fadeIn = Mathf.Clamp01(t01 / 0.14f);
+                        float fadeOut = Mathf.Pow(remain01, 1.35f);
+                        Color c = pt.baseColor;
+                        c.a = pt.baseColor.a * fadeIn * fadeOut;
+                        pt.sr.color = c;
+                    }
+                }
+                else
+                {
+                    float sc = pt.baseSize * (remain01 + pt.endScaleMul);
+                    pt.go.transform.localScale = new Vector3(sc, sc, 1f);
+                }
             }
         }
 
@@ -2522,18 +2796,8 @@ namespace Modern8bitTanks
             }
             else if (player != null && player.alive)
             {
-                if (cameraMode != BattleCameraMode.FixedTop)
-                {
-                    // Push camera forward along turret/hull sightline (screen-up) so you get a generous War Thunder view ahead!
-                    Vector2 fwdBias = SpriteStackCamera.CamUp * 3.0f;
-                    Vector2 mouseBias = Vector2.ClampMagnitude((mouseW - player.Position2D) * 0.16f, 2.2f);
-                    targetCam = player.Position2D + fwdBias + mouseBias;
-                }
-                else
-                {
-                    Vector2 lookAhead = Vector2.ClampMagnitude((mouseW - player.Position2D) * 0.26f, 3.4f);
-                    targetCam = player.Position2D + lookAhead;
-                }
+                Vector2 lookAhead = Vector2.ClampMagnitude((mouseW - player.Position2D) * 0.26f, 3.4f);
+                targetCam = player.Position2D + lookAhead;
                 camSmooth = dt * 6.5f;
             }
             else
@@ -2550,8 +2814,8 @@ namespace Modern8bitTanks
             float aspect = (float)renderWidth / Mathf.Max(1, renderHeight);
             float halfH = orthoSize;
             float halfW = orthoSize * aspect;
-            float clampX = cameraMode == BattleCameraMode.FixedTop ? halfW : halfH * 0.85f;
-            float clampY = cameraMode == BattleCameraMode.FixedTop ? halfH : halfH * 0.85f;
+            float clampX = halfW;
+            float clampY = halfH;
             _camPos.x = Mathf.Clamp(_camPos.x, clampX, Mathf.Max(clampX, WorldW - clampX));
             _camPos.y = Mathf.Clamp(_camPos.y, clampY, Mathf.Max(clampY, WorldH - clampY));
 
@@ -2594,6 +2858,7 @@ namespace Modern8bitTanks
                 _aimLine.SetPosition(1, new Vector3(endGnd.x + zLiftVec.x, endGnd.y + zLiftVec.y, -4f));
 
                 _reticleTf.position = new Vector3(mouseW.x, mouseW.y, -4f);
+                _reticleTf.rotation = Quaternion.identity;
                 _reticleSr.color = !player.CanFire ? new Color(1f, 0.36f, 0.30f) :
                     player.reloadTimer > 0f ? new Color(0.95f, 0.66f, 0.31f) : new Color(0.61f, 1f, 0.43f);
             }
@@ -2607,7 +2872,7 @@ namespace Modern8bitTanks
         private void PlaySFXAt(AudioClip clip, Vector2 worldPos, SoundBus bus, float volume, bool centerPan = false, float pitchMin = 0.94f, float pitchMax = 1.06f)
         {
             if (_audio == null) return;
-            _audio.PlayAt(clip, worldPos, GetAudioListenerPos(), bus, volume, sfxEnabled, pitchMin, pitchMax, centerPan);
+            _audio.PlayAt(clip, worldPos, GetAudioListenerPos(), bus, volume, sfxEnabled, pitchMin, pitchMax, centerPan, sfxVolume);
         }
 
         private static Vector2 Rotate2D(Vector2 v, float rad)

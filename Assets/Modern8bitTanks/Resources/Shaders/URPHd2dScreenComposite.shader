@@ -116,10 +116,12 @@ Shader "Modern8bitTanks/URPHd2dScreenComposite"
 
                 // Pure Photographic HD-2D Tilt-Shift Depth of Field:
                 // Center combat band stays 100% tack-sharp; top horizon & bottom foreground blur into silky bokeh!
+                // Scale radius proportionally to RT height so 480x270 matches the exact physical blur width of 1440x810!
                 float dy = abs(uv.y - _FocusCenter);
                 float blurMask = smoothstep(_FocusWidth, 0.51, dy);
                 float edgeScale = uv.y > _FocusCenter ? 1.05 : 0.78;
-                float blurPx = blurMask * edgeScale * 6.8 * _TiltShiftStrength;
+                float resScale = clamp(_TexelSize.w / 810.0, 0.25, 2.0);
+                float blurPx = blurMask * edgeScale * (6.8 * resScale) * _TiltShiftStrength;
 
                 half3 col;
                 if (blurPx > 0.25)

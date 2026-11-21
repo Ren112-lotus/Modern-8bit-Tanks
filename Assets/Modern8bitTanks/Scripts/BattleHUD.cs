@@ -47,6 +47,7 @@ namespace Modern8bitTanks
         private GameObject _hudHitsGroup;
         private GameObject _resultHitsGroup;
         private GameObject _menuHitsGroup;
+        private GameObject _settingsHitsGroup;
 
         // Top Scoreboard
         private Text _allyNameText;
@@ -96,15 +97,19 @@ namespace Modern8bitTanks
         private Text _resultTitle;
         private Text _resultSubtitle;
 
-        // Pause / Options Modal
+        // Pause Menu & Dedicated Settings Screen
         private GameObject _menuOverlay;
+        private Text _btnNextRivalLabel;
+        private GameObject _settingsOverlay;
+        private Text _btnSfxLabel;
+        private Text _btnBgmLabel;
         private Text _btnControlModeLabel;
         private Text _btnAiLabel;
-        private Text _btnSfxLabel;
         private Text _btnPostProcessLabel;
         private Text _btnDisplayModeLabel;
 
-        public bool IsMenuOpen => _menuOverlay != null && _menuOverlay.activeSelf;
+        public bool IsSettingsOpen => _settingsOverlay != null && _settingsOverlay.activeSelf;
+        public bool IsMenuOpen => (_menuOverlay != null && _menuOverlay.activeSelf) || IsSettingsOpen;
 
         // Floating popups
         private RectTransform _popupLayer;
@@ -157,6 +162,7 @@ namespace Modern8bitTanks
             BuildResultOverlay();
             BuildHitCameraLayer();
             BuildPauseMenuOverlay();
+            BuildSettingsOverlay();
         }
 
         private void OnFontTextureRebuilt(Font f)
@@ -210,8 +216,10 @@ namespace Modern8bitTanks
             _hudHitsGroup = CreateHitGroup("HudHits");
             _resultHitsGroup = CreateHitGroup("ResultHits");
             _menuHitsGroup = CreateHitGroup("MenuHits");
+            _settingsHitsGroup = CreateHitGroup("SettingsHits");
             _resultHitsGroup.SetActive(false);
             _menuHitsGroup.SetActive(false);
+            _settingsHitsGroup.SetActive(false);
         }
 
         private GameObject CreateHitGroup(string name)
@@ -366,87 +374,201 @@ namespace Modern8bitTanks
             var dim = CreatePixelSolid(_hudRoot, "PauseMenuOverlay", 0, 0, _W, _H, new Color(0.03f, 0.03f, 0.03f, 0.64f));
             _menuOverlay = dim.gameObject;
 
-            int cw = 216;
-            int ch = 180;
+            int cw = 196;
+            int ch = 126;
             int cx = (_W - cw) / 2;
             int cy = (_H - ch) / 2;
             var card = CreatePixelBox(dim, "MenuCard", cx, cy, cw, ch, new Color(0.09f, 0.10f, 0.09f, 0.98f), PanelBorder);
-            CreatePixelText(card, "TACTICAL MENU", 8, AbramsGold, TextAnchor.MiddleCenter, 0, ch - 20, cw, 16, useTitleFont: true);
+            CreatePixelText(card, "TACTICAL MENU", 8, AbramsGold, TextAnchor.MiddleCenter, 0, ch - 22, cw, 16, useTitleFont: true);
 
-            _btnControlModeLabel = CreatePixelButton(card, _menuHitsGroup.transform, "", cx + 10, cy + 138, cw - 20, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            CreatePixelButton(card, _menuHitsGroup.transform, "RESUME", cx + 12, cy + 80, cw - 24, 20, AbramsGold, AbramsGold, DarkInk, 8, () =>
+            {
+                CloseAllMenus();
+            }, isParentOffset: true, parentX: cx, parentY: cy);
+
+            CreatePixelButton(card, _menuHitsGroup.transform, "SETTINGS", cx + 12, cy + 56, cw - 24, 20, BtnBg, SmokeCyan, SmokeCyan, 8, () =>
+            {
+                SetSettingsOpen(true);
+            }, isParentOffset: true, parentX: cx, parentY: cy);
+
+            _btnNextRivalLabel = CreatePixelButton(card, _menuHitsGroup.transform, "NEXT RIVAL", cx + 12, cy + 32, cw - 24, 20, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                CloseAllMenus();
+                _mgr.ResetRound();
+            }, isParentOffset: true, parentX: cx, parentY: cy);
+
+            CreatePixelButton(card, _menuHitsGroup.transform, "BACK TO HANGAR", cx + 12, cy + 8, cw - 24, 20, BtnBg, AbramsGold, AbramsGold, 8, () =>
+            {
+                CloseAllMenus();
+                _mgr.ReturnToHangar();
+            }, isParentOffset: true, parentX: cx, parentY: cy);
+
+            _menuOverlay.SetActive(false);
+        }
+
+        private void BuildSettingsOverlay()
+        {
+            var dim = CreatePixelSolid(_hudRoot, "SettingsOverlay", 0, 0, _W, _H, new Color(0.03f, 0.03f, 0.03f, 0.72f));
+            _settingsOverlay = dim.gameObject;
+
+            int cw = 240;
+            int ch = 194;
+            int cx = (_W - cw) / 2;
+            int cy = (_H - ch) / 2;
+            var card = CreatePixelBox(dim, "SettingsCard", cx, cy, cw, ch, new Color(0.08f, 0.09f, 0.09f, 0.98f), SmokeCyan);
+            CreatePixelText(card, "SETTINGS", 8, AbramsGold, TextAnchor.MiddleCenter, 0, ch - 22, cw, 16, useTitleFont: true);
+
+            Transform hits = _settingsHitsGroup.transform;
+
+            // Row 1: SE (SFX) Volume [-] [SE: 100%] [+]
+            CreatePixelButton(card, hits, "-", cx + 12, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                _mgr.StepSfxVolume(-0.1f);
+                RefreshMenuLabels();
+            }, isParentOffset: true, parentX: cx, parentY: cy);
+
+            _btnSfxLabel = CreatePixelButton(card, hits, "SE: 100%", cx + 40, cy + 148, 160, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                _mgr.ToggleSfxEnabled();
+                RefreshMenuLabels();
+            }, isParentOffset: true, parentX: cx, parentY: cy);
+
+            CreatePixelButton(card, hits, "+", cx + 204, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                _mgr.StepSfxVolume(+0.1f);
+                RefreshMenuLabels();
+            }, isParentOffset: true, parentX: cx, parentY: cy);
+
+            // Row 2: BGM Volume [-] [BGM: 60%] [+]
+            CreatePixelButton(card, hits, "-", cx + 12, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                _mgr.StepBgmVolume(-0.1f);
+                RefreshMenuLabels();
+            }, isParentOffset: true, parentX: cx, parentY: cy);
+
+            _btnBgmLabel = CreatePixelButton(card, hits, "BGM: 60%", cx + 40, cy + 126, 160, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                _mgr.ToggleBgmEnabled();
+                RefreshMenuLabels();
+            }, isParentOffset: true, parentX: cx, parentY: cy);
+
+            CreatePixelButton(card, hits, "+", cx + 204, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            {
+                _mgr.StepBgmVolume(+0.1f);
+                RefreshMenuLabels();
+            }, isParentOffset: true, parentX: cx, parentY: cy);
+
+            // Row 3: Drive Controls
+            _btnControlModeLabel = CreatePixelButton(card, hits, "", cx + 12, cy + 104, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 _mgr.arcadeWASD = !_mgr.arcadeWASD;
                 _mgr.SyncSettingsToSession();
                 RefreshMenuLabels();
             }, isParentOffset: true, parentX: cx, parentY: cy);
 
-            _btnAiLabel = CreatePixelButton(card, _menuHitsGroup.transform, "", cx + 10, cy + 116, cw - 20, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            // Row 4: Enemy AI
+            _btnAiLabel = CreatePixelButton(card, hits, "", cx + 12, cy + 82, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 _mgr.aiEnabled = !_mgr.aiEnabled;
                 _mgr.SyncSettingsToSession();
                 RefreshMenuLabels();
             }, isParentOffset: true, parentX: cx, parentY: cy);
 
-            _btnSfxLabel = CreatePixelButton(card, _menuHitsGroup.transform, "", cx + 10, cy + 94, cw - 20, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _mgr.sfxEnabled = !_mgr.sfxEnabled;
-                _mgr.SyncSettingsToSession();
-                RefreshMenuLabels();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            _btnPostProcessLabel = CreatePixelButton(card, _menuHitsGroup.transform, "", cx + 10, cy + 72, cw - 20, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            // Row 5: Graphics Mode
+            _btnPostProcessLabel = CreatePixelButton(card, hits, "", cx + 12, cy + 60, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 _mgr.TogglePostProcess();
                 _mgr.SyncSettingsToSession();
                 RefreshMenuLabels();
             }, isParentOffset: true, parentX: cx, parentY: cy);
 
-            _btnDisplayModeLabel = CreatePixelButton(card, _menuHitsGroup.transform, "", cx + 10, cy + 50, cw - 20, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            // Row 6: Display Scaling
+            _btnDisplayModeLabel = CreatePixelButton(card, hits, "", cx + 12, cy + 38, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 _mgr.integerWindowbox = !_mgr.integerWindowbox;
                 _mgr.SyncSettingsToSession();
                 RefreshMenuLabels();
             }, isParentOffset: true, parentX: cx, parentY: cy);
 
-            CreatePixelButton(card, _menuHitsGroup.transform, "BACK TO HANGAR", cx + 10, cy + 28, cw - 20, 18, BtnBg, AbramsGold, AbramsGold, 8, () =>
+            // Bottom: Back to Pause Menu
+            CreatePixelButton(card, hits, "BACK [ESC]", cx + 12, cy + 10, cw - 24, 20, AbramsGold, AbramsGold, DarkInk, 8, () =>
             {
-                SetMenuOpen(false);
-                _mgr.ReturnToHangar();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            CreatePixelButton(card, _menuHitsGroup.transform, "RESUME", cx + 10, cy + 6, 94, 18, AbramsGold, AbramsGold, DarkInk, 8, ToggleMenu, isParentOffset: true, parentX: cx, parentY: cy);
-            CreatePixelButton(card, _menuHitsGroup.transform, "NEXT RIVAL", cx + 112, cy + 6, 94, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                SetMenuOpen(false);
-                _mgr.ResetRound();
+                SetSettingsOpen(false, reopenPauseMenu: true);
             }, isParentOffset: true, parentX: cx, parentY: cy);
 
             RefreshMenuLabels();
-            _menuOverlay.SetActive(false);
+            _settingsOverlay.SetActive(false);
+        }
+
+        public void HandleEscapeKey()
+        {
+            if (IsSettingsOpen)
+                SetSettingsOpen(false, reopenPauseMenu: true);
+            else
+                ToggleMenu();
         }
 
         public void ToggleMenu()
         {
-            SetMenuOpen(!IsMenuOpen);
+            if (IsMenuOpen)
+                CloseAllMenus();
+            else
+                SetMenuOpen(true);
+        }
+
+        private void CloseAllMenus()
+        {
+            if (_menuOverlay != null) _menuOverlay.SetActive(false);
+            if (_menuHitsGroup != null) _menuHitsGroup.SetActive(false);
+            if (_settingsOverlay != null) _settingsOverlay.SetActive(false);
+            if (_settingsHitsGroup != null) _settingsHitsGroup.SetActive(false);
+            if (_resultHitsGroup != null) _resultHitsGroup.SetActive(_resultShowing);
         }
 
         private void SetMenuOpen(bool open)
         {
             if (_menuOverlay == null) return;
+            if (_settingsOverlay != null) _settingsOverlay.SetActive(false);
+            if (_settingsHitsGroup != null) _settingsHitsGroup.SetActive(false);
             _menuOverlay.SetActive(open);
             if (_menuHitsGroup != null) _menuHitsGroup.SetActive(open);
+            if (_resultHitsGroup != null) _resultHitsGroup.SetActive(!open && _resultShowing);
             if (open) RefreshMenuLabels();
+        }
+
+        private void SetSettingsOpen(bool open, bool reopenPauseMenu = false)
+        {
+            if (_settingsOverlay == null) return;
+            _settingsOverlay.SetActive(open);
+            if (_settingsHitsGroup != null) _settingsHitsGroup.SetActive(open);
+
+            bool showPause = !open && reopenPauseMenu;
+            if (_menuOverlay != null) _menuOverlay.SetActive(showPause);
+            if (_menuHitsGroup != null) _menuHitsGroup.SetActive(showPause);
+            if (_resultHitsGroup != null) _resultHitsGroup.SetActive(!open && !showPause && _resultShowing);
+
+            if (open || showPause) RefreshMenuLabels();
         }
 
         private void RefreshMenuLabels()
         {
             if (_mgr == null) return;
+            if (_btnNextRivalLabel != null)
+                _btnNextRivalLabel.text = _mgr.battleMode == BattleMode.FiringRange ? "RESET RANGE" : "NEXT RIVAL";
+            if (_btnSfxLabel != null)
+            {
+                _btnSfxLabel.text = BattleSessionState.FormatVolumeLabel("SE", _mgr.sfxEnabled, _mgr.sfxVolume);
+                _btnSfxLabel.color = (_mgr.sfxEnabled && _mgr.sfxVolume > 0.001f) ? ReadyGreen : TextMuted;
+            }
+            if (_btnBgmLabel != null)
+            {
+                _btnBgmLabel.text = BattleSessionState.FormatVolumeLabel("BGM", _mgr.bgmEnabled, _mgr.bgmVolume);
+                _btnBgmLabel.color = (_mgr.bgmEnabled && _mgr.bgmVolume > 0.001f) ? SmokeCyan : TextMuted;
+            }
             if (_btnControlModeLabel != null)
                 _btnControlModeLabel.text = _mgr.arcadeWASD ? "DRIVE: ARCADE WASD" : "DRIVE: TANK STEER";
             if (_btnAiLabel != null)
                 _btnAiLabel.text = _mgr.aiEnabled ? "ENEMY AI: ON" : "ENEMY AI: OFF";
-            if (_btnSfxLabel != null)
-                _btnSfxLabel.text = _mgr.sfxEnabled ? "AUDIO: ON" : "AUDIO: OFF";
             if (_btnPostProcessLabel != null)
                 _btnPostProcessLabel.text = _mgr.postProcessEnabled ? "GFX: HD-2D" : "GFX: RETRO";
             if (_btnDisplayModeLabel != null)

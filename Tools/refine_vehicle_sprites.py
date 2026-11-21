@@ -12,6 +12,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 from armata_four_views import sculpt_armata
+from expanded_vehicle_art import TRACES as EXPANSION_TRACES, build_expanded_vehicle
 from fleet_four_views import build_fleet
 from patton_four_views import MUZZLE_Z as PATTON_MUZZLE_HEIGHT, sculpt_patton
 from tiger_ii_four_views import GEOMETRY as TIGER_II_GEOMETRY
@@ -544,33 +545,6 @@ def german_ifv(hull, turret, vehicle):
                   z=3 if marder else 2, style="auto")
 
 
-def wiesel(hull, turret, vehicle):
-    tow = vehicle["id"] == "de_wiesel_tow"
-    tracks(hull, (-4, 1, 6), (-10, 10), band=2)
-    hull.loft(2, [(-10, 9, 4, 1, 2), (-11, 10, 5, 1, 2), (-11, 10, 6, 1, 2),
-                  (-11, 8, 6, 1, 2), (-10, 6, 5, 1, 2)])
-    if tow:
-        hull.lid(6, -4, 2, -9, -3)
-        hull.hatch(6, 3, -5, 2, 2)
-    else:
-        hull.lid(6, -4, 4, -9, -3)
-    hull.hatch(6, 3, 4, 2, 1)
-    hull.grille(6, -4, 0, 0, 5)
-    lights(hull, 5, 7, 4)
-    lights(hull, 4, -11, 4, rear=True)
-    if tow:
-        turret.ellipse(0, 0, 0, 3, 3, turret.dark)
-        turret.box(1, 3, -1, 1, -2, 1, turret.dark)
-        tube(turret, 0, -6, 8, 4)
-        turret.sight(3, -2, 3, height=2)
-        return 8
-    turret.loft(0, [(-4, 4, 3, 1, 1), (-5, 4, 4, 1, 2), (-5, 3, 4, 1, 2),
-                    (-4, 2, 3, 1, 2)])
-    turret.sight(3, 2, 2, height=2)
-    turret.hatch(3, -1, -2, 2, 1)
-    return barrel(turret, 3, 12, style="auto")
-
-
 def itv(hull, turret, vehicle):
     tracks(hull, (-10, -5, 0, 5, 10), (-13, 13), band=2)
     hull.loft(2, [(-13, 12, 6, 1, 2), (-14, 13, 7, 1, 2), (-15, 14, 7, 1, 2),
@@ -1048,14 +1022,12 @@ MODELS = {
     "de_tiger_ii": (sculpt_tiger_ii, SAND),
     "de_m48a2": (patton, OLIVE),
     "de_luchs": (luchs, FIELD),
-    "de_wiesel_mk": (wiesel, NATO),
     "de_marder": (german_ifv, NATO),
     "de_puma": (german_ifv, NATO),
     "de_kf41_lynx": (german_ifv, FIELD),
     "de_rakjpz2": (jaguar, OLIVE),
     "de_jaguar2": (jaguar, NATO),
     "de_jaguar1": (jaguar, NATO),
-    "de_wiesel_tow": (wiesel, FIELD),
     "de_boxer": (boxer, EXPO),
     "ru_t64a": (t64a, OLIVE),
     "ru_t72a": (t72, SOVIET),
@@ -1084,7 +1056,6 @@ MUZZLE_HEIGHTS = {
     "de_rakjpz2": 3,
     "de_jaguar2": 4,
     "de_jaguar1": 3,
-    "de_wiesel_tow": 4,
     "ru_bmp1": 4,
     "ru_9p148": 4,
     "ru_9p149": 5,
@@ -1101,9 +1072,12 @@ def build(output_dir):
     png_dir.mkdir(parents=True, exist_ok=True)
     catalog_dir = output_dir / "Data"
     catalog_dir.mkdir(exist_ok=True)
-    rebuilt = build_fleet(catalog, png_dir)
+    rebuilt = build_fleet(catalog, png_dir, skip=EXPANSION_TRACES)
     for vehicle in catalog["vehicles"]:
         model = vehicle["id"]
+        if model in EXPANSION_TRACES:
+            build_expanded_vehicle(vehicle, png_dir, Stack)
+            continue
         if model in rebuilt or model not in MODELS:
             continue
         turret_capacity = 9
