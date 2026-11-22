@@ -16,8 +16,7 @@
       "Hangar",
       "DesertBattle"
     ],
-    "errors": 0,
-    "warnings": 1
+    "errors": 0
   },
   "source": {
     "vcs": "git",
@@ -25,25 +24,25 @@
     "dirty": true
   },
   "artifact": {
-    "name": "Modern8bitTanksOnline-WebGL.zip",
-    "sha256": "158e9840414330b31f0c3ce6bf1300efede75343bfd554e1bdfd3563af694561",
-    "preparedAt": "2026-11-22T18:51:42.337705+00:00",
+    "name": "Modern8bitTanksIntegrated-WebGL.zip",
+    "sha256": "e4986f647130ba96943abcaa3a27374a5fb292d21150bc69158ec4150ec566c8",
+    "preparedAt": "2026-11-22T19:24:51.159020+00:00",
     "playerFiles": {
-      "Build/Modern8bitTanksOnline.data": {
-        "bytes": 27989077,
-        "sha256": "86ca11138d3ef99da5c9c968c96b825a77c38f77341d8f4d5f1f9e72fbe3935c"
-      },
-      "Build/Modern8bitTanksOnline.framework.js": {
-        "bytes": 522211,
-        "sha256": "46cce3f4430a7b14e4e784d6cf6cdbaa310457998c10536fde7183ac3bcde5dd"
-      },
-      "Build/Modern8bitTanksOnline.loader.js": {
+      "Build/Modern8bitTanksIntegrated.loader.js": {
         "bytes": 26982,
-        "sha256": "a8024499b983b7db4518c50f156ba230a7fee261efdde9d67ab93a3d0ff59367"
+        "sha256": "9e1ccee42649b0fe9fae9fe65c85a9b5db87b914ea527c01bf36252c2b5d8538"
       },
-      "Build/Modern8bitTanksOnline.wasm": {
-        "bytes": 65645259,
-        "sha256": "476c8f6e1349803d0e22e00d737a9057591d02cf9ecc327c14044b6fcae941de"
+      "Build/Modern8bitTanksIntegrated.data": {
+        "bytes": 27998812,
+        "sha256": "fdcb15aadec9e76327c298ffbb3faf5a0f985c60c152c56074c91cc2d9f5ee9b"
+      },
+      "Build/Modern8bitTanksIntegrated.framework.js": {
+        "bytes": 522241,
+        "sha256": "634473872747cbff5a2b397fcca111cedcdc89b751f4853525b4f295ee4763e8"
+      },
+      "Build/Modern8bitTanksIntegrated.wasm": {
+        "bytes": 65684425,
+        "sha256": "399e6a82097eac6ab6d3ac0c173fe3b25d94aef77f43420dbd5c3592535c5670"
       }
     }
   }
