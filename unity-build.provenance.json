@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generator": {
-    "name": "unity-cli",
-    "version": "1.0.0-beta.10"
+    "name": "Unity Editor BuildPipeline via Unity Pipeline",
+    "version": "1.0.0"
   },
   "outcome": "success",
   "exitCode": 0,
@@ -24,25 +24,25 @@
     "dirty": true
   },
   "artifact": {
-    "name": "Modern8bitTanksIntegrated-WebGL.zip",
-    "sha256": "e4986f647130ba96943abcaa3a27374a5fb292d21150bc69158ec4150ec566c8",
-    "preparedAt": "2026-11-22T19:24:51.159020+00:00",
+    "name": "Modern8bitTanksRoomSelection-WebGL.zip",
+    "sha256": "941311ab485f656a78099a7990bc6fd54fdaa7513528c88ab8254d8406d3a1ad",
+    "preparedAt": "2026-11-22T19:56:14.308631+00:00",
     "playerFiles": {
-      "Build/Modern8bitTanksIntegrated.loader.js": {
+      "Build/Modern8bitTanksRoomSelection.loader.js": {
         "bytes": 26982,
-        "sha256": "9e1ccee42649b0fe9fae9fe65c85a9b5db87b914ea527c01bf36252c2b5d8538"
+        "sha256": "35d6d0b2a8a553d4459a6ee86e7964fe590b0efa7676672a318fe31fd3eaa714"
       },
-      "Build/Modern8bitTanksIntegrated.data": {
-        "bytes": 27998812,
-        "sha256": "fdcb15aadec9e76327c298ffbb3faf5a0f985c60c152c56074c91cc2d9f5ee9b"
+      "Build/Modern8bitTanksRoomSelection.data": {
+        "bytes": 28003112,
+        "sha256": "4a8b999cfa5f2e6cf6548cb602c4f679d5296df3f8a65da39e0f57100b4a29ea"
       },
-      "Build/Modern8bitTanksIntegrated.framework.js": {
-        "bytes": 522241,
-        "sha256": "634473872747cbff5a2b397fcca111cedcdc89b751f4853525b4f295ee4763e8"
+      "Build/Modern8bitTanksRoomSelection.framework.js": {
+        "bytes": 521933,
+        "sha256": "b31e077a25af32544afa3e472586ef71cce171d637726ea081ee83a9ef90b15e"
       },
-      "Build/Modern8bitTanksIntegrated.wasm": {
-        "bytes": 65684425,
-        "sha256": "399e6a82097eac6ab6d3ac0c173fe3b25d94aef77f43420dbd5c3592535c5670"
+      "Build/Modern8bitTanksRoomSelection.wasm": {
+        "bytes": 65782561,
+        "sha256": "1171d25e5f06250b555d2dc5bf2128c0b1e984e12d022a1a500d259aae0de43c"
       }
     }
   }
