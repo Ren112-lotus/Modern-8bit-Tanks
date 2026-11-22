@@ -24,25 +24,25 @@
     "dirty": true
   },
   "artifact": {
-    "name": "Modern8bitTanksRoomSelection-WebGL.zip",
-    "sha256": "941311ab485f656a78099a7990bc6fd54fdaa7513528c88ab8254d8406d3a1ad",
-    "preparedAt": "2026-11-22T19:56:14.308631+00:00",
+    "name": "Modern8bitTanksTacticalRoom-WebGL.zip",
+    "sha256": "b5e326f0acc507dbdba49ca85150c3197adc5ce9ff731e420e8a3bd50014ddb7",
+    "preparedAt": "2026-11-22T20:27:04.760815+00:00",
     "playerFiles": {
-      "Build/Modern8bitTanksRoomSelection.loader.js": {
+      "Build/Modern8bitTanksTacticalRoom.loader.js": {
         "bytes": 26982,
-        "sha256": "35d6d0b2a8a553d4459a6ee86e7964fe590b0efa7676672a318fe31fd3eaa714"
+        "sha256": "57f1482e9e95a5a4927dd5e40002caf14e3c144386a4d2300d937bbff00b99c7"
       },
-      "Build/Modern8bitTanksRoomSelection.data": {
-        "bytes": 28003112,
-        "sha256": "4a8b999cfa5f2e6cf6548cb602c4f679d5296df3f8a65da39e0f57100b4a29ea"
+      "Build/Modern8bitTanksTacticalRoom.data": {
+        "bytes": 28007637,
+        "sha256": "e36ce9d29cd81af2a19b7051c5bc3a9ac8f755aa3095bff292b86e843f65b9a6"
       },
-      "Build/Modern8bitTanksRoomSelection.framework.js": {
-        "bytes": 521933,
-        "sha256": "b31e077a25af32544afa3e472586ef71cce171d637726ea081ee83a9ef90b15e"
+      "Build/Modern8bitTanksTacticalRoom.framework.js": {
+        "bytes": 522111,
+        "sha256": "b39f0fe33f66d6e4e759fda74002ecb38c1262fb27dbf535694de40b617cd165"
       },
-      "Build/Modern8bitTanksRoomSelection.wasm": {
-        "bytes": 65782561,
-        "sha256": "1171d25e5f06250b555d2dc5bf2128c0b1e984e12d022a1a500d259aae0de43c"
+      "Build/Modern8bitTanksTacticalRoom.wasm": {
+        "bytes": 65829544,
+        "sha256": "6fc8a427ceadf206d2bd0191a44c0ca4032c1e10a855d49c3322c62d1935ab37"
       }
     }
   }
