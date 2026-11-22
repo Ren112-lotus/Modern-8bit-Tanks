@@ -165,6 +165,7 @@ namespace Modern8bitTanks
             public ProjectileKind kind;
             public AmmoType ammo;
             public string ownerFaction; // "ally" or "enemy"
+            public TankEntity owner;
             public bool playerOwned;
             public Vector2 visualPos;
             public Vector2 groundPos;
@@ -245,6 +246,14 @@ namespace Modern8bitTanks
             bgmVolume = BattleSessionState.BgmVolume;
             postProcessEnabled = BattleSessionState.PostProcessEnabled;
             integerWindowbox = BattleSessionState.IntegerWindowbox;
+            if (MultiplayerWebBootstrap.Online)
+            {
+                selectedPlayerVehicleId = "us_m1a2_sep2";
+                selectedEnemyVehicleId = "ru_t90a";
+                battleMode = BattleMode.Duel1v1;
+                battleMap = BattleMap.Desert;
+                aiEnabled = false;
+            }
             _winsAlly = BattleSessionState.WinsAlly;
             _winsEnemy = BattleSessionState.WinsEnemy;
 
@@ -283,6 +292,7 @@ namespace Modern8bitTanks
 
             // Dedicated Battle Scene: launch straight into combat against a random same-Tier rival!
             ResetRound();
+            InitializeMultiplayerBattle();
         }
 
         private void LoadVehicleCatalog()
@@ -651,6 +661,11 @@ namespace Modern8bitTanks
 
         public void ReturnToHangar()
         {
+            if (MultiplayerWebBootstrap.Online)
+            {
+                MultiplayerWebBootstrap.RequestExit();
+                return;
+            }
             Time.timeScale = 1f;
             StopLoopingAudio();
             _audio?.StopBattleBgm();
@@ -667,6 +682,7 @@ namespace Modern8bitTanks
 
         public void ResetRound()
         {
+            if (MultiplayerWebBootstrap.Online && _networkTanks != null) return;
             Time.timeScale = 1f;
             _phase = GamePhase.Playing;
             _currentWave = 1;
@@ -683,12 +699,12 @@ namespace Modern8bitTanks
 
             // Pick a fresh RANDOM same-Tier performance-matched rival every battle!
             VehicleDef playerDef = SelectedPlayerVehicle;
-            VehicleDef randRival = BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: selectedEnemyVehicleId);
+            VehicleDef randRival = MultiplayerWebBootstrap.Online ? null : BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: selectedEnemyVehicleId);
             if (randRival != null)
                 selectedEnemyVehicleId = randRival.id;
 
             ClearDynamicFXAndExtraTanks();
-            battleMap = BattleSessionState.SelectedBattleMap;
+            battleMap = MultiplayerWebBootstrap.Online ? BattleMap.Desert : BattleSessionState.SelectedBattleMap;
             _cleanGroundPixels = GenerateMapPixels(battleMap, WorldWidthPx, WorldHeightPx);
             RestoreCleanGround();
             _postProcess?.ApplyMapTheme(battleMap);
@@ -755,6 +771,11 @@ namespace Modern8bitTanks
         {
             _rangeTargets.Clear();
             _tanks.Clear();
+            if (MultiplayerWebBootstrap.Online)
+            {
+                SpawnMultiplayerTanks();
+                return;
+            }
             VehicleDef playerDef = SelectedPlayerVehicle;
             VehicleDef enemyDef = SelectedEnemyVehicle;
 
@@ -974,6 +995,22 @@ namespace Modern8bitTanks
             float dt = Mathf.Min(0.04f, Time.deltaTime);
             var kb = Keyboard.current;
 
+            if (MultiplayerWebBootstrap.Online && MultiplayerMatchTransport.Instance != null)
+            {
+                if (!MultiplayerMatchTransport.Instance.IsHost)
+                {
+                    UpdateMultiplayerClient(dt);
+                    return;
+                }
+                UpdateMultiplayerRoster();
+                if (!MultiplayerBattleReady())
+                {
+                    BroadcastMultiplayerState();
+                    UpdateMultiplayerWaiting(dt);
+                    return;
+                }
+            }
+
             if (_windowbox != null)
                 _windowbox.integerScale = integerWindowbox;
 
@@ -985,14 +1022,14 @@ namespace Modern8bitTanks
             bool menuOpen = _hud != null && _hud.IsMenuOpen;
             _audio?.UpdateBgm(active: true, bgmEnabled, bgmVolume, duckForMenu: menuOpen);
 
-            if (menuOpen)
+            if (menuOpen && !MultiplayerWebBootstrap.Online)
             {
                 StopLoopingAudio();
                 PushHudUpdate(GetPlayerTank(), 0f);
                 return;
             }
 
-            if (kb != null && kb.rKey.wasPressedThisFrame)
+            if (!MultiplayerWebBootstrap.Online && kb != null && kb.rKey.wasPressedThisFrame)
             {
                 ResetRound();
                 return;
@@ -1054,14 +1091,17 @@ namespace Modern8bitTanks
                 {
                     _resultBannerShown = true;
                     if (_hud != null && !string.IsNullOrEmpty(_pendingWinner))
-                        _hud.ShowResult(_pendingWinner == "ally", _pendingSubtitle);
+                        _hud.ShowResult(MultiplayerWebBootstrap.Online
+                            ? (_pendingWinner == "ally") == (MultiplayerWebBootstrap.LocalSlot < 4)
+                            : _pendingWinner == "ally", _pendingSubtitle);
                 }
             }
 
             _shake = Mathf.Max(0f, _shake - Time.unscaledDeltaTime * 15f);
 
             TankEntity player = GetPlayerTank();
-            if (player != null) UpdatePlayer(player, dt);
+            if (player != null && !menuOpen) UpdatePlayer(player, dt);
+            if (MultiplayerWebBootstrap.Online) ApplyMultiplayerControls(dt);
             UpdateCameraRoll(player, dt);
 
             if (_phase == GamePhase.Playing)
@@ -1086,7 +1126,8 @@ namespace Modern8bitTanks
             }
 
             // Multi-tank AI (or non-hostile Firing Range targets & auto-respawn!)
-            if (battleMode == BattleMode.FiringRange)
+            if (MultiplayerWebBootstrap.Online) { }
+            else if (battleMode == BattleMode.FiringRange)
             {
                 UpdateFiringRangeTargets(dt);
             }
@@ -1171,6 +1212,7 @@ namespace Modern8bitTanks
             UpdateCameraAndAim(player, dt);
             UpdateMechanicalAudio(player, dt);
             PushHudUpdate(player, dt);
+            if (MultiplayerWebBootstrap.Online) BroadcastMultiplayerState();
 
             if (_groundDirty)
             {
@@ -1292,14 +1334,49 @@ namespace Modern8bitTanks
         private void UpdatePlayer(TankEntity t, float dt)
         {
             if (!t.alive || _phase != GamePhase.Playing) return;
+            if (!TryReadTankControl(out var input)) return;
+            ApplyTankControl(t, dt, input);
+        }
+
+        private bool TryReadTankControl(out TankControlInput input)
+        {
+            input = default;
             var kb = Keyboard.current;
             var mouse = Mouse.current;
-            if (kb == null) return;
+            if (kb == null) return false;
 
+            bool up = kb.wKey.isPressed || kb.upArrowKey.isPressed;
+            bool down = kb.sKey.isPressed || kb.downArrowKey.isPressed;
+            bool left = kb.aKey.isPressed || kb.leftArrowKey.isPressed;
+            bool right = kb.dKey.isPressed || kb.rightArrowKey.isPressed;
+            bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+            input = new TankControlInput
+            {
+                Up = up, Down = down, Left = left, Right = right,
+                Repair = kb.fKey.wasPressedThisFrame,
+                AimWorld = GetMouseWorld2D(),
+                FirePrimary = (!overUI && mouse != null && mouse.leftButton.isPressed) || kb.spaceKey.isPressed,
+                FireSecondary = !overUI && mouse != null && mouse.rightButton.isPressed,
+                Smoke = kb.qKey.wasPressedThisFrame || kb.leftShiftKey.wasPressedThisFrame,
+                AmmoSlot = kb.digit1Key.wasPressedThisFrame ? 0 : kb.digit2Key.wasPressedThisFrame ? 1 : kb.digit3Key.wasPressedThisFrame ? 2 : -1,
+                Arcade = arcadeWASD
+            };
+            return true;
+        }
+
+        private struct TankControlInput
+        {
+            public bool Up, Down, Left, Right, Repair, FirePrimary, FireSecondary, Smoke, Arcade;
+            public int AmmoSlot;
+            public Vector2 AimWorld;
+        }
+
+        private void ApplyTankControl(TankEntity t, float dt, TankControlInput input)
+        {
+            if (!t.alive || _phase != GamePhase.Playing) return;
             float rawSpd = t.vehicleDef != null ? t.vehicleDef.speed : 64f;
-            bool driving = kb.wKey.isPressed || kb.aKey.isPressed || kb.sKey.isPressed || kb.dKey.isPressed ||
-                           kb.upArrowKey.isPressed || kb.leftArrowKey.isPressed || kb.downArrowKey.isPressed || kb.rightArrowKey.isPressed;
-            if (kb.fKey.wasPressedThisFrame || (t.Repairing && driving)) t.RequestService();
+            bool driving = input.Up || input.Down || input.Left || input.Right;
+            if (input.Repair || (t.Repairing && driving)) t.RequestService();
 
             float maxSpeed = rawSpd / PPU * t.DriveFactor;
             float turnDegPerSec = t.hullTurnSpeed * t.TurnFactor;
@@ -1307,13 +1384,13 @@ namespace Modern8bitTanks
             float initialHullAngle = t.hullAngleDeg;
             t.HullTurnInput = 0f;
 
-            if (arcadeWASD)
+            if (input.Arcade)
             {
                 Vector2 inp = Vector2.zero;
-                if (kb.aKey.isPressed || kb.leftArrowKey.isPressed) inp.x -= 1f;
-                if (kb.dKey.isPressed || kb.rightArrowKey.isPressed) inp.x += 1f;
-                if (kb.wKey.isPressed || kb.upArrowKey.isPressed) inp.y += 1f;
-                if (kb.sKey.isPressed || kb.downArrowKey.isPressed) inp.y -= 1f;
+                if (input.Left) inp.x -= 1f;
+                if (input.Right) inp.x += 1f;
+                if (input.Up) inp.y += 1f;
+                if (input.Down) inp.y -= 1f;
 
                 if (inp.sqrMagnitude > 0.01f)
                 {
@@ -1335,10 +1412,10 @@ namespace Modern8bitTanks
             {
                 float throttle = 0f;
                 float steer = 0f;
-                if (kb.wKey.isPressed || kb.upArrowKey.isPressed) throttle += 1f;
-                if (kb.sKey.isPressed || kb.downArrowKey.isPressed) throttle -= 0.72f;
-                if (kb.aKey.isPressed || kb.leftArrowKey.isPressed) steer += 1f;
-                if (kb.dKey.isPressed || kb.rightArrowKey.isPressed) steer -= 1f;
+                if (input.Up) throttle += 1f;
+                if (input.Down) throttle -= 0.72f;
+                if (input.Left) steer += 1f;
+                if (input.Right) steer -= 1f;
 
                 t.HullTurnInput = steer * t.TurnFactor;
                 if (Mathf.Abs(steer) > 0.01f)
@@ -1357,7 +1434,7 @@ namespace Modern8bitTanks
                 }
             }
 
-            Vector2 mouseWorld = GetMouseWorld2D();
+            Vector2 mouseWorld = input.AimWorld;
             Vector2 piv = t.GetTurretPivotWorld(squash);
             float desiredTurret = TankEntity.TargetDeltaToSliceAngle(mouseWorld - piv, squash);
             if (t.HasDisabled(TankModule.Traverse))
@@ -1367,20 +1444,14 @@ namespace Modern8bitTanks
                     LimitGunTraverse(t, desiredTurret), turretDegPerSec * dt);
             t.turretAngleDeg = LimitGunTraverse(t, t.turretAngleDeg);
 
-            bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-            bool fireMain = (!overUI && mouse != null && mouse.leftButton.isPressed) || kb.spaceKey.isPressed;
-            bool fireSecondary = !overUI && mouse != null && mouse.rightButton.isPressed;
-            if (fireMain) FirePrimaryWeapon(t);
-            if (fireSecondary) FireSecondaryWeapon(t);
+            if (input.FirePrimary) FirePrimaryWeapon(t);
+            if (input.FireSecondary) FireSecondaryWeapon(t);
 
-            if (kb.qKey.wasPressedThisFrame || kb.leftShiftKey.wasPressedThisFrame)
+            if (input.Smoke)
                 DeploySmokeScreen(t);
 
             // War Thunder [1] / [2] / [3] Ammunition Switching!
-            int wantAmmo = -1;
-            if (kb.digit1Key.wasPressedThisFrame) wantAmmo = 0;
-            else if (kb.digit2Key.wasPressedThisFrame) wantAmmo = 1;
-            else if (kb.digit3Key.wasPressedThisFrame) wantAmmo = 2;
+            int wantAmmo = input.AmmoSlot;
             if (wantAmmo >= 0 && wantAmmo < t.AmmoLoadout.Length && wantAmmo != t.selectedAmmoSlot)
             {
                 t.selectedAmmoSlot = wantAmmo;
@@ -1397,6 +1468,8 @@ namespace Modern8bitTanks
         private void DeploySmokeScreen(TankEntity t)
         {
             if (!t.alive || t.smokeCooldown > 0f || _phase != GamePhase.Playing) return;
+            if (MultiplayerWebBootstrap.Online)
+                MultiplayerMatchTransport.Instance?.BroadcastSmoke(_tanks.IndexOf(t));
             t.smokeCooldown = t.smokeDuration;
 
             Vector2 td = TankEntity.SliceAngleToDir(t.turretAngleDeg);
@@ -1859,6 +1932,7 @@ namespace Modern8bitTanks
                 kind = kind,
                 ammo = ammo,
                 ownerFaction = owner.factionTeam,
+                owner = owner,
                 playerOwned = owner.isPlayer,
                 visualPos = visPos,
                 groundPos = gndPos,
@@ -1899,6 +1973,16 @@ namespace Modern8bitTanks
                         aimTarget = GetMouseWorld2D();
                         hasTarget = true;
                         turnRateDeg = p.ammo == AmmoType.TOW ? 225f : 185f;
+                    }
+                    else if (!p.playerOwned && MultiplayerWebBootstrap.Online && _phase == GamePhase.Playing)
+                    {
+                        int slot = _networkTanks == null ? -1 : System.Array.IndexOf(_networkTanks, p.owner);
+                        if (MultiplayerMatchTransport.Instance != null && MultiplayerMatchTransport.Instance.TryGetControl(slot, out var control))
+                        {
+                            aimTarget = new Vector2(control.AimX, control.AimY);
+                            hasTarget = true;
+                            turnRateDeg = p.ammo == AmmoType.TOW ? 225f : 185f;
+                        }
                     }
                     else if (!p.playerOwned && _phase == GamePhase.Playing)
                     {
@@ -1976,7 +2060,16 @@ namespace Modern8bitTanks
                         float craterR = (p.IsHeavy
                             ? (hitProp.meta.ricochetHeavy ? 4.2f : 5.6f)
                             : (p.kind == ProjectileKind.Autocannon ? 2.4f : 1.5f)) * heMul;
+                        var randomState = Random.state;
+                        if (MultiplayerWebBootstrap.Online)
+                        {
+                            int seed = Random.Range(0, int.MaxValue);
+                            randomState = Random.state;
+                            MultiplayerMatchTransport.Instance?.BroadcastPropImpact(_props.IndexOf(hitProp), nextGnd, craterR, p.IsHeavy || p.ammo == AmmoType.HEIBelt, seed);
+                            Random.InitState(seed);
+                        }
                         bool collapsed = hitProp.ApplyHit(nextGnd, craterR, p.IsHeavy || p.ammo == AmmoType.HEIBelt, SpawnDebrisParticle);
+                        if (MultiplayerWebBootstrap.Online) Random.state = randomState;
 
                         if (collapsed && (hitProp.kind == "supply_crate" || hitProp.kind == "fuel_tank"))
                         {
@@ -2885,6 +2978,7 @@ namespace Modern8bitTanks
 
         private void OnDestroy()
         {
+            CleanupMultiplayerBattle();
             Time.timeScale = 1f;
             if (_groundHd2dMat != null) Destroy(_groundHd2dMat);
             if (_smokePuffTex != null) Destroy(_smokePuffTex);

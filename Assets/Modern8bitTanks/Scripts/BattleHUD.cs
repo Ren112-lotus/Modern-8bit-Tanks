@@ -356,12 +356,12 @@ namespace Modern8bitTanks
             _resultTitle = CreatePixelText(card, "VICTORY", 16, AbramsGold, TextAnchor.MiddleCenter, 0, 52, cw, 24, useTitleFont: true);
             _resultSubtitle = CreatePixelText(card, "VICTORY", 8, TextMuted, TextAnchor.MiddleCenter, 0, 34, cw, 14);
 
-            CreatePixelButton(card, _resultHitsGroup.transform, "NEXT BATTLE (R)", cx + 10, cy + 8, 126, 20, AbramsGold, AbramsGold, DarkInk, 8, () =>
+            CreatePixelButton(card, _resultHitsGroup.transform, MultiplayerWebBootstrap.Online ? "BACK TO ROOM" : "NEXT BATTLE (R)", cx + 10, cy + 8, 126, 20, AbramsGold, AbramsGold, DarkInk, 8, () =>
             {
-                _mgr.ResetRound();
+                if (MultiplayerWebBootstrap.Online) _mgr.ReturnToHangar(); else _mgr.ResetRound();
             }, isParentOffset: true, parentX: cx, parentY: cy);
 
-            CreatePixelButton(card, _resultHitsGroup.transform, "HANGAR", cx + 142, cy + 8, 84, 20, BtnBg, PanelBorder, TextLight, 8, () =>
+            CreatePixelButton(card, _resultHitsGroup.transform, MultiplayerWebBootstrap.Online ? "ROOM" : "HANGAR", cx + 142, cy + 8, 84, 20, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 _mgr.ReturnToHangar();
             }, isParentOffset: true, parentX: cx, parentY: cy);
@@ -391,13 +391,13 @@ namespace Modern8bitTanks
                 SetSettingsOpen(true);
             }, isParentOffset: true, parentX: cx, parentY: cy);
 
-            _btnNextRivalLabel = CreatePixelButton(card, _menuHitsGroup.transform, "NEXT RIVAL", cx + 12, cy + 32, cw - 24, 20, BtnBg, PanelBorder, TextLight, 8, () =>
+            _btnNextRivalLabel = CreatePixelButton(card, _menuHitsGroup.transform, MultiplayerWebBootstrap.Online ? "LEAVE MATCH" : "NEXT RIVAL", cx + 12, cy + 32, cw - 24, 20, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 CloseAllMenus();
-                _mgr.ResetRound();
+                if (MultiplayerWebBootstrap.Online) _mgr.ReturnToHangar(); else _mgr.ResetRound();
             }, isParentOffset: true, parentX: cx, parentY: cy);
 
-            CreatePixelButton(card, _menuHitsGroup.transform, "BACK TO HANGAR", cx + 12, cy + 8, cw - 24, 20, BtnBg, AbramsGold, AbramsGold, 8, () =>
+            CreatePixelButton(card, _menuHitsGroup.transform, MultiplayerWebBootstrap.Online ? "BACK TO ROOM" : "BACK TO HANGAR", cx + 12, cy + 8, cw - 24, 20, BtnBg, AbramsGold, AbramsGold, 8, () =>
             {
                 CloseAllMenus();
                 _mgr.ReturnToHangar();
