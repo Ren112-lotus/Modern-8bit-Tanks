@@ -13,10 +13,10 @@ namespace Modern8bitTanks
         {
             Vector2 from = observer.Position2D;
             Vector2 position = target.Position2D;
-            foreach (var smoke in _smokeClouds)
-                if ((position - smoke.pos).sqrMagnitude < smoke.radius * smoke.radius) return false;
-
-            return HasLineOfSight(from, position);
+            if (HasLineOfSight(from, position)) return true;
+            // The visible edge of the hull can peek around cover before its center.
+            Vector2 shoulder = Vector2.Perpendicular((position - from).normalized) * (9f / PPU);
+            return HasLineOfSight(from, position + shoulder) || HasLineOfSight(from, position - shoulder);
         }
 
         private void UpdateRadarContacts(MultiplayerMatchTransport transport)

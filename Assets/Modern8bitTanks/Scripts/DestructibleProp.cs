@@ -136,7 +136,7 @@ namespace Modern8bitTanks
             Vector2 delta = SpriteStackCamera.Unsquash(tankPos - center, squash);
 
             // Fast broad-phase circle reject
-            float broad = approxRadiusUnits + tankRadius + 0.35f;
+            float broad = (meta.fixedCover && stack != null ? SpriteRadius : approxRadiusUnits) + tankRadius + 0.35f;
             if (delta.sqrMagnitude > broad * broad) return;
 
             float rad = -initialAngleDeg * Mathf.Deg2Rad;
@@ -144,7 +144,7 @@ namespace Modern8bitTanks
             float s = Mathf.Sin(rad);
             Vector2 local = new Vector2(delta.x * c - delta.y * s, delta.x * s + delta.y * c);
 
-            float fillRatio = (kind == "palm_tree") ? 0.22f
+            float fillRatio = meta.fixedCover ? 0.50f : (kind == "palm_tree") ? 0.22f
                 : (kind == "pine_cluster" || kind == "desert_mesa" || kind == "forest_boulder") ? 0.38f
                 : 0.44f;
             float halfW = Mathf.Max(0.30f, (meta.width * fillRatio) / pixelsPerUnit);
@@ -184,9 +184,15 @@ namespace Modern8bitTanks
             if (!alive || stack == null || _solidMask == null) return false;
 
             Vector2 d = SpriteStackCamera.Unsquash(worldPos - (Vector2)transform.position, stack.squash);
-            if (d.magnitude > approxRadiusUnits + 0.35f) return false;
+            float radius = SpriteRadius;
+            if (d.sqrMagnitude > radius * radius) return false;
+            return IsSolidPixel(stack.WorldToLocalPixel(worldPos));
+        }
 
-            Vector2 local = stack.WorldToLocalPixel(worldPos);
+        private float SpriteRadius => 0.5f * new Vector2(stack.SliceWidth, stack.SliceHeight).magnitude / pixelsPerUnit;
+
+        private bool IsSolidPixel(Vector2 local)
+        {
             int px = Mathf.FloorToInt(local.x);
             int py = Mathf.FloorToInt(local.y);
             if (px < 0 || px >= stack.SliceWidth || py < 0 || py >= stack.SliceHeight)
@@ -195,9 +201,53 @@ namespace Modern8bitTanks
             return _solidMask[py * stack.SliceWidth + px];
         }
 
+        internal bool TryHitSegment(Vector2 from, Vector2 to, out float fraction)
+        {
+            fraction = 0f;
+            if (!alive || stack == null || _solidMask == null) return false;
+
+            Vector2 a = SpriteStackCamera.Unsquash(from - (Vector2)transform.position, stack.squash);
+            Vector2 delta = SpriteStackCamera.Unsquash(to - from, stack.squash);
+            float closest = Mathf.Clamp01(-Vector2.Dot(a, delta) / Mathf.Max(delta.sqrMagnitude, 0.000001f));
+            float radius = SpriteRadius;
+            if ((a + delta * closest).sqrMagnitude > radius * radius) return false;
+
+            Vector2 start = stack.WorldToLocalPixel(from);
+            Vector2 travel = stack.WorldToLocalPixel(to) - start;
+            float enter = 0f, exit = 1f;
+            if (!ClipAxis(start.x, travel.x, stack.SliceWidth, ref enter, ref exit)
+                || !ClipAxis(start.y, travel.y, stack.SliceHeight, ref enter, ref exit)) return false;
+
+            // Structural walls fill their footprint. Other props retain their per-pixel holes.
+            if (meta != null && meta.fixedCover)
+            {
+                fraction = enter;
+                return true;
+            }
+
+            int samples = Mathf.Max(1, Mathf.CeilToInt(travel.magnitude * (exit - enter) * 2f));
+            for (int i = 0; i <= samples; i++)
+            {
+                float t = Mathf.Lerp(enter, exit, i / (float)samples);
+                if (!IsSolidPixel(start + travel * t)) continue;
+                fraction = t;
+                return true;
+            }
+            return false;
+        }
+
+        private static bool ClipAxis(float start, float travel, int size, ref float enter, ref float exit)
+        {
+            if (Mathf.Abs(travel) < 0.000001f) return start >= 0 && start < size;
+            float a = -start / travel, b = (size - start) / travel;
+            enter = Mathf.Max(enter, Mathf.Min(a, b));
+            exit = Mathf.Min(exit, Mathf.Max(a, b));
+            return enter <= exit;
+        }
+
         public bool ApplyHit(Vector2 worldPos, float radiusPx, bool isCannon, Action<Vector2, Color> onDebris)
         {
-            if (!alive || stack == null) return false;
+            if (!alive || stack == null || (meta != null && meta.fixedCover)) return false;
 
             bool isHeavy = meta != null && meta.heavyStructure;
             float effectiveR = isHeavy ? radiusPx * 0.72f : radiusPx;

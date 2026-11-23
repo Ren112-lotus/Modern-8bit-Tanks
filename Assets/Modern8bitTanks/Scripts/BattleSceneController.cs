@@ -1967,31 +1967,38 @@ namespace Modern8bitTanks
                         break;
                     }
 
-                    DestructibleProp hitProp = null;
-                    for (int pi = 0; pi < _props.Count; pi++)
+                    DestructibleProp hitProp = FindPropHit(p.groundPos, nextGnd, out float propFraction);
+                    TankEntity hitTank = null;
+                    ArmorContact contact = default;
+                    if (_phase == GamePhase.Playing)
                     {
-                        if (_props[pi] != null && _props[pi].IsSolidAt(nextGnd))
+                        foreach (var target in _tanks)
                         {
-                            hitProp = _props[pi];
-                            break;
+                            if (target == null || !target.alive || target.factionTeam == p.ownerFaction) continue;
+                            if (!target.TryGetArmorContact(p.groundPos, nextGnd, squash, out ArmorContact candidate)) continue;
+                            if (hitTank != null && candidate.Fraction >= contact.Fraction) continue;
+                            hitTank = target;
+                            contact = candidate;
                         }
                     }
 
-                    if (hitProp != null)
+                    if (hitProp != null && (hitTank == null || propFraction <= contact.Fraction))
                     {
+                        Vector2 impact = Vector2.Lerp(p.groundPos, nextGnd, propFraction);
+                        Vector2 visualImpact = p.visualPos + impact - p.groundPos;
                         float heMul = p.ammo == AmmoType.HE ? 1.85f : (p.ammo == AmmoType.HEIBelt ? 1.55f : 1.0f);
                         float craterR = (p.IsHeavy
                             ? (hitProp.meta.ricochetHeavy ? 4.2f : 5.6f)
                             : (p.kind == ProjectileKind.Autocannon ? 2.4f : 1.5f)) * heMul;
                         var randomState = Random.state;
-                        if (_multiplayer.IsInBattle)
+                        if (_multiplayer.IsInBattle && !hitProp.meta.fixedCover)
                         {
                             int seed = Random.Range(0, int.MaxValue);
                             randomState = Random.state;
-                            _multiplayer.Transport?.BroadcastPropImpact(_props.IndexOf(hitProp), nextGnd, craterR, p.IsHeavy || p.ammo == AmmoType.HEIBelt, seed);
+                            _multiplayer.Transport?.BroadcastPropImpact(_props.IndexOf(hitProp), impact, craterR, p.IsHeavy || p.ammo == AmmoType.HEIBelt, seed);
                             Random.InitState(seed);
                         }
-                        bool collapsed = hitProp.ApplyHit(nextGnd, craterR, p.IsHeavy || p.ammo == AmmoType.HEIBelt, SpawnDebrisParticle);
+                        bool collapsed = hitProp.ApplyHit(impact, craterR, p.IsHeavy || p.ammo == AmmoType.HEIBelt, SpawnDebrisParticle);
                         if (_multiplayer.IsInBattle) Random.state = randomState;
 
                         if (collapsed && (hitProp.kind == "supply_crate" || hitProp.kind == "fuel_tank"))
@@ -2019,35 +2026,21 @@ namespace Modern8bitTanks
                         }
                         else if (p.ammo == AmmoType.HE)
                         {
-                            EmitExplosion(p.visualPos, nextGnd, true, SoundBus.HeavyReverb, 0.84f, 0.34f);
-                            ApplyHeOverpressureSplash(nextGnd, p.ownerFaction, 2.75f);
+                            EmitExplosion(visualImpact, impact, true, SoundBus.HeavyReverb, 0.84f, 0.34f);
+                            ApplyHeOverpressureSplash(impact - p.vel.normalized * 0.06f, p.ownerFaction, 2.75f);
                         }
                         else if (p.IsHeavy)
                         {
-                            EmitExplosion(p.visualPos, nextGnd, false, SoundBus.Reverb, 0.56f, 0.14f);
+                            EmitExplosion(visualImpact, impact, false, SoundBus.Reverb, 0.56f, 0.14f);
                         }
                         else if (p.kind == ProjectileKind.Autocannon)
                         {
-                            EmitBattleEffect(new BattleEffect { Kind = BattleEffectKind.PropSpark, Visual = p.visualPos,
+                            EmitBattleEffect(new BattleEffect { Kind = BattleEffectKind.PropSpark, Visual = visualImpact,
                                 Big = p.ammo == AmmoType.HEIBelt });
                         }
 
                         remove = true;
                         break;
-                    }
-
-                    TankEntity hitTank = null;
-                    ArmorContact contact = default;
-                    if (_phase == GamePhase.Playing)
-                    {
-                        foreach (var target in _tanks)
-                        {
-                            if (target == null || !target.alive || target.factionTeam == p.ownerFaction) continue;
-                            if (!target.TryGetArmorContact(p.groundPos, nextGnd, squash, out ArmorContact candidate)) continue;
-                            if (hitTank != null && candidate.Fraction >= contact.Fraction) continue;
-                            hitTank = target;
-                            contact = candidate;
-                        }
                     }
 
                     if (hitTank != null)
@@ -2626,16 +2619,29 @@ namespace Modern8bitTanks
 
         private bool HasLineOfSight(Vector2 a, Vector2 b)
         {
-            const int steps = 26;
-            for (int i = 1; i < steps; i++)
+            if (FindPropHit(a, b, out _) != null) return false;
+            Vector2 delta = b - a;
+            float lengthSq = Mathf.Max(delta.sqrMagnitude, 0.000001f);
+            foreach (var smoke in _smokeClouds)
             {
-                Vector2 pt = Vector2.Lerp(a, b, (float)i / steps);
-                for (int pi = 0; pi < _props.Count; pi++)
-                    if (_props[pi] != null && _props[pi].IsSolidAt(pt)) return false;
-                for (int si = 0; si < _smokeClouds.Count; si++)
-                    if (Vector2.Distance(pt, _smokeClouds[si].pos) < _smokeClouds[si].radius) return false;
+                float t = Mathf.Clamp01(Vector2.Dot(smoke.pos - a, delta) / lengthSq);
+                if ((a + delta * t - smoke.pos).sqrMagnitude < smoke.radius * smoke.radius) return false;
             }
             return true;
+        }
+
+        private DestructibleProp FindPropHit(Vector2 from, Vector2 to, out float fraction, bool fixedOnly = false)
+        {
+            DestructibleProp nearest = null;
+            fraction = 1f;
+            foreach (var prop in _props)
+            {
+                if (prop == null || (fixedOnly && prop.meta?.fixedCover != true)
+                    || !prop.TryHitSegment(from, to, out float hit) || (nearest != null && hit >= fraction)) continue;
+                fraction = hit;
+                nearest = prop;
+            }
+            return nearest;
         }
 
         private void SpawnDebrisParticle(Vector2 pos, Color col)

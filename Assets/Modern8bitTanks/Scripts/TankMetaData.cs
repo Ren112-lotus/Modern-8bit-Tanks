@@ -74,6 +74,7 @@ namespace Modern8bitTanks
         public bool destructible;
         public bool ricochetHeavy;
         public bool heavyStructure;
+        public bool fixedCover;
     }
 
     /// <summary>
