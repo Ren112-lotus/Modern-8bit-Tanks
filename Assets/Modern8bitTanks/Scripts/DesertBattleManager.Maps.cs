@@ -7,7 +7,7 @@ namespace Modern8bitTanks
     {
         private readonly Dictionary<string, Texture2D> _propTexCache = new();
         private PropsMetaFile _propsMeta;
-        private Transform _mapPropsRoot;
+        [SerializeField] private Transform _mapPropsRoot;
         private BattleMap _loadedMap = BattleMap.Desert;
 
         public static string GetMapDisplayName(BattleMap map) => map switch
@@ -305,20 +305,14 @@ namespace Modern8bitTanks
             _loadedMap = map;
 
             // Hide any legacy pre-placed scene props so each biome builds its full expanded 2048x1360 layout cleanly!
-            var sceneProps = FindObjectsByType<DestructibleProp>(FindObjectsInactive.Include);
-            for (int i = 0; i < sceneProps.Length; i++)
+            foreach (var prop in _props)
             {
-                var sp = sceneProps[i];
-                if (sp == null) continue;
-                if (sp.isDynamicSpawned)
-                    Destroy(sp.gameObject);
-                else
-                    sp.gameObject.SetActive(false);
+                if (prop == null) continue;
+                prop.gameObject.SetActive(false);
+                if (prop.isDynamicSpawned) Destroy(prop.gameObject);
             }
             _props.Clear();
 
-            if (_mapPropsRoot != null) Destroy(_mapPropsRoot.gameObject);
-            _mapPropsRoot = new GameObject($"MapProps_{map}").transform;
 
             if (battleMode == BattleMode.FiringRange)
             {
@@ -527,11 +521,9 @@ namespace Modern8bitTanks
             Texture2D sheet = GetPropSheet(kind);
             if (meta == null || sheet == null) return;
 
-            var go = new GameObject($"Prop_{kind}_{_props.Count:00}");
-            go.transform.SetParent(_mapPropsRoot, false);
-            go.transform.position = new Vector3(normX * WorldW, normY * WorldH, 0f);
-
-            var prop = go.AddComponent<DestructibleProp>();
+            var prop = Instantiate(spawnAssets.GetCover(kind), _mapPropsRoot, false);
+            prop.name = $"Prop_{kind}_{_props.Count:00}";
+            prop.transform.position = new Vector3(normX * WorldW, normY * WorldH, 0f);
             prop.ConfigureRuntime(kind, meta, sheet, angleDeg, PPU, _stackFlashMat);
             _props.Add(prop);
         }

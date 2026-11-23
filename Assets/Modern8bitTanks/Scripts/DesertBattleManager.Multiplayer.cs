@@ -308,9 +308,7 @@ namespace Modern8bitTanks
                 var entry = _networkProjectiles[freeSlot];
                 if (entry == null)
                 {
-                    var go = new GameObject("Remote projectile");
-                    go.transform.SetParent(_fxRoot, false);
-                    var sprite = go.AddComponent<SpriteRenderer>();
+                    var sprite = CreateEffect("Remote projectile");
                     sprite.sprite = _whitePxSprite;
                     _networkProjectiles[freeSlot] = entry = new RemoteShot { Sprite = sprite };
                 }
@@ -442,10 +440,8 @@ namespace Modern8bitTanks
             var sprite = _onlineTreads[_nextTread];
             if (sprite == null)
             {
-                var mark = new GameObject("Track mark");
-                mark.transform.SetParent(_fxRoot, false);
-                mark.transform.localScale = new Vector3(2f / PPU, 2f / PPU, 1f);
-                sprite = mark.AddComponent<SpriteRenderer>();
+                sprite = CreateEffect("Track mark");
+                sprite.transform.localScale = new Vector3(2f / PPU, 2f / PPU, 1f);
                 sprite.sprite = _whitePxSprite;
                 sprite.sortingOrder = -29999;
                 _onlineTreads[_nextTread] = sprite;

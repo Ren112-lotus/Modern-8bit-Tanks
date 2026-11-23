@@ -121,7 +121,8 @@ namespace Modern8bitTanks
         private readonly List<SmokeCloud> _smokeClouds = new();
         private readonly List<RadarSmokeInfo> _radarSmokes = new();
 
-        private Transform _fxRoot;
+        [SerializeField] private BattleSpawnAssets spawnAssets;
+        [SerializeField] private Transform _fxRoot;
         private Camera _cam;
         private BattleSessionState _sessionState;
         private GameSceneLoader _sceneLoader;
@@ -726,8 +727,11 @@ namespace Modern8bitTanks
 
         private void ClearDynamicFXAndExtraTanks()
         {
-            if (_fxRoot != null) Destroy(_fxRoot.gameObject);
-            _fxRoot = new GameObject("FXRoot").transform;
+            foreach (Transform effect in _fxRoot)
+            {
+                effect.gameObject.SetActive(false);
+                Destroy(effect.gameObject);
+            }
             _projectiles.Clear();
             _particles.Clear();
             _smokeClouds.Clear();
@@ -1881,12 +1885,18 @@ namespace Modern8bitTanks
             PlaySFXAt(_sfxMg, gndPos, SoundBus.Dry, t.isPlayer ? 0.28f : 0.24f);
         }
 
+        private SpriteRenderer CreateEffect(string effectName)
+        {
+            var sprite = Instantiate(spawnAssets.SpriteEffect, _fxRoot, false);
+            sprite.name = effectName;
+            return sprite;
+        }
+
         private void SpawnProjectile(ProjectileKind kind, AmmoType ammo, TankEntity owner, Vector2 visPos, Vector2 gndPos, Vector2 vel, float penetration, int armorBounces, float life)
         {
-            var go = new GameObject($"{kind}_{ammo}");
-            go.transform.SetParent(_fxRoot, false);
+            var sr = CreateEffect($"{kind}_{ammo}");
+            var go = sr.gameObject;
             go.transform.position = new Vector3(visPos.x, visPos.y, -2f);
-            var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = _whitePxSprite;
             SetProjectileAppearance(sr, ammo);
             go.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(vel.y, vel.x) * Mathf.Rad2Deg);
@@ -2805,12 +2815,11 @@ namespace Modern8bitTanks
             float drag = 0.965f,
             float zPos = -2.5f)
         {
-            var go = new GameObject("Pt");
-            go.transform.SetParent(_fxRoot, false);
+            var sr = CreateEffect("Particle");
+            var go = sr.gameObject;
             go.transform.position = new Vector3(pos.x, pos.y, zPos);
             float initScale = expandAndFade ? size * 0.72f : size;
             go.transform.localScale = new Vector3(initScale, initScale, 1f);
-            var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = customSprite != null ? customSprite : _whitePxSprite;
             sr.color = color;
             sr.sortingOrder = sortingOrder;

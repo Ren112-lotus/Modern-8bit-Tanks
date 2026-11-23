@@ -80,7 +80,17 @@ namespace Modern8bitTanks
         {
             isDynamicSpawned = true;
             _startPosCaptured = false;
-            InitializeInEditor(propKind, propMeta, sheet, angleDeg, ppu, mat);
+            kind = propKind;
+            meta = propMeta;
+            initialAngleDeg = angleDeg;
+            pixelsPerUnit = ppu;
+            stack.sourceSheet = sheet;
+            stack.sliceCount = meta.slices;
+            stack.pixelsPerUnit = ppu;
+            stack.sliceMaterial = mat;
+            stack.metallicWear = (kind == "fuel_tank" || kind == "tank_trap" || kind == "watch_tower" || kind == "city_factory")
+                ? 0.55f
+                : 0.08f;
             CaptureSpawnAndReset();
         }
 

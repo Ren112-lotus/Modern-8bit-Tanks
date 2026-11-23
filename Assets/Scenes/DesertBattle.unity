@@ -862,6 +862,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 751624948235844986, guid: 4d0aabffcd2d5f541870d65e0a8319db, type: 3}
   m_PrefabInstance: {fileID: 576008368}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &617431311
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 617431312}
+  m_Layer: 0
+  m_Name: BattleEffects
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &617431312
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 617431311}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1918088798}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &626381138
 GameObject:
   m_ObjectHideFlags: 0
@@ -1691,6 +1722,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 751624948235844986, guid: 4d0aabffcd2d5f541870d65e0a8319db, type: 3}
   m_PrefabInstance: {fileID: 940413833}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &969891248
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 969891249}
+  m_Layer: 0
+  m_Name: MapCover
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &969891249
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 969891248}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1918088798}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1026104195
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3727,6 +3789,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1f79f4012ff26f94aa00de58fab67e80, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.DesertBattleManager
+  _mapPropsRoot: {fileID: 969891249}
   desertGroundRenderer: {fileID: 3406651}
   abramsPrefab: {fileID: 1112755542675948389, guid: ec72e8bc73785eb418d63575a322af2d, type: 3}
   t90Prefab: {fileID: 3489945655188006765, guid: ae2b81dfdae1930478151a81548ba3fe, type: 3}
@@ -3751,6 +3814,8 @@ MonoBehaviour:
   postProcessEnabled: 1
   _hud: {fileID: 1430315597}
   _audio: {fileID: 1837662239}
+  spawnAssets: {fileID: 11400000, guid: 9530887957730e64d9a14c80ee9d0371, type: 2}
+  _fxRoot: {fileID: 617431312}
   _aimLine: {fileID: 888631233}
   _reticleSr: {fileID: 888631231}
 --- !u!4 &1918088798
@@ -3770,6 +3835,8 @@ Transform:
   - {fileID: 1837662240}
   - {fileID: 888631232}
   - {fileID: 1430315598}
+  - {fileID: 617431312}
+  - {fileID: 969891249}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1918088799
