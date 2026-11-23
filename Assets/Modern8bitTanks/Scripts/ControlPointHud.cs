@@ -7,7 +7,6 @@ namespace Modern8bitTanks
     {
         [SerializeField] private UnityEngine.UI.Image _allyScoreFill;
         [SerializeField] private UnityEngine.UI.Image _enemyScoreFill;
-        [SerializeField] private Text _objective;
         [SerializeField] private Text _status;
         [SerializeField] private RectTransform _waveToast;
 
@@ -15,13 +14,10 @@ namespace Modern8bitTanks
         {
             if (gameObject.activeSelf == visible) return;
 
-            _waveToast.anchoredPosition += Vector2.down * (visible ? 26f : -26f);
-            if (visible) RefreshObjective();
+            float clearance = ((RectTransform)transform).rect.height + 2f;
+            _waveToast.anchoredPosition += (visible ? Vector2.down : Vector2.up) * clearance;
             gameObject.SetActive(visible);
         }
-
-        internal void RefreshObjective() =>
-            _objective.text = UiText.Format("CAPTURE / {0} TO WIN", ControlPointSystem.ScoreToWin);
 
         internal void Render(ControlPointState state, Vector2 scores, Color ally, Color enemy, Color status)
         {

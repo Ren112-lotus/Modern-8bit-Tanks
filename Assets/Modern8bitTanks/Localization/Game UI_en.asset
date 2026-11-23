@@ -326,10 +326,6 @@ MonoBehaviour:
     m_Localized: CAPTURE VICTORY
     m_Metadata:
       m_Items: []
-  - m_Id: 716169292
-    m_Localized: CAPTURE / {0} TO WIN
-    m_Metadata:
-      m_Items: []
   - m_Id: 716169293
     m_Localized: POINT NEUTRAL
     m_Metadata:
@@ -747,7 +743,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534208
-    m_Localized: CAPTURE THE CENTER / {0} TO WIN
+    m_Localized: CAPTURE THE CENTER
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534209

@@ -61,7 +61,7 @@ namespace Modern8bitTanks
                 _ => "1v1"
             };
             briefingLocation.text = $"{UiText.Get(_briefingMapName)}  /  {mode}";
-            briefingObjective.text = UiText.Format("CAPTURE THE CENTER / {0} TO WIN", ControlPointSystem.ScoreToWin);
+            briefingObjective.text = UiText.Get("CAPTURE THE CENTER");
             briefingReadyLabel.text = UiText.Get(_briefingReady ? "WAITING FOR PLAYERS" : "READY [ENTER]");
         }
 

@@ -157,7 +157,6 @@ namespace Modern8bitTanks
             UiText.Prepare(_pixelCanvas, () =>
             {
                 RefreshMenuLabels();
-                _controlPointHud.RefreshObjective();
                 RefreshBriefingLabels();
             });
         }
