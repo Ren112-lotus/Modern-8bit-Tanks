@@ -3035,8 +3035,6 @@ MonoBehaviour:
   _titleDustPrefab: {fileID: 4286751976029668391, guid: e8455ca14bf222949b252642a8c2aa78, type: 3}
   mapBackdropRenderer: {fileID: 1026104196}
   showcaseTank: {fileID: 403131395}
-  renderWidth: 480
-  renderHeight: 270
   squash: 0.75
   spacingPx: 1
   showcaseZoom: 1.65

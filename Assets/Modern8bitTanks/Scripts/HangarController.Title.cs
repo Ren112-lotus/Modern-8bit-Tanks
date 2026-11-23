@@ -375,7 +375,7 @@ namespace Modern8bitTanks
             {
                 float targetGarageZoom = GetAdaptiveShowcaseZoom(GetSelectedVehicle());
                 float titleZoom = Mathf.Lerp(1.42f, targetGarageZoom, exit01 * exit01 * (3f - 2f * exit01));
-                float orthoSize = ((renderHeight / PPU) * 0.5f) / titleZoom;
+                float orthoSize = ((PixelWindowbox.RenderHeight / PPU) * 0.5f) / titleZoom;
                 _cam.orthographicSize = orthoSize;
                 float camX = Mathf.Round(center.x * PPU) / PPU;
                 float camY = Mathf.Round((center.y + Mathf.Lerp(0.15f, 0f, exit01)) * PPU) / PPU;

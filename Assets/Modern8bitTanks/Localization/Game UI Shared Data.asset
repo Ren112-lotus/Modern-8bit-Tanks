@@ -484,7 +484,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 720363541
-    m_Key: 'VIEW: 16:9 LETTERBOX'
+    m_Key: 'VIEW: 4:3'
     m_Metadata:
       m_Items: []
   - m_Id: 720363542

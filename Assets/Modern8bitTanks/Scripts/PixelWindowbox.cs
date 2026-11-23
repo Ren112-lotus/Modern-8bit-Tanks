@@ -6,22 +6,26 @@ namespace Modern8bitTanks
 {
     /// <summary>
     /// True Post-RT HD-2D Hybrid Pixel-Perfect Renderer:
-    ///   1. Game World -> _gameRt (crisp 480x270 DefaultHDR Point, NO post-processing inside RT!)
+    ///   1. Game World -> _gameRt (point-filtered HDR, with no post-processing inside the texture).
     ///   2. _presentCam renders _gameRt onto the native screen viewport (Letterbox / Integer Windowbox)
     ///      with Tilt-Shift DoF, THEN applies URP Post-Processing (HDR Bloom, Vignette, SplitToning, ACES)
     ///      at FULL NATIVE SCREEN RESOLUTION — razor-sharp pixel art + silky high-res optical Bloom!
-    ///   3. Pixel-Perfect uGUI HUD (Layer 5 UI) -> _hudRt (480x270 Point) composited cleanly on top
+    ///   3. Pixel-Perfect uGUI HUD (Layer 5 UI) -> _hudRt composited cleanly on top
     ///      so HUD text & X-Ray are never affected by Bloom or Vignette!
     /// </summary>
     public class PixelWindowbox : MonoBehaviour
     {
         private const int PresentLayer = 30; // Dedicated isolated layer for the fullscreen RT presentation quad
 
-        public int renderWidth = 480;
-        public int renderHeight = 270;
-        public int hd2dScale = 1; // Crisp 480x270 native pixel-art HDR buffer
+        public const int AspectWidth = 4;
+        public const int AspectHeight = 3;
+        private const int PixelsPerAspectUnit = 120;
+        public const int RenderWidth = AspectWidth * PixelsPerAspectUnit;
+        public const int RenderHeight = AspectHeight * PixelsPerAspectUnit;
+
+        public int hd2dScale = 1;
         public bool hd2dEnabled = true;
-        public bool integerScale = false; // Default: 16:9 Letterbox
+        public bool integerScale = false;
 
         private Camera _gameCam;
         [SerializeField] private Camera _presentCam;
@@ -56,17 +60,15 @@ namespace Modern8bitTanks
         public RenderTexture TargetTexture => _gameRt;
         public int GameRenderScale => hd2dEnabled ? Mathf.Clamp(hd2dScale, 1, 4) : 1;
 
-        public void Initialize(Camera gameCamera, int width = 480, int height = 270, bool useIntegerScale = false, bool useHd2d = true)
+        public void Initialize(Camera gameCamera, bool useIntegerScale = false, bool useHd2d = true)
         {
             _gameCam = gameCamera;
-            renderWidth = Mathf.Max(160, width);
-            renderHeight = Mathf.Max(90, height);
             integerScale = useIntegerScale;
             hd2dEnabled = useHd2d;
 
             BuildHd2dCompositeMaterial();
             CreateRenderTextures();
-            _hudCam.orthographicSize = renderHeight * 0.5f;
+            _hudCam.orthographicSize = RenderHeight * 0.5f;
             _hudCam.targetTexture = _hudRt;
             _hudImageRect.GetComponent<RawImage>().texture = _hudRt;
             _presentCam.enabled = true;
@@ -128,8 +130,7 @@ namespace Modern8bitTanks
             ReleaseTextures();
             RecreateGameRenderTexture();
 
-            // Crisp ARGB32 RenderTexture for Pixel-Perfect HUD (480x270 exact pixel grid — NEVER blurs!)
-            _hudRt = new RenderTexture(renderWidth, renderHeight, 16, RenderTextureFormat.ARGB32)
+            _hudRt = new RenderTexture(RenderWidth, RenderHeight, 16, RenderTextureFormat.ARGB32)
             {
                 name = "Modern8bitTanks_PixelHUD_RT",
                 filterMode = FilterMode.Point,
@@ -152,10 +153,10 @@ namespace Modern8bitTanks
             }
 
             int scale = GameRenderScale;
-            int gw = renderWidth * scale;
-            int gh = renderHeight * scale;
+            int gw = RenderWidth * scale;
+            int gh = RenderHeight * scale;
 
-            // Raw 480x270 Point-filtered HDR RenderTexture (post-processing runs AFTER this RT on _presentCam!)
+            // Point-filtered HDR texture for post-processing in the presentation camera.
             _gameRt = new RenderTexture(gw, gh, 24, RenderTextureFormat.DefaultHDR)
             {
                 name = hd2dEnabled ? "Modern8bitTanks_PixelHDR_RT" : "Modern8bitTanks_Retro_RT",
@@ -203,13 +204,14 @@ namespace Modern8bitTanks
 
             float sw = Screen.width;
             float sh = Screen.height;
-            float fitScale = Mathf.Min(sw / renderWidth, sh / renderHeight);
-            float finalScale = (integerScale && fitScale >= 1f)
-                ? Mathf.Floor(fitScale)
-                : Mathf.Max(0.1f, fitScale);
+            int fitUnits = Mathf.FloorToInt(Mathf.Min(sw / AspectWidth, sh / AspectHeight));
+            if (fitUnits <= 0) return;
+            int aspectUnits = integerScale && fitUnits >= PixelsPerAspectUnit
+                ? fitUnits / PixelsPerAspectUnit * PixelsPerAspectUnit
+                : fitUnits;
 
-            float dispW = Mathf.Round(renderWidth * finalScale);
-            float dispH = Mathf.Round(renderHeight * finalScale);
+            float dispW = AspectWidth * aspectUnits;
+            float dispH = AspectHeight * aspectUnits;
             Vector2 sz = new Vector2(dispW, dispH);
 
             _hudImageRect.sizeDelta = sz;

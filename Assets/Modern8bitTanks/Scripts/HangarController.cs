@@ -30,8 +30,6 @@ namespace Modern8bitTanks
         public TankEntity showcaseTank;
 
         [Header("Display Settings")]
-        public int renderWidth = 480;
-        public int renderHeight = 270;
         [Range(0.45f, 1.0f)] public float squash = 0.80f;
         [Range(0f, 2.5f)] public float spacingPx = 0.72f;
         [Range(1.0f, 3.0f)] public float showcaseZoom = 2.0f;
@@ -41,7 +39,7 @@ namespace Modern8bitTanks
         private const int ViewX = 8;
         private const int ViewY = 70;
         private const int ViewW = 464;
-        private const int ViewH = 170;
+        private const int ViewH = 260;
         private const int NodeW = 104;
         private const int NodeH = 30;
         private const int ColGap = 20;
@@ -236,11 +234,11 @@ namespace Modern8bitTanks
             squash = 0.80f;
             spacingPx = 0.72f;
 
-            _windowbox.Initialize(_cam, renderWidth, renderHeight, _sessionState.IntegerWindowbox, useHd2d: _sessionState.PostProcessEnabled);
+            _windowbox.Initialize(_cam, _sessionState.IntegerWindowbox, useHd2d: _sessionState.PostProcessEnabled);
             _windowbox.SetTiltShiftParams(1.15f, 0.52f, 0.24f);
 
             _postProcess.postProcessEnabled = _sessionState.PostProcessEnabled;
-            // Attach URP Post-Processing to PresentCamera so Bloom/Vignette/ACES run AFTER the 480x270 RT at full screen res!
+            // Apply post-processing at screen resolution after the low-resolution hangar render.
             _postProcess.Initialize(_windowbox.PresentCamera);
 
             LoadResourcesAndCatalog();
@@ -535,8 +533,8 @@ namespace Modern8bitTanks
                     // Click-drag horizontal panning inside tree viewport
                     Vector2 screenPos = mouse.position.ReadValue();
                     bool inTreeBand = _windowbox.TryScreenToViewport(screenPos, out Vector2 uv)
-                                      && uv.y * renderHeight >= ViewY - 12
-                                      && uv.y * renderHeight <= ViewY + ViewH;
+                                      && uv.y * PixelWindowbox.RenderHeight >= ViewY - 12
+                                      && uv.y * PixelWindowbox.RenderHeight <= ViewY + ViewH;
 
                     if (mouse.leftButton.wasPressedThisFrame && inTreeBand)
                     {
@@ -552,7 +550,7 @@ namespace Modern8bitTanks
                     {
                         float dxScreen = screenPos.x - _treeDragStartScreenX;
                         _treeDragAccumDist = Mathf.Max(_treeDragAccumDist, Mathf.Abs(dxScreen));
-                        float scaleToVirtual = renderWidth / Mathf.Max(1f, _windowbox.HitOverlayRect.rect.width);
+                        float scaleToVirtual = PixelWindowbox.RenderWidth / Mathf.Max(1f, _windowbox.HitOverlayRect.rect.width);
                         _targetScrollX = Mathf.Clamp(_treeDragStartScroll - dxScreen * scaleToVirtual, 0f, MaxScrollX);
                     }
                 }
@@ -614,7 +612,7 @@ namespace Modern8bitTanks
             // Center camera squarely on the showcase turntable
             if (_cam != null)
             {
-                float orthoSize = ((renderHeight / PPU) * 0.5f) / _currentShowcaseZoom;
+                float orthoSize = ((PixelWindowbox.RenderHeight / PPU) * 0.5f) / _currentShowcaseZoom;
                 _cam.orthographicSize = orthoSize;
                 float camX = Mathf.Round((WorldW * 0.5f) * PPU) / PPU;
                 float camY = Mathf.Round((WorldH * 0.5f) * PPU) / PPU;
@@ -664,8 +662,8 @@ namespace Modern8bitTanks
                     slot.hitGo.SetActive(true);
                     float sy0 = ViewY + slot.contentY;
                     float sy1 = sy0 + NodeH;
-                    slot.hitRt.anchorMin = new Vector2(clipX0 / renderWidth, sy0 / renderHeight);
-                    slot.hitRt.anchorMax = new Vector2(clipX1 / renderWidth, sy1 / renderHeight);
+                    slot.hitRt.anchorMin = new Vector2(clipX0 / PixelWindowbox.RenderWidth, sy0 / PixelWindowbox.RenderHeight);
+                    slot.hitRt.anchorMax = new Vector2(clipX1 / PixelWindowbox.RenderWidth, sy1 / PixelWindowbox.RenderHeight);
                     slot.hitRt.offsetMin = Vector2.zero;
                     slot.hitRt.offsetMax = Vector2.zero;
                 }
@@ -714,7 +712,7 @@ namespace Modern8bitTanks
             if (_setGfxLabel != null)
                 _setGfxLabel.text = UiText.Get(_sessionState.PostProcessEnabled ? "GFX: HD-2D" : "GFX: RETRO");
             if (_setViewLabel != null)
-                _setViewLabel.text = UiText.Get(_sessionState.IntegerWindowbox ? "VIEW: INT WINDOWBOX" : "VIEW: 16:9 LETTERBOX");
+                _setViewLabel.text = UiText.Get(_sessionState.IntegerWindowbox ? "VIEW: INT WINDOWBOX" : "VIEW: 4:3");
         }
 
         private void SetSettingsOpen(bool open)

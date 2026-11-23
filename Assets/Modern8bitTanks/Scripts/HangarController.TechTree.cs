@@ -80,14 +80,17 @@ namespace Modern8bitTanks
 
         private static int TreeRow(VehicleDef vehicle)
         {
+            int bottom = 28;
+            int middle = (ViewH - NodeH) / 2 - 10;
+            int top = ViewH - NodeH - 48;
             if (vehicle.historyColumn > 0)
-                return vehicle.historyRow == 1 ? 108 : vehicle.historyRow == 2 ? 16 : 62;
+                return vehicle.historyRow == 1 ? top : vehicle.historyRow == 2 ? bottom : middle;
             return vehicle.tab switch
             {
-                "MBT" => 108,
-                "LIGHT" => vehicle.tier < VehicleDef.ModernTier ? 108 : 62,
-                "SUPPORT" => 16,
-                _ => 62
+                "MBT" => top,
+                "LIGHT" => vehicle.tier < VehicleDef.ModernTier ? top : middle,
+                "SUPPORT" => bottom,
+                _ => middle
             };
         }
 

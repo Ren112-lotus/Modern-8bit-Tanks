@@ -56,10 +56,8 @@ namespace Modern8bitTanks
         [Range(0.45f, 1.0f)] public float squash = 0.80f;
         [Range(0f, 2.5f)] public float spacingPx = 0.72f;
 
-        [Header("Fixed RenderTexture Letterbox")]
-        public int renderWidth = 480;
-        public int renderHeight = 270;
-        public bool integerWindowbox = false; // Default: 16:9 Letterbox
+        [Header("Presentation")]
+        public bool integerWindowbox = false;
         public bool postProcessEnabled = true;
 
         private PixelWindowbox _windowbox;
@@ -283,11 +281,11 @@ namespace Modern8bitTanks
             _winsAlly = _sessionState.WinsAlly;
             _winsEnemy = _sessionState.WinsEnemy;
 
-            _windowbox.Initialize(_cam, renderWidth, renderHeight, integerWindowbox, useHd2d: postProcessEnabled);
+            _windowbox.Initialize(_cam, integerWindowbox, useHd2d: postProcessEnabled);
             _lastValidMouseWorld = new Vector2(WorldW * 0.5f, WorldH * 0.5f);
 
             _postProcess.postProcessEnabled = postProcessEnabled;
-            // Attach URP Post-Processing to PresentCamera so Bloom/Vignette/ACES run AFTER the 480x270 RT at full screen res!
+            // Apply post-processing at screen resolution after the low-resolution game render.
             _postProcess.Initialize(_windowbox.PresentCamera);
             _postProcess.ApplyMapTheme(battleMap);
 

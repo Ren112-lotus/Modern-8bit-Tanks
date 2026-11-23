@@ -21,7 +21,7 @@ namespace Modern8bitTanks
     }
 
     /// <summary>
-    /// 100% Pixel-Perfect (480x270) Combat HUD for Battle.unity:
+    /// Pixel-aligned combat HUD for Battle.unity:
     /// - Strictly native 8px / 16px HintedRaster pixel fonts on EVEN-sized integer pixel boxes (zero blur!)
     /// - Top Scoreboard showing Player vs Random Same-Tier Rival
     /// - Bottom-Left Primary Weapon / ATGM / Smoke [Q] HUD
@@ -141,8 +141,8 @@ namespace Modern8bitTanks
             _mgr = manager;
             _multiplayer = multiplayer;
             _windowbox = windowbox;
-            _W = windowbox.renderWidth;
-            _H = windowbox.renderHeight;
+            _W = PixelWindowbox.RenderWidth;
+            _H = PixelWindowbox.RenderHeight;
 
             _font = Resources.Load<Font>("Fonts/Silkscreen-Regular")
                     ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -264,7 +264,7 @@ namespace Modern8bitTanks
             if (_btnPostProcessLabel != null)
                 _btnPostProcessLabel.text = UiText.Get(_mgr.postProcessEnabled ? "GFX: HD-2D" : "GFX: RETRO");
             if (_btnDisplayModeLabel != null)
-                _btnDisplayModeLabel.text = UiText.Get(_mgr.integerWindowbox ? "VIEW: INT WINDOWBOX" : "VIEW: 16:9 LETTERBOX");
+                _btnDisplayModeLabel.text = UiText.Get(_mgr.integerWindowbox ? "VIEW: INT WINDOWBOX" : "VIEW: 4:3");
         }
 
         public void SpawnPopup(Vector2 worldPos, string label, Color color)

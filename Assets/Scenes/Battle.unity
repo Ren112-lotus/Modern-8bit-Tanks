@@ -4022,8 +4022,6 @@ MonoBehaviour:
   bgmVolume: 0.6
   squash: 0.75
   spacingPx: 1
-  renderWidth: 480
-  renderHeight: 270
   integerWindowbox: 0
   postProcessEnabled: 1
   _hud: {fileID: 1430315597}
