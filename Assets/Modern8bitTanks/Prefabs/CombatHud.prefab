@@ -1206,10 +1206,24 @@ MonoBehaviour:
   - {fileID: 5200641025510282587}
   - {fileID: 6516971065805005753}
   - {fileID: 5137019743764415148}
-  _ammoSlotTexts:
+  _ammoSlotKeys:
   - {fileID: 2974464253295732635}
   - {fileID: 5876910761071834258}
   - {fileID: 9008507776167963337}
+  _ammoSlotIcons:
+  - {fileID: 3553315642635725376}
+  - {fileID: 18080553566678314}
+  - {fileID: 5290590995643149994}
+  _ammoTypeSprites:
+  - {fileID: 5590518911165934866, guid: 9635822a410d4ea0a08cb314877900fa, type: 3}
+  - {fileID: 3806668600152959319, guid: 9635822a410d4ea0a08cb314877900fa, type: 3}
+  - {fileID: 3977185643497040964, guid: 9635822a410d4ea0a08cb314877900fa, type: 3}
+  - {fileID: 1753548061800737962, guid: 9635822a410d4ea0a08cb314877900fa, type: 3}
+  - {fileID: 580507982227582229, guid: 9635822a410d4ea0a08cb314877900fa, type: 3}
+  - {fileID: 8948603020271757833, guid: 9635822a410d4ea0a08cb314877900fa, type: 3}
+  - {fileID: 8598227548196383894, guid: 9635822a410d4ea0a08cb314877900fa, type: 3}
+  - {fileID: 1680870433884515300, guid: 9635822a410d4ea0a08cb314877900fa, type: 3}
+  - {fileID: 4773179746455793563, guid: 9635822a410d4ea0a08cb314877900fa, type: 3}
   _reloadFill: {fileID: 2403520606392042537}
   _reloadStatusText: {fileID: 4757684067388366895}
   _smokeFill: {fileID: 1850345129381428619}
@@ -3173,6 +3187,7 @@ RectTransform:
   m_Children:
   - {fileID: 8144285368025275259}
   - {fileID: 3193289869558650227}
+  - {fileID: 2324206398599999208}
   m_Father: {fileID: 6096528780089520056}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -3180,6 +3195,81 @@ RectTransform:
   m_AnchoredPosition: {x: 155, y: 4}
   m_SizeDelta: {x: 42, y: 14}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &2112936459294781268
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2324206398599999208}
+  - component: {fileID: 4990406230255643209}
+  - component: {fileID: 5290590995643149994}
+  m_Layer: 5
+  m_Name: AmmoIcon
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &2324206398599999208
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2112936459294781268}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 750088625183117089}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 20, y: 1}
+  m_SizeDelta: {x: 22, y: 12}
+  m_Pivot: {x: 0, y: 0}
+--- !u!222 &4990406230255643209
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2112936459294781268}
+  m_CullTransparentMesh: 1
+--- !u!114 &5290590995643149994
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2112936459294781268}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 1753548061800737962, guid: 9635822a410d4ea0a08cb314877900fa, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
 --- !u!222 &2675429498767169566
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -5280,7 +5370,7 @@ GameObject:
   - component: {fileID: 2974464253295732635}
   - component: {fileID: 2971507366171006805}
   m_Layer: 5
-  m_Name: Txt_1---
+  m_Name: AmmoKey
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5303,7 +5393,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 1}
-  m_SizeDelta: {x: 42, y: 12}
+  m_SizeDelta: {x: 20, y: 12}
   m_Pivot: {x: 0, y: 0}
 --- !u!222 &7312253057268408799
 CanvasRenderer:
@@ -5346,7 +5436,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: 1---
+  m_Text: 1
 --- !u!114 &2971507366171006805
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5375,7 +5465,7 @@ GameObject:
   - component: {fileID: 5876910761071834258}
   - component: {fileID: 805981022361170631}
   m_Layer: 5
-  m_Name: Txt_2---
+  m_Name: AmmoKey
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5398,7 +5488,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 1}
-  m_SizeDelta: {x: 42, y: 12}
+  m_SizeDelta: {x: 20, y: 12}
   m_Pivot: {x: 0, y: 0}
 --- !u!222 &5345346653153792648
 CanvasRenderer:
@@ -5441,7 +5531,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: 2---
+  m_Text: 2
 --- !u!114 &805981022361170631
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5639,6 +5729,7 @@ RectTransform:
   m_Children:
   - {fileID: 7502422226239123022}
   - {fileID: 2713215388302912419}
+  - {fileID: 7197671489696114966}
   m_Father: {fileID: 6096528780089520056}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -5646,6 +5737,81 @@ RectTransform:
   m_AnchoredPosition: {x: 111, y: 4}
   m_SizeDelta: {x: 42, y: 14}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &7993159388395809142
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7197671489696114966}
+  - component: {fileID: 7814389837496429503}
+  - component: {fileID: 18080553566678314}
+  m_Layer: 5
+  m_Name: AmmoIcon
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &7197671489696114966
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7993159388395809142}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2558274848811685041}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 20, y: 1}
+  m_SizeDelta: {x: 22, y: 12}
+  m_Pivot: {x: 0, y: 0}
+--- !u!222 &7814389837496429503
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7993159388395809142}
+  m_CullTransparentMesh: 1
+--- !u!114 &18080553566678314
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7993159388395809142}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 3977185643497040964, guid: 9635822a410d4ea0a08cb314877900fa, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
 --- !u!222 &4929042830026567576
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -14473,6 +14639,7 @@ RectTransform:
   m_Children:
   - {fileID: 7978974887209391900}
   - {fileID: 2584254502423212842}
+  - {fileID: 6427383531976830178}
   m_Father: {fileID: 6096528780089520056}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -14480,6 +14647,81 @@ RectTransform:
   m_AnchoredPosition: {x: 67, y: 4}
   m_SizeDelta: {x: 42, y: 14}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &8363853108792077494
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6427383531976830178}
+  - component: {fileID: 7342938101133979499}
+  - component: {fileID: 3553315642635725376}
+  m_Layer: 5
+  m_Name: AmmoIcon
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &6427383531976830178
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8363853108792077494}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4681889444819047701}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 20, y: 1}
+  m_SizeDelta: {x: 22, y: 12}
+  m_Pivot: {x: 0, y: 0}
+--- !u!222 &7342938101133979499
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8363853108792077494}
+  m_CullTransparentMesh: 1
+--- !u!114 &3553315642635725376
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8363853108792077494}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 5590518911165934866, guid: 9635822a410d4ea0a08cb314877900fa, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
 --- !u!222 &7765050855455845848
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -14608,7 +14850,7 @@ GameObject:
   - component: {fileID: 9008507776167963337}
   - component: {fileID: 2982261912002899350}
   m_Layer: 5
-  m_Name: Txt_3---
+  m_Name: AmmoKey
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -14631,7 +14873,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 1}
-  m_SizeDelta: {x: 42, y: 12}
+  m_SizeDelta: {x: 20, y: 12}
   m_Pivot: {x: 0, y: 0}
 --- !u!222 &1772849180687945127
 CanvasRenderer:
@@ -14674,7 +14916,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: 3---
+  m_Text: 3
 --- !u!114 &2982261912002899350
 MonoBehaviour:
   m_ObjectHideFlags: 0

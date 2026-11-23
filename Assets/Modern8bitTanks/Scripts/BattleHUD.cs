@@ -54,9 +54,15 @@ namespace Modern8bitTanks
         [SerializeField] private Text _enemyActiveText;
         [SerializeField] private Text _centerBadgeText;
 
-        // Bottom-Center Sleek War Thunder Action Bar + [1][2][3] Ammo Selector
+        // Reload, ammunition and smoke controls
         [SerializeField] private Image[] _ammoSlotBgs;
-        [SerializeField] private Text[] _ammoSlotTexts;
+        [SerializeField] private Text[] _ammoSlotKeys;
+        [SerializeField] private UnityEngine.UI.Image[] _ammoSlotIcons;
+        [SerializeField, Tooltip("Sprites in AmmoType enum order.")]
+        private Sprite[] _ammoTypeSprites;
+        private static readonly string[] AmmoSlotKeys = { "1", "2", "3" };
+        private static readonly Color AmmoIconIdle = new(0.77f, 0.77f, 0.77f, 1f);
+        private static readonly Color AmmoIconCooling = new(0.62f, 0.62f, 0.62f, 0.64f);
         [SerializeField] private Image _reloadFill;
         [SerializeField] private Text _reloadStatusText;
         [SerializeField] private Image _smokeFill;
@@ -466,39 +472,7 @@ namespace Modern8bitTanks
                 _reloadStatusText.color = ReadyGreen;
             }
 
-            // Middle: War Thunder [1] [2] [3] Ammo Slots (+ Secondary Mouse-Guided TOW [RMB] slot for IFVs!)
-            if (_ammoSlotTexts != null && player != null)
-            {
-                AmmoType[] loadout = player.AmmoLoadout;
-                bool hasSecAtgm = pDef != null && pDef.HasSecondaryAtgm;
-                for (int i = 0; i < 3; i++)
-                {
-                    if (i < loadout.Length)
-                    {
-                        AmmoType a = loadout[i];
-                        bool sel = player.selectedAmmoSlot == i;
-                        _ammoSlotTexts[i].text = $"{i + 1}{AmmoInfo.ShortLabel(a)}";
-                        Color activeCol = AmmoInfo.IsGuided(a) ? SmokeCyan
-                            : (AmmoInfo.IsExplosiveSplash(a) || a == AmmoType.HEATFS) ? new Color(1f, 0.64f, 0.28f, 1f)
-                            : AbramsGold;
-                        _ammoSlotTexts[i].color = sel ? activeCol : TextMuted;
-                        _ammoSlotBgs[i].color = sel ? PanelBgActive : PanelBg;
-                    }
-                    else if (i == 2 && hasSecAtgm)
-                    {
-                        bool ready = player.atgmCooldown <= 0f;
-                        _ammoSlotTexts[i].text = ready ? "R:TOW" : $"T:{player.atgmCooldown:F0}s";
-                        _ammoSlotTexts[i].color = ready ? SmokeCyan : TextMuted;
-                        _ammoSlotBgs[i].color = ready ? PanelBgActive : PanelBg;
-                    }
-                    else
-                    {
-                        _ammoSlotTexts[i].text = "---";
-                        _ammoSlotTexts[i].color = new Color(0.35f, 0.38f, 0.40f, 0.6f);
-                        _ammoSlotBgs[i].color = PanelBg;
-                    }
-                }
-            }
+            if (player != null) UpdateAmmoSlots(player);
 
             // Smoke Launcher [Q] Cooldown
             if (player != null && player.alive)
@@ -540,6 +514,43 @@ namespace Modern8bitTanks
                     Color c = p.baseColor;
                     c.a = Mathf.Clamp01(p.life / (p.maxLife * 0.45f));
                     p.text.color = c;
+                }
+            }
+        }
+
+        private void UpdateAmmoSlots(TankEntity player)
+        {
+            AmmoType[] loadout = player.AmmoLoadout;
+            bool hasSecondary = player.vehicleDef != null && player.vehicleDef.HasSecondaryAtgm;
+            for (int i = 0; i < _ammoSlotIcons.Length; i++)
+            {
+                var icon = _ammoSlotIcons[i];
+                var label = _ammoSlotKeys[i];
+                if (i < loadout.Length)
+                {
+                    bool selected = player.selectedAmmoSlot == i;
+                    icon.sprite = _ammoTypeSprites[(int)loadout[i]];
+                    icon.enabled = true;
+                    icon.color = selected ? Color.white : AmmoIconIdle;
+                    label.text = AmmoSlotKeys[i];
+                    label.color = selected ? AbramsGold : TextMuted;
+                    _ammoSlotBgs[i].color = selected ? PanelBgActive : PanelBg;
+                }
+                else if (i == _ammoSlotIcons.Length - 1 && hasSecondary)
+                {
+                    bool ready = player.atgmCooldown <= 0f;
+                    icon.sprite = _ammoTypeSprites[(int)AmmoType.TOW];
+                    icon.enabled = true;
+                    icon.color = ready ? Color.white : AmmoIconCooling;
+                    label.text = ready ? "RMB" : $"{Mathf.CeilToInt(player.atgmCooldown)}s";
+                    label.color = ready ? SmokeCyan : TextMuted;
+                    _ammoSlotBgs[i].color = ready ? PanelBgActive : PanelBg;
+                }
+                else
+                {
+                    icon.enabled = false;
+                    label.text = string.Empty;
+                    _ammoSlotBgs[i].color = PanelBg;
                 }
             }
         }
