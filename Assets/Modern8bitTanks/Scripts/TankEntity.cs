@@ -112,7 +112,7 @@ namespace Modern8bitTanks
             {
                 hullAngleDeg = initialAngleDeg;
                 turretAngleDeg = initialAngleDeg;
-                SyncEditModePreview();
+                SyncStackPose();
             }
         }
 
@@ -122,11 +122,11 @@ namespace Modern8bitTanks
             {
                 hullAngleDeg = initialAngleDeg;
                 turretAngleDeg = initialAngleDeg;
-                SyncEditModePreview();
+                SyncStackPose();
             }
         }
 
-        private void SyncEditModePreview()
+        private void SyncStackPose()
         {
             if (hullStack == null || turretStack == null || meta == null) return;
             hullStack.angleDeg = hullAngleDeg;
@@ -147,11 +147,18 @@ namespace Modern8bitTanks
         }
 
         /// <summary>
-        /// Swaps this tank's sprite slices, stats, and weapon profile to a catalog vehicle.
+        /// Configures and spawns this tank with the selected catalog vehicle.
         /// </summary>
-        public void ApplyVehicleDef(VehicleDef def, Texture2D hullSheet, Texture2D turretSheet, Material mat = null)
+        public bool TrySpawnAsVehicle(VehicleDef def, Texture2D hullSheet, Texture2D turretSheet,
+            Vector2 position, float angleDeg, Material material = null)
         {
-            if (def == null) return;
+            if (def == null || hullStack == null || turretStack == null ||
+                !CanRenderSheet(hullSheet, def.hullSlices) || !CanRenderSheet(turretSheet, def.turretSlices))
+            {
+                Debug.LogError($"Cannot spawn vehicle '{def?.id}': missing tank stacks or invalid slice textures.", this);
+                return false;
+            }
+
             vehicleDef = def;
             tankType = def.id;
             meta = def.ToTankMeta();
@@ -161,21 +168,18 @@ namespace Modern8bitTanks
             float microBoost = hullLenPx < 31f ? Mathf.Clamp(31f / Mathf.Max(18f, hullLenPx), 1.0f, 1.18f) : 1.0f;
             pixelsPerUnit = 16f / microBoost;
 
-            reloadDuration = def.reload;
-            hullTurnSpeed = def.EffectiveHullTurnSpeed;
-            turretTurnSpeed = def.EffectiveTurretTurnSpeed;
+            Material stackMaterial = material != null ? material : hullStack.sliceMaterial;
+            hullStack.SetStackSource(hullSheet, meta.hullSlices, pixelsPerUnit, stackMaterial, 0, 0f, groundShadow: true);
+            turretStack.SetStackSource(turretSheet, meta.turretSlices, pixelsPerUnit, stackMaterial,
+                meta.hullSlices * 2 + 4, meta.hullBaseHeight, groundShadow: false);
 
-            sortingGroup = GetComponent<SortingGroup>();
-            Material useMat = mat != null ? mat : (hullStack != null ? hullStack.sliceMaterial : null);
+            CaptureSpawnAndReset(position, angleDeg);
+            return true;
+        }
 
-            if (hullSheet != null && hullStack != null)
-                hullStack.Configure(hullSheet, meta.hullSlices, pixelsPerUnit, useMat, 0, 0f, groundShadow: true);
-
-            if (turretSheet != null && turretStack != null)
-                turretStack.Configure(turretSheet, meta.turretSlices, pixelsPerUnit, useMat, meta.hullSlices * 2 + 4, meta.hullBaseHeight, groundShadow: false);
-
-            _turretHeightSlices = meta.hullBaseHeight;
-            SyncEditModePreview();
+        private static bool CanRenderSheet(Texture2D sheet, int slices)
+        {
+            return sheet != null && sheet.isReadable && slices > 0 && sheet.width % slices == 0;
         }
 
         public void CaptureSpawnAndReset(Vector2? overridePos = null, float? overrideAngle = null)
@@ -238,19 +242,9 @@ namespace Modern8bitTanks
             aiStrafeTimer = 2f;
             aiFireDelay = 0.45f;
 
-            if (hullStack != null)
-            {
-                hullStack.hitFlash = 0f;
-                hullStack.charred = false;
-                hullStack.RebuildStack();
-            }
-            if (turretStack != null)
-            {
-                turretStack.hitFlash = 0f;
-                turretStack.charred = false;
-                turretStack.RebuildStack();
-            }
-
+            SyncStackPose();
+            hullStack?.ResetDamageVisuals();
+            turretStack?.ResetDamageVisuals();
         }
 
         public Vector2 Position2D

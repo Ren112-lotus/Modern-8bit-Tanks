@@ -344,20 +344,11 @@ namespace Modern8bitTanks
             VehicleDef def = GetSelectedVehicle();
             if (def == null || showcaseTank == null) return;
 
-            if (!_hullTexCache.TryGetValue(def.id, out Texture2D hullTex))
-            {
-                hullTex = Resources.Load<Texture2D>($"Vehicles/{def.id}_hull_slices");
-                _hullTexCache[def.id] = hullTex;
-            }
-            if (!_turretTexCache.TryGetValue(def.id, out Texture2D turretTex))
-            {
-                turretTex = Resources.Load<Texture2D>($"Vehicles/{def.id}_turret_slices");
-                _turretTexCache[def.id] = turretTex;
-            }
-
             Vector2 center = new Vector2(WorldW * 0.5f, WorldH * 0.5f + 0.15f);
-            showcaseTank.ApplyVehicleDef(def, hullTex, turretTex, _stackFlashMat);
-            showcaseTank.CaptureSpawnAndReset(center, 35f + _manualAngleOffset);
+            if (!showcaseTank.TrySpawnAsVehicle(def, LoadCachedHull(def.id), LoadCachedTurret(def.id),
+                center, 35f + _manualAngleOffset, _stackFlashMat))
+                return;
+
             showcaseTank.SetAssemblyDrop(1f);
             RefreshAllUI();
         }

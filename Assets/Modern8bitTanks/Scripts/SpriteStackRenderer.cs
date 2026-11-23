@@ -53,6 +53,7 @@ namespace Modern8bitTanks
         private int _sliceH;
         private MaterialPropertyBlock _mpb;
         private bool _dirtyRebuild;
+        private bool _slicePixelsDamaged;
 
         private static readonly int FlashAmountId = Shader.PropertyToID("_FlashAmount");
         private static readonly int CharredId = Shader.PropertyToID("_Charred");
@@ -91,7 +92,7 @@ namespace Modern8bitTanks
             }
         }
 
-        public void Configure(
+        internal void SetStackSource(
             Texture2D sheet,
             int count,
             float ppu,
@@ -100,6 +101,8 @@ namespace Modern8bitTanks
             float zOffsetSlices,
             bool groundShadow)
         {
+            _dirtyRebuild |= sourceSheet != sheet || sliceCount != count || pixelsPerUnit != ppu ||
+                sliceMaterial != mat || baseSortingOrder != sortingOrderOffset || addGroundShadow != groundShadow;
             sourceSheet = sheet;
             sliceCount = count;
             pixelsPerUnit = ppu;
@@ -107,12 +110,35 @@ namespace Modern8bitTanks
             baseSortingOrder = sortingOrderOffset;
             baseZOffsetSlices = zOffsetSlices;
             addGroundShadow = groundShadow;
-            _mpb ??= new MaterialPropertyBlock();
-            RebuildStack();
+        }
+
+        internal void ResetDamageVisuals()
+        {
+            hitFlash = 0f;
+            charred = false;
+
+            if (_dirtyRebuild || _visualRoot == null)
+            {
+                RebuildStack();
+                return;
+            }
+
+            if (_slicePixelsDamaged)
+            {
+                Color32[] sourcePixels = sourceSheet.GetPixels32();
+                var slicePixels = new Color32[_sliceW * _sliceH];
+                for (int z = 0; z < _sliceTextures.Count; z++)
+                    UploadSlicePixels(_sliceTextures[z], sourcePixels, slicePixels, z);
+
+                _slicePixelsDamaged = false;
+            }
+
+            ApplyVisuals();
         }
 
         public void RebuildStack()
         {
+            _dirtyRebuild = false;
             ClearStack();
             if (sourceSheet == null || !sourceSheet.isReadable || sliceCount <= 0)
                 return;
@@ -149,8 +175,8 @@ namespace Modern8bitTanks
                 _shadowSr.sortingOrder = baseSortingOrder - 3;
             }
 
-            Color32[] srcPixels = sourceSheet.GetPixels32();
-            int sheetW = sourceSheet.width;
+            Color32[] sourcePixels = sourceSheet.GetPixels32();
+            var slicePixels = new Color32[_sliceW * _sliceH];
 
             for (int z = 0; z < sliceCount; z++)
             {
@@ -161,18 +187,7 @@ namespace Modern8bitTanks
                     hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild
                 };
 
-                var pixels = new Color32[_sliceW * _sliceH];
-                for (int y = 0; y < _sliceH; y++)
-                {
-                    int srcRow = y * sheetW + z * _sliceW;
-                    int dstRow = y * _sliceW;
-                    for (int x = 0; x < _sliceW; x++)
-                    {
-                        pixels[dstRow + x] = srcPixels[srcRow + x];
-                    }
-                }
-                tex.SetPixels32(pixels);
-                tex.Apply(false, false);
+                UploadSlicePixels(tex, sourcePixels, slicePixels, z);
                 _sliceTextures.Add(tex);
 
                 var spr = Sprite.Create(
@@ -215,6 +230,19 @@ namespace Modern8bitTanks
             }
 
             ApplyVisuals();
+        }
+
+        private void UploadSlicePixels(Texture2D texture, Color32[] sourcePixels, Color32[] slicePixels, int sliceIndex)
+        {
+            int sheetWidth = sourceSheet.width;
+            for (int y = 0; y < _sliceH; y++)
+            {
+                int rowOffset = y * sheetWidth + sliceIndex * _sliceW;
+                Array.Copy(sourcePixels, rowOffset, slicePixels, y * _sliceW, _sliceW);
+            }
+
+            texture.SetPixels32(slicePixels);
+            texture.Apply(false, false);
         }
 
         public void ApplyVisuals()
@@ -425,6 +453,7 @@ namespace Modern8bitTanks
                 {
                     tex.SetPixels32(pixels);
                     tex.Apply(false, false);
+                    _slicePixelsDamaged = true;
                 }
             }
 
@@ -439,11 +468,21 @@ namespace Modern8bitTanks
                 Transform child = transform.GetChild(i);
                 if (child.name == VisualContainerName || child.name == "__VoxelMeshVisual")
                 {
-                    if (Application.isPlaying) Destroy(child.gameObject);
-                    else DestroyImmediate(child.gameObject);
+                    if (Application.isPlaying)
+                    {
+                        child.gameObject.SetActive(false);
+                        Destroy(child.gameObject);
+                    }
+                    else
+                    {
+                        DestroyImmediate(child.gameObject);
+                    }
                 }
             }
             _visualRoot = null;
+            _slicePixelsDamaged = false;
+            _sliceW = 0;
+            _sliceH = 0;
             _aoShadowHolder = null;
             _aoShadowSr = null;
             _shadowHolder = null;

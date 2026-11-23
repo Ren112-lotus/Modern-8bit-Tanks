@@ -88,8 +88,8 @@ namespace Modern8bitTanks
                 _titleWingOffsets[i] = tank.Position2D - center;
                 var vehicle = _vehicleMap.TryGetValue(id, out var found) ? found : GetSelectedVehicle();
                 if (vehicle == null) continue;
-                tank.ApplyVehicleDef(vehicle, LoadCachedHull(vehicle.id), LoadCachedTurret(vehicle.id), _stackFlashMat);
-                tank.CaptureSpawnAndReset(tank.Position2D, TitleConvoyAngleDeg);
+                tank.TrySpawnAsVehicle(vehicle, LoadCachedHull(vehicle.id), LoadCachedTurret(vehicle.id),
+                    tank.Position2D, TitleConvoyAngleDeg, _stackFlashMat);
             }
 
             foreach (var scenery in _titleScenery)

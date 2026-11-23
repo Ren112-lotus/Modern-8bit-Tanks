@@ -418,9 +418,8 @@ namespace Modern8bitTanks
                 _sceneAbrams.gameObject.SetActive(true);
                 _sceneAbrams.isPlayer = true;
                 _sceneAbrams.factionTeam = "ally";
-                ApplyVehicleToTank(_sceneAbrams, playerDef);
-                _sceneAbrams.CaptureSpawnAndReset(new Vector2(WorldW * 0.14f, WorldH * 0.50f), 90f);
-                _tanks.Add(_sceneAbrams);
+                if (TrySpawnVehicle(_sceneAbrams, playerDef, new Vector2(WorldW * 0.14f, WorldH * 0.50f), 90f))
+                    _tanks.Add(_sceneAbrams);
             }
 
             // 6 Graduated Proving-Ground Targets (Close Light, Frontal MBT, Broadside MBT, Rear Engine MBT, Long-Range Heavy, Moving Patrol!)
@@ -443,10 +442,8 @@ namespace Modern8bitTanks
                     _sceneT90.gameObject.SetActive(true);
                     _sceneT90.isPlayer = false;
                     _sceneT90.factionTeam = "enemy";
-                    ApplyVehicleToTank(_sceneT90, sp.def);
-                    _sceneT90.CaptureSpawnAndReset(sp.pos, sp.angle);
-                    _tanks.Add(_sceneT90);
-                    t = _sceneT90;
+                    t = TrySpawnVehicle(_sceneT90, sp.def, sp.pos, sp.angle) ? _sceneT90 : null;
+                    if (t != null) _tanks.Add(t);
                 }
                 else
                 {

@@ -394,9 +394,9 @@ namespace Modern8bitTanks
             return best ?? playerDef;
         }
 
-        private void ApplyVehicleToTank(TankEntity tank, VehicleDef def)
+        private bool TrySpawnVehicle(TankEntity tank, VehicleDef def, Vector2 position, float angleDeg)
         {
-            if (tank == null || def == null) return;
+            if (tank == null || def == null) return false;
             if (!_hullTexCache.TryGetValue(def.id, out Texture2D hullTex))
             {
                 hullTex = Resources.Load<Texture2D>($"Vehicles/{def.id}_hull_slices");
@@ -407,21 +407,7 @@ namespace Modern8bitTanks
                 turretTex = Resources.Load<Texture2D>($"Vehicles/{def.id}_turret_slices");
                 _turretTexCache[def.id] = turretTex;
             }
-            tank.ApplyVehicleDef(def, hullTex, turretTex, _stackFlashMat);
-        }
-
-        private void RefreshHangarShowcaseVehicles()
-        {
-            if (_sceneAbrams != null)
-            {
-                ApplyVehicleToTank(_sceneAbrams, SelectedPlayerVehicle);
-                _sceneAbrams.factionTeam = "ally";
-            }
-            if (_sceneT90 != null)
-            {
-                ApplyVehicleToTank(_sceneT90, SelectedEnemyVehicle);
-                _sceneT90.factionTeam = "enemy";
-            }
+            return tank.TrySpawnAsVehicle(def, hullTex, turretTex, position, angleDeg, _stackFlashMat);
         }
 
         private void LoadRuntimeResources()
@@ -737,18 +723,16 @@ namespace Modern8bitTanks
                 _sceneAbrams.gameObject.SetActive(true);
                 _sceneAbrams.isPlayer = true;
                 _sceneAbrams.factionTeam = "ally";
-                ApplyVehicleToTank(_sceneAbrams, playerDef);
-                _sceneAbrams.CaptureSpawnAndReset(new Vector2(westX, WorldH * 0.50f), 90f);
-                _tanks.Add(_sceneAbrams);
+                if (TrySpawnVehicle(_sceneAbrams, playerDef, new Vector2(westX, WorldH * 0.50f), 90f))
+                    _tanks.Add(_sceneAbrams);
             }
             if (_sceneT90 != null)
             {
                 _sceneT90.gameObject.SetActive(true);
                 _sceneT90.isPlayer = false;
                 _sceneT90.factionTeam = "enemy";
-                ApplyVehicleToTank(_sceneT90, enemyDef);
-                _sceneT90.CaptureSpawnAndReset(new Vector2(eastX, WorldH * 0.50f), -90f);
-                _tanks.Add(_sceneT90);
+                if (TrySpawnVehicle(_sceneT90, enemyDef, new Vector2(eastX, WorldH * 0.50f), -90f))
+                    _tanks.Add(_sceneT90);
             }
 
             if (battleMode == BattleMode.Squad2v2)
@@ -800,8 +784,11 @@ namespace Modern8bitTanks
             inst.isExtraSpawned = true;
             inst.isPlayer = isPlayerTank;
             inst.factionTeam = faction;
-            ApplyVehicleToTank(inst, def);
-            inst.CaptureSpawnAndReset(pos, angleDeg);
+            if (!TrySpawnVehicle(inst, def, pos, angleDeg))
+            {
+                Destroy(inst.gameObject);
+                return null;
+            }
             _tanks.Add(inst);
             return inst;
         }
@@ -863,9 +850,9 @@ namespace Modern8bitTanks
                 _sceneT90.gameObject.SetActive(true);
                 _sceneT90.isPlayer = false;
                 _sceneT90.factionTeam = "enemy";
-                ApplyVehicleToTank(_sceneT90, PickSurvivalWaveEnemy(_currentWave, 0));
-                _sceneT90.CaptureSpawnAndReset(spawnPts[0], -90f);
-                if (!_tanks.Contains(_sceneT90)) _tanks.Add(_sceneT90);
+                if (TrySpawnVehicle(_sceneT90, PickSurvivalWaveEnemy(_currentWave, 0), spawnPts[0], -90f) &&
+                    !_tanks.Contains(_sceneT90))
+                    _tanks.Add(_sceneT90);
             }
 
             for (int k = 1; k < enemyCount; k++)
