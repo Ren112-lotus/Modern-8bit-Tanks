@@ -100,7 +100,7 @@ namespace Modern8bitTanks
                 if (vehicleId == null) continue;
                 var alpha = slot < 4;
                 var row = slot % 4;
-                var spawn = LaneSpawn(alpha, row);
+                var spawn = BattlefieldSpawn(alpha, row);
                 _networkSpawns[slot] = spawn;
                 var tank = SpawnTankFromPrefab(GetVehicleDef(vehicleId),
                     alpha ? "ally" : "enemy", spawn, alpha ? 90f : -90f, slot == _multiplayer.LocalSlot);

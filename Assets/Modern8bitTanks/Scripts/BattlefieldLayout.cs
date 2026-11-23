@@ -8,11 +8,6 @@ namespace Modern8bitTanks
     {
         public const int Width = 1280;
         public const int Height = 832;
-        private const int WestBase = 0;
-        private const int EastBase = 1;
-        private const int Center = 2;
-        private const int CoverPairCount = 14;
-        private const float CoverGap = 20f;
         private static readonly Vector2 MapSize = new(Width, Height);
         private static readonly Vector2[] DeploymentOffsets =
         {
@@ -21,121 +16,47 @@ namespace Modern8bitTanks
 
         private readonly BattleMap _map;
         private readonly int _seed;
-        private readonly Vector2[] _nodes;
-        private readonly Road[] _roads;
-        private readonly float[] _distanceToCenter;
+        private readonly Vector2 _westBase;
+        private readonly List<CoverPlacement> _cover = new();
         private Color32[] _ground;
 
-        private readonly struct Road
-        {
-            public readonly int Start, End;
-            public readonly float Length, HalfWidth, StartDistance;
-            public readonly Vector2 Direction;
-
-            public Road(int start, int end, Vector2 delta, float halfWidth, float startDistance)
-            {
-                Start = start;
-                End = end;
-                Length = delta.magnitude;
-                Direction = delta / Length;
-                HalfWidth = halfWidth;
-                StartDistance = startDistance;
-            }
-        }
-
-        internal BattlefieldLayout(BattleMap map, int seed)
+        internal BattlefieldLayout(BattleMap map, int seed, DestructibleProp block, DestructibleProp wall)
         {
             _map = map;
             _seed = seed;
             var random = new System.Random(seed);
-            var center = MapSize * 0.5f;
-            var west = new Vector2(130, center.y + random.Next(-32, 33));
-            _nodes = new Vector2[19];
-            _nodes[WestBase] = west;
-            _nodes[EastBase] = Mirror(west);
-            _nodes[Center] = center;
+            _westBase = new Vector2(128, ControlPoint.y + random.Next(-29, 30));
 
-            // Each approach has a west half and a 180-degree rotated east half.
-            SetPair(3, 5, new Vector2(302 + random.Next(-34, 35), west.y + random.Next(-56, 57)));
-            SetPair(4, 6, new Vector2(478 + random.Next(-36, 37), center.y + random.Next(-56, 57)));
-            SetFlank(7, 10, 1);
-            SetFlank(13, 16, -1);
+            int outer = random.Next(245, 275);
+            int inner = random.Next(463, 497);
+            AddWallSections(random, wall, outer);
+            AddWallSections(random, wall, inner);
 
-            void SetPair(int westIndex, int eastIndex, Vector2 position)
+            // Short dividers create corners between openings and near the objective.
+            int crosswalls = random.Next(2, 4);
+            for (int i = 0; i < crosswalls; i++)
             {
-                _nodes[westIndex] = position;
-                _nodes[eastIndex] = Mirror(position);
+                float y = (i + 1) * Height / (crosswalls + 1f) + random.Next(-53, 54);
+                int x = random.Next(2) == 0 ? outer + 36 : inner - 36;
+                AddPair(wall, new Vector2(x, y), 0f);
             }
+            float side = random.Next(2) == 0 ? -1 : 1;
+            AddPair(wall, new Vector2(553 + random.Next(-9, 10), ControlPoint.y + side * random.Next(74, 99)), 90f);
+            AddPair(wall, new Vector2(568 + random.Next(-9, 10), ControlPoint.y - side * random.Next(98, 127)), 0f);
 
-            void SetFlank(int westIndex, int eastIndex, int direction)
-            {
-                SetPair(westIndex, eastIndex,
-                    new Vector2(random.Next(210, 280), center.y + direction * random.Next(169, 225)));
-                SetPair(westIndex + 1, eastIndex + 1,
-                    new Vector2(random.Next(365, 440), center.y + direction * random.Next(211, 265)));
-                SetPair(westIndex + 2, eastIndex + 2,
-                    new Vector2(random.Next(510, 568), center.y + direction * random.Next(149, 201)));
-            }
-
-            var roads = new List<Road>();
-            float middleWidth = map == BattleMap.City ? 42f : 38f;
-            float flankWidth = map == BattleMap.Forest ? 35f : 38f;
-            AddRoute(roads, middleWidth, WestBase, 3, 4, Center);
-            AddRoute(roads, middleWidth, EastBase, 5, 6, Center);
-            AddRoute(roads, flankWidth, WestBase, 7, 8, 9, Center);
-            AddRoute(roads, flankWidth, EastBase, 10, 11, 12, Center);
-            AddRoute(roads, flankWidth, WestBase, 13, 14, 15, Center);
-            AddRoute(roads, flankWidth, EastBase, 16, 17, 18, Center);
-            _roads = roads.ToArray();
-
-            _distanceToCenter = new float[_nodes.Length];
-            System.Array.Fill(_distanceToCenter, float.PositiveInfinity);
-            _distanceToCenter[Center] = 0f;
-            // Every pass propagates the shortest path over at least one more connection.
-            for (int pass = 1; pass < _nodes.Length; pass++)
-            {
-                foreach (var road in _roads)
-                {
-                    _distanceToCenter[road.Start] = Mathf.Min(_distanceToCenter[road.Start], _distanceToCenter[road.End] + road.Length);
-                    _distanceToCenter[road.End] = Mathf.Min(_distanceToCenter[road.End], _distanceToCenter[road.Start] + road.Length);
-                }
-            }
+            AddLooseCover(random, block);
         }
 
-        public Vector2 ControlPoint => _nodes[Center];
+        internal Vector2 ControlPoint => MapSize * 0.5f;
+        internal IReadOnlyList<CoverPlacement> Cover => _cover;
+        internal static int DeploymentCount => DeploymentOffsets.Length;
 
         private static Vector2 Mirror(Vector2 point) => MapSize - point;
 
-        public Vector2 Spawn(bool west, int index)
+        internal Vector2 Spawn(bool west, int index)
         {
-            Vector2 position = _nodes[WestBase] + DeploymentOffsets[index];
+            Vector2 position = _westBase + DeploymentOffsets[index];
             return west ? position : Mirror(position);
-        }
-
-        private void AddRoute(List<Road> roads, float halfWidth, params int[] points)
-        {
-            float distance = 0f;
-            for (int i = 1; i < points.Length; i++)
-            {
-                int a = points[i - 1], b = points[i];
-                var road = new Road(a, b, _nodes[b] - _nodes[a], halfWidth, distance);
-                roads.Add(road);
-                distance += road.Length;
-            }
-        }
-
-        private float RoadOffset(Road road, Vector2 point, out float along)
-        {
-            Vector2 relative = point - _nodes[road.Start];
-            along = Mathf.Clamp(Vector2.Dot(relative, road.Direction), 0, road.Length);
-            return (relative - road.Direction * along).magnitude;
-        }
-
-        public bool IsRoad(Vector2 point, float margin = 0f)
-        {
-            foreach (var road in _roads)
-                if (RoadOffset(road, point, out _) < road.HalfWidth + margin) return true;
-            return false;
         }
 
         internal readonly struct CoverPlacement
@@ -143,144 +64,116 @@ namespace Modern8bitTanks
             internal readonly DestructibleProp Prefab;
             internal readonly Vector2 Position;
             internal readonly float Angle;
-            internal readonly float Radius;
+            internal readonly Vector2 HalfSize;
 
-            internal CoverPlacement(DestructibleProp prefab, Vector2 position, float angle, float radius)
+            internal CoverPlacement(DestructibleProp prefab, Vector2 position, float angle)
             {
                 Prefab = prefab;
                 Position = position;
                 Angle = angle;
-                Radius = radius;
+                HalfSize = angle % 180f == 0f
+                    ? new Vector2(prefab.meta.width, prefab.meta.length) * 0.5f
+                    : new Vector2(prefab.meta.length, prefab.meta.width) * 0.5f;
+            }
+
+            internal bool Contains(Vector2 point, float clearance)
+            {
+                Vector2 delta = point - Position;
+                return Mathf.Abs(delta.x) < HalfSize.x + clearance && Mathf.Abs(delta.y) < HalfSize.y + clearance;
             }
         }
 
-        internal List<CoverPlacement> PlaceCover(IReadOnlyList<DestructibleProp> prefabs)
+        private void AddPair(DestructibleProp prefab, Vector2 position, float angle)
         {
-            var random = new System.Random(unchecked(_seed ^ 0x54127A83));
-            var placements = new List<CoverPlacement>(CoverPairCount * 2);
-            for (int attempt = 0; attempt < 1200 && placements.Count < CoverPairCount * 2; attempt++)
+            _cover.Add(new CoverPlacement(prefab, position, angle));
+            _cover.Add(new CoverPlacement(prefab, Mirror(position), angle + 180f));
+        }
+
+        private void AddWallSections(System.Random random, DestructibleProp wall, int x)
+        {
+            const int slots = 11;
+            const int firstY = 56;
+            const int stride = 72;
+
+            // Leave two to four openings, with independent positions in successive walls.
+            int gates = random.Next(2, 5);
+            int gateMask = 0;
+            var candidates = new List<int>();
+            for (int i = 0; i < gates; i++)
             {
-                var prefab = prefabs[(placements.Count / 2) % prefabs.Count];
-                float radius = new Vector2(prefab.meta.width, prefab.meta.length).magnitude * 0.5f;
-                var position = new Vector2(random.Next(72, Width / 2), random.Next(72, Height - 72));
-                var opposite = Mirror(position);
-                float pairGap = 2f * radius + CoverGap;
-                if ((position - opposite).sqrMagnitude < pairGap * pairGap ||
-                    !CanPlaceCover(position, radius) || !CanPlaceCover(opposite, radius) ||
-                    !HasCoverSpacing(placements, position, radius))
+                candidates.Clear();
+                for (int slot = 1; slot < slots - 1; slot++)
+                    if ((gateMask & (7 << (slot - 1))) == 0) candidates.Add(slot);
+                if (candidates.Count == 0) break;
+                gateMask |= 1 << candidates[random.Next(candidates.Count)];
+            }
+
+            int column = x;
+            for (int i = 0; i < slots; i++)
+            {
+                if ((gateMask & (1 << i)) != 0)
+                {
+                    column = x + random.Next(-16, 17);
+                    continue;
+                }
+
+                // Pull the wall ends back from each opening to leave turning room.
+                int y = firstY + stride * i;
+                if (i > 0 && (gateMask & (1 << (i - 1))) != 0) y += 10;
+                if ((gateMask & (1 << (i + 1))) != 0) y -= 10;
+                AddPair(wall, new Vector2(column, y), 90f);
+            }
+        }
+
+        private void AddLooseCover(System.Random random, DestructibleProp block)
+        {
+            const float spawnClearance = 112f;
+            const float objectiveClearance = 93f;
+            int pairs = 0;
+            for (int attempt = 0; attempt < 220 && pairs < 8; attempt++)
+            {
+                var position = new Vector2(random.Next(94, 584), random.Next(71, Height - 71));
+                if ((position - _westBase).sqrMagnitude < spawnClearance * spawnClearance ||
+                    (position - ControlPoint).sqrMagnitude < objectiveClearance * objectiveClearance)
                     continue;
 
-                float angle = random.Next(0, 8) * 45f;
-                placements.Add(new CoverPlacement(prefab, position, angle, radius));
-                placements.Add(new CoverPlacement(prefab, opposite, (angle + 180f) % 360f, radius));
+                // Keep the openings and spaces alongside walls wide enough to turn through.
+                bool clear = true;
+                foreach (var cover in _cover)
+                {
+                    if (!cover.Contains(position, 72f)) continue;
+                    clear = false;
+                    break;
+                }
+                if (!clear) continue;
+
+                AddPair(block, position, random.Next(2) * 90f);
+                pairs++;
             }
-            return placements;
         }
 
-        private bool CanPlaceCover(Vector2 position, float radius)
+        internal bool IsWallAt(Vector2 position)
         {
-            float edge = BattleSceneController.BorderPadPx + radius;
-            return position.x > edge && position.x < Width - edge && position.y > edge && position.y < Height - edge
-                && Vector2.Distance(position, ControlPoint) > 82f + radius
-                && Vector2.Distance(position, _nodes[WestBase]) > 103f + radius
-                && Vector2.Distance(position, _nodes[EastBase]) > 103f + radius
-                && !IsRoad(position, radius + 8f);
-        }
-
-        private static bool HasCoverSpacing(List<CoverPlacement> placements, Vector2 position, float radius)
-        {
-            // Every existing placement already has its mirrored counterpart.
-            foreach (var other in placements)
-            {
-                float distance = radius + other.Radius + CoverGap;
-                if ((other.Position - position).sqrMagnitude < distance * distance) return false;
-            }
-            return true;
-        }
-
-        internal BattleLaneRoute CreateFlankRoute(bool west, int deploymentSlot)
-        {
-            int first = deploymentSlot is 1 or 2 ? 7 : 13;
-            if (!west) first += 3;
-
-            var waypoints = new Vector2[4];
-            for (int i = 0; i < 3; i++)
-                waypoints[i] = _nodes[first + i] / BattleSceneController.PPU;
-            waypoints[3] = ControlPoint / BattleSceneController.PPU;
-            return new BattleLaneRoute(waypoints);
-        }
-
-        public Vector2 StepTowardControl(Vector2 position)
-        {
-            Road nearest = _roads[0];
-            float nearestDistance = float.PositiveInfinity, along = 0f;
-            foreach (var road in _roads)
-            {
-                float distance = RoadOffset(road, position, out float projection);
-                if (distance >= nearestDistance) continue;
-                nearestDistance = distance;
-                nearest = road;
-                along = projection;
-            }
-
-            bool towardEnd = _distanceToCenter[nearest.End] + nearest.Length - along <= _distanceToCenter[nearest.Start] + along;
-            int next = towardEnd ? nearest.End : nearest.Start;
-            float remaining = towardEnd ? nearest.Length - along : along;
-            const float lookAhead = 30f;
-            if (remaining > lookAhead)
-                return _nodes[nearest.Start] + nearest.Direction * (along + (towardEnd ? lookAhead : -lookAhead));
-            if (next == Center || Vector2.Distance(position, _nodes[next]) > lookAhead + 6f)
-                return _nodes[next];
-
-            // Advance into the next road before reaching a junction so tanks can keep turning.
-            foreach (var road in _roads)
-            {
-                int other = road.Start == next ? road.End : road.End == next ? road.Start : -1;
-                if (other < 0 || _distanceToCenter[other] + road.Length > _distanceToCenter[next] + 0.1f) continue;
-                return Vector2.MoveTowards(_nodes[next], _nodes[other], lookAhead - remaining + 12f);
-            }
-            return _nodes[next];
+            foreach (var cover in _cover)
+                if (cover.Prefab.meta.fixedCover && cover.Contains(position, 0f))
+                    return true;
+            return false;
         }
 
         public Color32[] GroundPixels()
         {
             if (_ground != null) return _ground;
-            var (earth, dark, roadColor, verge, concrete) = _map switch
+            var (earth, dark, verge, concrete) = _map switch
             {
                 BattleMap.City => ((Color32)new Color(0.54f, 0.49f, 0.43f), (Color32)new Color(0.31f, 0.31f, 0.29f),
-                    (Color32)new Color(0.27f, 0.31f, 0.34f), (Color32)new Color(0.69f, 0.64f, 0.54f), (Color32)new Color(0.52f, 0.54f, 0.52f)),
+                    (Color32)new Color(0.69f, 0.64f, 0.54f), (Color32)new Color(0.52f, 0.54f, 0.52f)),
                 BattleMap.Forest => ((Color32)new Color(0.36f, 0.47f, 0.27f), (Color32)new Color(0.15f, 0.23f, 0.15f),
-                    (Color32)new Color(0.48f, 0.39f, 0.26f), (Color32)new Color(0.51f, 0.46f, 0.29f), (Color32)new Color(0.48f, 0.49f, 0.40f)),
+                    (Color32)new Color(0.51f, 0.46f, 0.29f), (Color32)new Color(0.48f, 0.49f, 0.40f)),
                 _ => ((Color32)new Color(0.69f, 0.51f, 0.31f), (Color32)new Color(0.44f, 0.30f, 0.19f),
-                    (Color32)new Color(0.65f, 0.55f, 0.38f), (Color32)new Color(0.73f, 0.61f, 0.40f), (Color32)new Color(0.59f, 0.55f, 0.46f))
+                    (Color32)new Color(0.73f, 0.61f, 0.40f), (Color32)new Color(0.59f, 0.55f, 0.46f))
             };
 
             var pixels = new Color32[Width * Height];
-            float[] roadEdges = new float[pixels.Length];
-            float[] tracks = new float[pixels.Length];
-            float[] roadLengths = new float[pixels.Length];
-            System.Array.Fill(roadEdges, float.PositiveInfinity);
-            foreach (var road in _roads)
-            {
-                Vector2 a = _nodes[road.Start], b = _nodes[road.End];
-                float spread = road.HalfWidth + 15f;
-                int x0 = Mathf.Max(0, Mathf.FloorToInt(Mathf.Min(a.x, b.x) - spread));
-                int y0 = Mathf.Max(0, Mathf.FloorToInt(Mathf.Min(a.y, b.y) - spread));
-                int x1 = Mathf.Min(Width / 2 - 1, Mathf.CeilToInt(Mathf.Max(a.x, b.x) + spread));
-                int y1 = Mathf.Min(Height - 1, Mathf.CeilToInt(Mathf.Max(a.y, b.y) + spread));
-                for (int y = y0; y <= y1; y++)
-                for (int x = x0; x <= x1; x++)
-                {
-                    float offset = RoadOffset(road, new Vector2(x + 0.5f, y + 0.5f), out float along);
-                    int i = y * Width + x;
-                    float edge = offset - road.HalfWidth;
-                    if (edge >= roadEdges[i]) continue;
-                    roadEdges[i] = edge;
-                    tracks[i] = offset;
-                    roadLengths[i] = along + road.StartDistance;
-                }
-            }
-
             for (int y = 0; y < Height; y++)
             for (int x = 0; x < Width / 2; x++)
             {
@@ -290,24 +183,11 @@ namespace Modern8bitTanks
                 float grain = Grain(x, y);
                 Color32 color = Color32.Lerp(dark, earth, Mathf.Clamp01(patch * 0.88f + grain * 0.18f + 0.08f));
 
-                float edge = roadEdges[i] + (patch - 0.5f) * (_map == BattleMap.City ? 3f : 13f);
-                if (edge < 10f)
-                {
-                    Color32 surface = Color32.Lerp(roadColor, dark, patch * 0.16f + grain * 0.13f);
-                    if (_map == BattleMap.City && tracks[i] < 1.6f && roadLengths[i] % 31f < 14f && grain < 0.90f)
-                        surface = Color32.Lerp(surface, verge, 0.64f);
-                    if (_map != BattleMap.City && Mathf.Abs(tracks[i] - 17f) < 3.4f)
-                        surface = Color32.Lerp(surface, dark, 0.07f + patch * 0.18f);
-                    color = edge < 0f ? surface : Color32.Lerp(verge, color, edge * 0.1f);
-                }
-                else
-                {
-                    color = PaintOffRoad(x, y, color, dark, verge, patch, grain);
-                }
+                color = PaintTerrain(x, y, color, dark, verge, patch, grain);
 
                 Vector2 point = new(x + 0.5f, y + 0.5f);
-                float west = PadDistance(point - _nodes[WestBase], 92f, 90f);
-                float east = PadDistance(point - _nodes[EastBase], 92f, 90f);
+                float west = PadDistance(point - _westBase, 92f, 90f);
+                float east = PadDistance(point - Mirror(_westBase), 92f, 90f);
                 float plaza = (point - ControlPoint).sqrMagnitude;
                 if (west < 1f || east < 1f || plaza < 70f * 70f)
                 {
@@ -326,7 +206,7 @@ namespace Modern8bitTanks
             return _ground;
         }
 
-        private Color32 PaintOffRoad(int x, int y, Color32 surface, Color32 low, Color32 high, float patch, float grain)
+        private Color32 PaintTerrain(int x, int y, Color32 surface, Color32 low, Color32 high, float patch, float grain)
         {
             float cluster = Grain(x / 4, y / 4);
             switch (_map)

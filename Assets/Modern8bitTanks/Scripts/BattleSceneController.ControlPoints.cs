@@ -7,7 +7,6 @@ namespace Modern8bitTanks
         private const string ControlVictorySubtitle = "CAPTURE VICTORY";
 
         private SpriteRenderer _controlMarker;
-        private readonly System.Collections.Generic.Dictionary<TankEntity, BattleLaneRoute> _flankRoutes = new();
         private bool _wonByControl;
 
         internal bool UsesControlPoints => battleMode is BattleMode.Duel1v1 or BattleMode.Squad2v2 or BattleMode.Battle5v5;
@@ -34,7 +33,6 @@ namespace Modern8bitTanks
             _controlPoints.Reset(UsesControlPoints ? CurrentLayout.ControlPoint / PPU : Vector2.zero);
             ResetControlPointVoiceTracking();
             _controlMarker = null;
-            _flankRoutes.Clear();
             if (!UsesControlPoints) return;
             Vector2 position = ControlPointPosition;
             _controlMarker = Instantiate(spawnAssets.ControlPointMarker,
@@ -52,12 +50,6 @@ namespace Modern8bitTanks
             SyncControlPointVoice();
         }
 
-        private void AssignFlankRoute(TankEntity tank, bool west, int deploymentSlot)
-        {
-            if (tank != null)
-                _flankRoutes[tank] = CurrentLayout.CreateFlankRoute(west, deploymentSlot);
-        }
-
         private bool TryGetControlSteering(TankEntity tank, out Vector2 steering)
         {
             steering = Vector2.zero;
@@ -66,13 +58,10 @@ namespace Modern8bitTanks
             if (ControlPoint.Owner == team && Mathf.Abs(ControlPoint.Progress) == 1f && !ControlPoint.Contested)
                 return false;
 
-            if (_flankRoutes.TryGetValue(tank, out var route) && route.TryGetSteering(position, out steering))
-                return true;
-
             if ((ControlPointPosition - position).sqrMagnitude > 1.5f * 1.5f)
             {
-                Vector2 destination = CurrentLayout.StepTowardControl(position * PPU) / PPU;
-                steering = (destination - position).normalized;
+                Vector2 heading = TankEntity.SliceAngleToDir(tank.hullAngleDeg);
+                _battlefieldNavigation.TryGetSteering(position * PPU, heading, out steering);
             }
             return true;
         }

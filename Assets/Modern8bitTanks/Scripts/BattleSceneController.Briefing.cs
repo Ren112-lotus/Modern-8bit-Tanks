@@ -52,7 +52,6 @@ namespace Modern8bitTanks
             Vector2 ownSpawn = CurrentLayout.Spawn(west, 0);
             Vector2 opposingSpawn = CurrentLayout.Spawn(!west, 0);
             var background = new Color32(17, 23, 22, 255);
-            var road = new Color32(111, 122, 105, 255);
             var wall = new Color32(220, 214, 186, 255);
             var block = new Color32(170, 161, 132, 255);
             var own = new Color32(111, 208, 239, 255);
@@ -66,9 +65,8 @@ namespace Modern8bitTanks
                 int groundY = y * scale + scale / 2;
                 Vector2 position = new(groundX, groundY);
                 Vector2 world = position / PPU;
-                bool onRoad = CurrentLayout.IsRoad(position);
                 Color32 terrain = _cleanGroundPixels[groundY * BattlefieldLayout.Width + groundX];
-                Color32 color = Color32.Lerp(terrain, onRoad ? road : background, onRoad ? 0.63f : 0.56f);
+                Color32 color = Color32.Lerp(terrain, background, 0.50f);
                 if (x % 32 == 0 || y % 32 == 0)
                     color = Color32.Lerp(color, background, 0.21f);
 

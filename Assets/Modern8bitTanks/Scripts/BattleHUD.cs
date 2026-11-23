@@ -86,8 +86,8 @@ namespace Modern8bitTanks
         private float _nextOnlineRadarUpdate;
         private int _radarWidth;
         private int _radarHeight;
-        private bool[] _laneRadarMask;
-        private BattlefieldLayout _laneRadarLayout;
+        private bool[] _wallRadarMask;
+        private BattlefieldLayout _wallRadarLayout;
 
         // Result Overlay (smooth fade-in after kill aftermath)
         private GameObject _resultOverlay;
@@ -578,14 +578,14 @@ namespace Modern8bitTanks
                 _ => new Color32(50, 43, 30, 255)
             };
             var layout = _mgr.CurrentLayout;
-            bool hasControlPoints = layout != null;
-            if (hasControlPoints && _laneRadarLayout != layout)
+            Color32 bldgCol = new Color32(138, 134, 128, 255);
+            if (layout != null && _wallRadarLayout != layout)
             {
-                _laneRadarLayout = layout;
-                _laneRadarMask ??= new bool[_radarWidth * _radarHeight];
+                _wallRadarLayout = layout;
+                _wallRadarMask ??= new bool[_radarWidth * _radarHeight];
                 for (int y = 0; y < _radarHeight; y++)
                 for (int x = 0; x < _radarWidth; x++)
-                    _laneRadarMask[y * _radarWidth + x] = layout.IsRoad(new Vector2(
+                    _wallRadarMask[y * _radarWidth + x] = layout.IsWallAt(new Vector2(
                         x * BattlefieldLayout.Width / (float)(_radarWidth - 1),
                         y * BattlefieldLayout.Height / (float)(_radarHeight - 1)));
             }
@@ -593,15 +593,13 @@ namespace Modern8bitTanks
             {
                 for (int x = 0; x < _radarWidth; x++)
                 {
-                    bool line = hasControlPoints
-                        ? _laneRadarMask[y * _radarWidth + x]
-                        : (x % 17 == 0) || (y % 14 == 0);
-                    _radarPixels[y * _radarWidth + x] = line ? grid : bg;
+                    int i = y * _radarWidth + x;
+                    bool line = x % 17 == 0 || y % 14 == 0;
+                    _radarPixels[i] = layout != null && _wallRadarMask[i] ? bldgCol : line ? grid : bg;
                 }
             }
 
             Color32 propCol = new Color32(148, 126, 90, 255);
-            Color32 bldgCol = new Color32(138, 134, 128, 255);
             Color32 rockCol = new Color32(126, 114, 96, 255);
             Color32 treeCol = new Color32(72, 146, 62, 255);
             Color32 explosiveCol = new Color32(232, 74, 50, 255);
@@ -613,6 +611,7 @@ namespace Modern8bitTanks
                 int py = Mathf.Clamp(Mathf.RoundToInt(position.y), 1, _radarHeight - 2);
                 if (prop.meta != null && prop.meta.fixedCover)
                 {
+                    if (layout != null) continue;
                     int halfWidth = Mathf.FloorToInt(prop.meta.width / prop.pixelsPerUnit * mapScale.x * 0.5f);
                     int halfHeight = Mathf.FloorToInt(prop.meta.length * prop.stack.squash / prop.pixelsPerUnit * mapScale.y * 0.5f);
                     PlotRadarRect(px, py, halfWidth, halfHeight, bldgCol);
@@ -642,7 +641,7 @@ namespace Modern8bitTanks
             if (player != null && player.alive && _mgr.PlayerGroundAim is { } aim)
                 PlotRadarAim(Vector2.Scale(aim.Start, mapScale), Vector2.Scale(aim.End, mapScale));
 
-            if (hasControlPoints)
+            if (layout != null)
             {
                 Vector2Int position = Vector2Int.RoundToInt(Vector2.Scale(_mgr.ControlPointPosition, mapScale));
                 Color32 color = _mgr.ControlPointColor();

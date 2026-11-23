@@ -742,16 +742,16 @@ namespace Modern8bitTanks
             float eastX = WorldW * 0.92f;
 
             TryDeployTank(_playerTank, playerDef, "ally",
-                UsesControlPoints ? LaneSpawn(true, 0) : new Vector2(westX, WorldH * 0.50f), 90f, isPlayerTank: true);
+                UsesControlPoints ? BattlefieldSpawn(true, 0) : new Vector2(westX, WorldH * 0.50f), 90f, isPlayerTank: true);
             TryDeployTank(_primaryEnemyTank, enemyDef, "enemy",
-                UsesControlPoints ? LaneSpawn(false, 0) : new Vector2(eastX, WorldH * 0.50f), -90f, isPlayerTank: false);
+                UsesControlPoints ? BattlefieldSpawn(false, 0) : new Vector2(eastX, WorldH * 0.50f), -90f, isPlayerTank: false);
 
             if (battleMode == BattleMode.Squad2v2)
             {
                 VehicleDef allyWing = BattleSessionState.PickRandomSameTierAlly(_allVehicles, playerDef);
                 VehicleDef enemyWing = BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: enemyDef != null ? enemyDef.id : null);
-                SpawnTankFromPrefab(allyWing, "ally", LaneSpawn(true, 3), 90f, isPlayerTank: false);
-                SpawnTankFromPrefab(enemyWing, "enemy", LaneSpawn(false, 3), -90f, isPlayerTank: false);
+                SpawnTankFromPrefab(allyWing, "ally", BattlefieldSpawn(true, 3), 90f, isPlayerTank: false);
+                SpawnTankFromPrefab(enemyWing, "enemy", BattlefieldSpawn(false, 3), -90f, isPlayerTank: false);
             }
             else if (battleMode == BattleMode.Battle5v5)
             {
@@ -760,13 +760,11 @@ namespace Modern8bitTanks
                 {
                     VehicleDef allyMate = BattleSessionState.PickRandomSameTierAlly(_allVehicles, playerDef);
                     int deploymentSlot = k + 1;
-                    var ally = SpawnTankFromPrefab(allyMate, "ally", LaneSpawn(true, deploymentSlot), 90f, isPlayerTank: false);
-                    AssignFlankRoute(ally, west: true, deploymentSlot);
+                    SpawnTankFromPrefab(allyMate, "ally", BattlefieldSpawn(true, deploymentSlot), 90f, isPlayerTank: false);
 
                     VehicleDef foe = BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: prevEnemyId);
                     if (foe != null) prevEnemyId = foe.id;
-                    var enemy = SpawnTankFromPrefab(foe, "enemy", LaneSpawn(false, deploymentSlot), -90f, isPlayerTank: false);
-                    AssignFlankRoute(enemy, west: false, deploymentSlot);
+                    SpawnTankFromPrefab(foe, "enemy", BattlefieldSpawn(false, deploymentSlot), -90f, isPlayerTank: false);
                 }
             }
         }
@@ -2050,6 +2048,7 @@ namespace Modern8bitTanks
                         }
                         bool collapsed = hitProp.ApplyHit(impact, craterR, p.IsHeavy || p.ammo == AmmoType.HEIBelt, SpawnDebrisParticle);
                         if (_multiplayer.IsInBattle) Random.state = randomState;
+                        if (collapsed && !_multiplayer.IsInBattle) _battlefieldNavigation?.Rebuild(_props);
 
                         if (collapsed && (hitProp.kind == "supply_crate" || hitProp.kind == "fuel_tank"))
                         {
