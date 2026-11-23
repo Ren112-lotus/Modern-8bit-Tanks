@@ -15,9 +15,8 @@ namespace Modern8bitTanks
     {
         public bool postProcessEnabled = true;
 
-        private Camera _cam;
         private UniversalAdditionalCameraData _camData;
-        private Volume _volume;
+        [SerializeField] private Volume _volume;
         private VolumeProfile _profile;
 
         private Bloom _bloom;
@@ -25,7 +24,6 @@ namespace Modern8bitTanks
         private ColorAdjustments _colorAdj;
         private WhiteBalance _whiteBalance;
         private SplitToning _splitToning;
-        private Tonemapping _tonemap;
 
         private float _bloomPulse;
         private float _damagePulse;
@@ -39,78 +37,13 @@ namespace Modern8bitTanks
 
         public void Initialize(Camera gameCam)
         {
-            _cam = gameCam;
-            if (_cam != null)
-            {
-                _cam.allowHDR = true;
-                _camData = _cam.GetComponent<UniversalAdditionalCameraData>();
-                if (_camData == null)
-                    _camData = _cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
-                _camData.renderPostProcessing = postProcessEnabled;
-                _camData.antialiasing = AntialiasingMode.None;
-            }
-
-            var volGo = new GameObject("BattlePostProcessVolume");
-            volGo.transform.SetParent(transform, false);
-            _volume = volGo.AddComponent<Volume>();
-            _volume.isGlobal = true;
-            _volume.priority = 100f;
-
-            _profile = ScriptableObject.CreateInstance<VolumeProfile>();
-
-            // 1. Silky Full-Screen Post-RT HDR Bloom (runs on PresentCamera AFTER 480x270 pixel RT!)
-            _bloom = _profile.Add<Bloom>(true);
-            _bloom.threshold.overrideState = true;
-            _bloom.threshold.value = 1.05f;
-            _bloom.intensity.overrideState = true;
-            _bloom.intensity.value = BaseBloomIntensity;
-            _bloom.scatter.overrideState = true;
-            _bloom.scatter.value = 0.72f;
-            _bloom.highQualityFiltering.overrideState = true;
-            _bloom.highQualityFiltering.value = true;
-            _bloom.tint.overrideState = true;
-            _bloom.tint.value = new Color(1.0f, 0.94f, 0.82f, 1f);
-
-            // 2. Natural Warm Desert Sunlight White Balance
-            _whiteBalance = _profile.Add<WhiteBalance>(true);
-            _whiteBalance.temperature.overrideState = true;
-            _whiteBalance.temperature.value = 13f;
-            _whiteBalance.tint.overrideState = true;
-            _whiteBalance.tint.value = 2f;
-
-            // 3. HD-2D Split Toning (cool sky-lit shadows + warm sunlit highlights)
-            _splitToning = _profile.Add<SplitToning>(true);
-            _splitToning.shadows.overrideState = true;
-            _splitToning.shadows.value = new Color(0.38f, 0.48f, 0.74f, 1f);
-            _splitToning.highlights.overrideState = true;
-            _splitToning.highlights.value = new Color(1.0f, 0.90f, 0.68f, 1f);
-            _splitToning.balance.overrideState = true;
-            _splitToning.balance.value = 10f;
-
-            // 4. Photographic Diorama Vignette + crimson damage pulse
-            _vignette = _profile.Add<Vignette>(true);
-            _vignette.color.overrideState = true;
-            _vignette.color.value = WarmVignetteColor;
-            _vignette.intensity.overrideState = true;
-            _vignette.intensity.value = BaseVignetteIntensity;
-            _vignette.smoothness.overrideState = true;
-            _vignette.smoothness.value = 0.52f;
-
-            // 5. Crisp HD-2D contrast & vibrant saturation
-            _colorAdj = _profile.Add<ColorAdjustments>(true);
-            _colorAdj.postExposure.overrideState = true;
-            _colorAdj.postExposure.value = 0.08f;
-            _colorAdj.contrast.overrideState = true;
-            _colorAdj.contrast.value = 12f;
-            _colorAdj.saturation.overrideState = true;
-            _colorAdj.saturation.value = 12f;
-
-            // 6. ACES Filmic Tonemapping
-            _tonemap = _profile.Add<Tonemapping>(true);
-            _tonemap.mode.overrideState = true;
-            _tonemap.mode.value = TonemappingMode.ACES;
-
-            _volume.profile = _profile;
+            _camData = gameCam.GetComponent<UniversalAdditionalCameraData>();
+            _profile = _volume.profile;
+            _profile.TryGet(out _bloom);
+            _profile.TryGet(out _whiteBalance);
+            _profile.TryGet(out _splitToning);
+            _profile.TryGet(out _vignette);
+            _profile.TryGet(out _colorAdj);
             SetEnabled(postProcessEnabled);
         }
 
@@ -202,7 +135,9 @@ namespace Modern8bitTanks
 
         private void OnDestroy()
         {
-            if (_profile != null) Destroy(_profile);
+            if (_profile == null) return;
+            foreach (var effect in _profile.components) Destroy(effect);
+            Destroy(_profile);
         }
     }
 }

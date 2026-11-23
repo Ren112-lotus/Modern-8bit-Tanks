@@ -66,7 +66,7 @@ namespace Modern8bitTanks
         private PixelWindowbox _windowbox;
         private BattlePostProcess _postProcess;
         private DesertAtmosphere _atmosphere;
-        private BattleHUD _hud;
+        [SerializeField] private BattleHUD _hud;
         private Vector2 _lastValidMouseWorld;
         private Material _emissiveFxMat;
         private Material _groundHd2dMat;
@@ -93,7 +93,7 @@ namespace Modern8bitTanks
         private AudioClip _sfxMissileMotor;
         private AudioClip _sfxBattleBgm;
 
-        private BattleAudioController _audio;
+        [SerializeField] private BattleAudioController _audio;
 
         private Sprite _whitePxSprite;
 
@@ -127,11 +127,15 @@ namespace Modern8bitTanks
         private GameSceneLoader _sceneLoader;
 
         [Inject]
-        private void Construct(Camera worldCamera, BattleSessionState sessionState, GameSceneLoader sceneLoader)
+        private void Construct(Camera worldCamera, BattleSessionState sessionState, GameSceneLoader sceneLoader,
+            PixelWindowbox windowbox, BattlePostProcess postProcess, DesertAtmosphere atmosphere)
         {
             _cam = worldCamera;
             _sessionState = sessionState;
             _sceneLoader = sceneLoader;
+            _windowbox = windowbox;
+            _postProcess = postProcess;
+            _atmosphere = atmosphere;
         }
         private Vector2 _camPos;
         private float _camRollDeg;
@@ -167,9 +171,9 @@ namespace Modern8bitTanks
         }
 
         // Aim overlay
-        private LineRenderer _aimLine;
+        [SerializeField] private LineRenderer _aimLine;
         private Transform _reticleTf;
-        private SpriteRenderer _reticleSr;
+        [SerializeField] private SpriteRenderer _reticleSr;
 
         private class ProjectileData
         {
@@ -272,37 +276,28 @@ namespace Modern8bitTanks
             _winsAlly = _sessionState.WinsAlly;
             _winsEnemy = _sessionState.WinsEnemy;
 
-            _windowbox = GetComponent<PixelWindowbox>();
-            if (_windowbox == null) _windowbox = gameObject.AddComponent<PixelWindowbox>();
             _windowbox.Initialize(_cam, renderWidth, renderHeight, integerWindowbox, useHd2d: postProcessEnabled);
             _lastValidMouseWorld = new Vector2(WorldW * 0.5f, WorldH * 0.5f);
 
-            _postProcess = GetComponent<BattlePostProcess>();
-            if (_postProcess == null) _postProcess = gameObject.AddComponent<BattlePostProcess>();
             _postProcess.postProcessEnabled = postProcessEnabled;
             // Attach URP Post-Processing to PresentCamera so Bloom/Vignette/ACES run AFTER the 480x270 RT at full screen res!
-            _postProcess.Initialize(_windowbox.PresentCamera != null ? _windowbox.PresentCamera : _cam);
+            _postProcess.Initialize(_windowbox.PresentCamera);
             _postProcess.ApplyMapTheme(battleMap);
 
             LoadVehicleCatalog();
             LoadRuntimeResources();
 
-            _audio = GetComponent<BattleAudioController>();
-            if (_audio == null) _audio = gameObject.AddComponent<BattleAudioController>();
             _audio.Initialize(_sfxTrackClatter, _sfxTurretServo, _sfxMissileMotor);
             _audio.StartBattleBgm(_sfxBattleBgm);
 
-            _atmosphere = GetComponent<DesertAtmosphere>();
-            if (_atmosphere == null) _atmosphere = gameObject.AddComponent<DesertAtmosphere>();
-            _atmosphere.Initialize(_cam, WorldW, WorldH, _whitePxSprite, _emissiveFxMat);
+            _atmosphere.Initialize(WorldW, WorldH, _whitePxSprite, _emissiveFxMat);
             _atmosphere.ApplyMapTheme(battleMap);
 
             PrepareRuntimeGround();
             DiscoverBaseSceneEntities();
-            CreateAimOverlay();
+            _reticleTf = _reticleSr.transform;
+            _reticleSr.sprite = _whitePxSprite;
 
-            _hud = GetComponent<BattleHUD>();
-            if (_hud == null) _hud = gameObject.AddComponent<BattleHUD>();
             _hud.Initialize(this, _windowbox);
 
             // Dedicated Battle Scene: launch straight into combat against a random same-Tier rival!
@@ -503,11 +498,6 @@ namespace Modern8bitTanks
 
         private void PrepareRuntimeGround()
         {
-            if (desertGroundRenderer == null)
-            {
-                var gObj = GameObject.Find("DesertGround");
-                if (gObj != null) desertGroundRenderer = gObj.GetComponent<SpriteRenderer>();
-            }
 
             _runtimeGroundTex = new Texture2D(WorldWidthPx, WorldHeightPx, TextureFormat.RGBA32, false)
             {
@@ -518,11 +508,6 @@ namespace Modern8bitTanks
             _cleanGroundPixels = GenerateMapPixels(battleMap, WorldWidthPx, WorldHeightPx);
             _groundPixels = new Color32[_cleanGroundPixels.Length];
 
-            if (desertGroundRenderer == null)
-            {
-                var gGo = new GameObject("DesertGround");
-                desertGroundRenderer = gGo.AddComponent<SpriteRenderer>();
-            }
             desertGroundRenderer.enabled = true;
             desertGroundRenderer.transform.position = new Vector3(WorldW * 0.5f, WorldH * 0.5f, 5f);
             desertGroundRenderer.sortingOrder = -30000;
@@ -562,28 +547,6 @@ namespace Modern8bitTanks
 
             _props.Clear();
             _props.AddRange(FindObjectsByType<DestructibleProp>(FindObjectsInactive.Include));
-        }
-
-        private void CreateAimOverlay()
-        {
-            var lineGo = new GameObject("AimLine");
-            lineGo.transform.SetParent(transform, false);
-            _aimLine = lineGo.AddComponent<LineRenderer>();
-            _aimLine.positionCount = 2;
-            _aimLine.startWidth = 0.045f;
-            _aimLine.endWidth = 0.045f;
-            _aimLine.sortingOrder = 20000;
-            _aimLine.material = new Material(Shader.Find("Sprites/Default"));
-            _aimLine.startColor = new Color(1f, 0.96f, 0.78f, 0.28f);
-            _aimLine.endColor = new Color(1f, 0.96f, 0.78f, 0.14f);
-
-            var retGo = new GameObject("Reticle");
-            retGo.transform.SetParent(transform, false);
-            _reticleTf = retGo.transform;
-            _reticleSr = retGo.AddComponent<SpriteRenderer>();
-            _reticleSr.sprite = _whitePxSprite;
-            _reticleSr.sortingOrder = 20001;
-            _reticleTf.localScale = new Vector3(0.24f, 0.24f, 1f);
         }
 
         // ============================================================

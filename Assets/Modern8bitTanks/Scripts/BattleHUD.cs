@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 namespace Modern8bitTanks
@@ -158,7 +157,6 @@ namespace Modern8bitTanks
             ForceFontPointFilter(_titleFont);
             Font.textureRebuilt += OnFontTextureRebuilt;
 
-            EnsureEventSystem();
             BuildPixelHudCanvas();
             BuildHitGroups();
             BuildCombatHud();
@@ -177,14 +175,6 @@ namespace Modern8bitTanks
         {
             if (f != null && f.material != null && f.material.mainTexture != null)
                 f.material.mainTexture.filterMode = FilterMode.Point;
-        }
-
-        private void EnsureEventSystem()
-        {
-            if (FindAnyObjectByType<EventSystem>() != null) return;
-            var esGo = new GameObject("EventSystem");
-            esGo.AddComponent<EventSystem>();
-            esGo.AddComponent<InputSystemUIInputModule>();
         }
 
         private void BuildPixelHudCanvas()

@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 namespace Modern8bitTanks
@@ -56,11 +55,15 @@ namespace Modern8bitTanks
         private GameSceneLoader _sceneLoader;
 
         [Inject]
-        private void Construct(Camera worldCamera, BattleSessionState sessionState, GameSceneLoader sceneLoader)
+        private void Construct(Camera worldCamera, BattleSessionState sessionState, GameSceneLoader sceneLoader,
+            PixelWindowbox windowbox, BattlePostProcess postProcess, DesertAtmosphere atmosphere)
         {
             _cam = worldCamera;
             _sessionState = sessionState;
             _sceneLoader = sceneLoader;
+            _windowbox = windowbox;
+            _postProcess = postProcess;
+            _atmosphere = atmosphere;
         }
         private PixelWindowbox _windowbox;
         private BattlePostProcess _postProcess;
@@ -119,7 +122,7 @@ namespace Modern8bitTanks
         private Text _setAiLabel;
         private Text _setGfxLabel;
         private Text _setViewLabel;
-        private AudioSource _previewAudio;
+        [SerializeField] private AudioSource _previewAudio;
         private AudioClip _previewSfxClip;
 
         // Garage Tactical Command UI References
@@ -239,27 +242,20 @@ namespace Modern8bitTanks
             squash = 0.80f;
             spacingPx = 0.72f;
 
-            _windowbox = GetComponent<PixelWindowbox>();
-            if (_windowbox == null) _windowbox = gameObject.AddComponent<PixelWindowbox>();
             _windowbox.Initialize(_cam, renderWidth, renderHeight, _sessionState.IntegerWindowbox, useHd2d: _sessionState.PostProcessEnabled);
             _windowbox.SetTiltShiftParams(1.15f, 0.52f, 0.24f);
 
-            _postProcess = GetComponent<BattlePostProcess>();
-            if (_postProcess == null) _postProcess = gameObject.AddComponent<BattlePostProcess>();
             _postProcess.postProcessEnabled = _sessionState.PostProcessEnabled;
             // Attach URP Post-Processing to PresentCamera so Bloom/Vignette/ACES run AFTER the 480x270 RT at full screen res!
-            _postProcess.Initialize(_windowbox.PresentCamera != null ? _windowbox.PresentCamera : _cam);
+            _postProcess.Initialize(_windowbox.PresentCamera);
 
             LoadResourcesAndCatalog();
             SetupDesertBackdrop();
             SetupCenterShowcaseTank();
 
-            _atmosphere = GetComponent<DesertAtmosphere>();
-            if (_atmosphere == null) _atmosphere = gameObject.AddComponent<DesertAtmosphere>();
-            _atmosphere.Initialize(_cam, WorldW, WorldH, _whitePxSprite, _emissiveFxMat);
+            _atmosphere.Initialize(WorldW, WorldH, _whitePxSprite, _emissiveFxMat);
             _sessionState.SelectedBattleMapChanged.Subscribe(RefreshMapBackdropTheme).AddTo(this);
 
-            EnsureEventSystem();
             BuildPixelCanvas();
             BuildTitleAndDeployGroups();
             BuildGarageUI();
@@ -325,11 +321,6 @@ namespace Modern8bitTanks
                 _sessionState.SelectedPlayerVehicleId = _allVehicles[0].id;
 
             _previewSfxClip = Resources.Load<AudioClip>("SFX/reload_clank") ?? TankAudioSynthesizer.CreateReloadClank();
-            var prevGo = new GameObject("HangarUiPreviewAudio");
-            prevGo.transform.SetParent(transform, false);
-            _previewAudio = prevGo.AddComponent<AudioSource>();
-            _previewAudio.playOnAwake = false;
-            _previewAudio.spatialBlend = 0f;
         }
 
         private void OnFontTextureRebuilt(Font f)
@@ -345,16 +336,6 @@ namespace Modern8bitTanks
 
         private void SetupDesertBackdrop()
         {
-            if (desertGroundRenderer == null)
-            {
-                var gObj = GameObject.Find("DesertGround");
-                if (gObj != null) desertGroundRenderer = gObj.GetComponent<SpriteRenderer>();
-            }
-            if (desertGroundRenderer == null)
-            {
-                var gGo = new GameObject("DesertGround");
-                desertGroundRenderer = gGo.AddComponent<SpriteRenderer>();
-            }
             desertGroundRenderer.enabled = true;
             desertGroundRenderer.transform.position = new Vector3(WorldW * 0.5f, WorldH * 0.5f, 5f);
             desertGroundRenderer.sortingOrder = -30000;
@@ -392,14 +373,6 @@ namespace Modern8bitTanks
 
         private void SetupCenterShowcaseTank()
         {
-            if (showcaseTank == null)
-                showcaseTank = FindAnyObjectByType<TankEntity>();
-
-            if (showcaseTank == null)
-            {
-                var tGo = new GameObject("ShowcaseTank");
-                showcaseTank = tGo.AddComponent<TankEntity>();
-            }
 
             if (showcaseTank.hullStack != null && showcaseTank.hullStack.sliceMaterial != null)
                 _stackFlashMat = showcaseTank.hullStack.sliceMaterial;
@@ -753,14 +726,6 @@ namespace Modern8bitTanks
         // ============================================================
         // 100% Pixel-Perfect UI (Strictly 8px / 16px Fonts & EVEN Rects!)
         // ============================================================
-        private void EnsureEventSystem()
-        {
-            if (FindAnyObjectByType<EventSystem>() != null) return;
-            var esGo = new GameObject("EventSystem");
-            esGo.AddComponent<EventSystem>();
-            esGo.AddComponent<InputSystemUIInputModule>();
-        }
-
         private void BuildPixelCanvas()
         {
             var canvasGo = new GameObject("HangarPixelCanvas") { layer = 5 };

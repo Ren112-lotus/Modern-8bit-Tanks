@@ -18,8 +18,6 @@ namespace Modern8bitTanks
     /// </summary>
     public class BattleAudioController : MonoBehaviour
     {
-        private const int DryPoolSize = 10;
-        private const int WetPoolSize = 12;
 
         [Header("Audio Mix Balance (Editable Live in Inspector)")]
         [Range(0f, 1f)] public float engineMaster = 0.35f;
@@ -33,105 +31,40 @@ namespace Modern8bitTanks
         private const float HalfVolumeDistance = 24.0f;
         private const float MaxAudibleDistance = 68.0f;
 
+        [System.Serializable]
         private struct Voice
         {
             public AudioSource source;
             public AudioLowPassFilter lowPass;
             public AudioReverbFilter reverb;
-            public float startTime;
-            public float fadeStartTime;
-            public float fadeEndTime;
-            public float peakVolume;
+            [System.NonSerialized] public float startTime;
+            [System.NonSerialized] public float fadeStartTime;
+            [System.NonSerialized] public float fadeEndTime;
+            [System.NonSerialized] public float peakVolume;
         }
 
-        private Voice[] _dryPool;
-        private Voice[] _wetPool;
+        [SerializeField] private Voice[] _dryPool;
+        [SerializeField] private Voice[] _wetPool;
         private int _dryCursor;
         private int _wetCursor;
 
         // Continuous dry cabin/chassis loops for the player tank
-        private AudioSource _engineSource;
-        private AudioLowPassFilter _engineLp;
-        private AudioSource _trackSource;
-        private AudioLowPassFilter _trackLp;
-        private AudioSource _servoSource;
-        private AudioSource _missileMotorSource;
-        private AudioLowPassFilter _missileMotorLp;
+        [SerializeField] private AudioSource _engineSource;
+        [SerializeField] private AudioLowPassFilter _engineLp;
+        [SerializeField] private AudioSource _trackSource;
+        [SerializeField] private AudioLowPassFilter _trackLp;
+        [SerializeField] private AudioSource _servoSource;
+        [SerializeField] private AudioSource _missileMotorSource;
+        [SerializeField] private AudioLowPassFilter _missileMotorLp;
 
         // Dedicated full-bandwidth stereo Battle BGM player (completely independent of SE/SFX!)
-        private AudioSource _bgmSource;
+        [SerializeField] private AudioSource _bgmSource;
 
         public void Initialize(AudioClip trackClip, AudioClip servoClip, AudioClip missileMotorClip = null)
         {
-            _dryPool = CreatePool("DryVoice", DryPoolSize, withReverb: false);
-            _wetPool = CreatePool("WetReverbVoice", WetPoolSize, withReverb: true);
-
-            _engineSource = CreateLoopSource("Loop_Engine", out _engineLp, 1600f);
-            _trackSource = CreateLoopSource("Loop_Tracks", out _trackLp, 2200f);
-            _servoSource = CreateLoopSource("Loop_TurretServo", out _, 3400f);
-            _missileMotorSource = CreateLoopSource("Loop_MissileMotor", out _missileMotorLp, 6500f);
-
-            var bgmGo = new GameObject("BattleBGM");
-            bgmGo.transform.SetParent(transform, false);
-            _bgmSource = bgmGo.AddComponent<AudioSource>();
-            _bgmSource.playOnAwake = false;
-            _bgmSource.loop = true;
-            _bgmSource.volume = 0f;
-            _bgmSource.panStereo = 0f;
-            _bgmSource.spatialBlend = 0f;
-            _bgmSource.dopplerLevel = 0f;
-
             _trackSource.clip = trackClip;
             _servoSource.clip = servoClip;
             _missileMotorSource.clip = missileMotorClip;
-        }
-
-        private Voice[] CreatePool(string prefix, int count, bool withReverb)
-        {
-            var root = new GameObject(prefix + "Pool").transform;
-            root.SetParent(transform, false);
-            var pool = new Voice[count];
-
-            for (int i = 0; i < count; i++)
-            {
-                var go = new GameObject($"{prefix}_{i:00}");
-                go.transform.SetParent(root, false);
-
-                var src = go.AddComponent<AudioSource>();
-                src.playOnAwake = false;
-                src.loop = false;
-                src.spatialBlend = 0f; // Managed directly via exact 2D stereo panStereo + distance attenuation
-                src.dopplerLevel = 0f;
-
-                var lp = go.AddComponent<AudioLowPassFilter>();
-                lp.cutoffFrequency = 22000f;
-                lp.lowpassResonanceQ = 1.0f;
-
-                AudioReverbFilter rev = null;
-                if (withReverb)
-                {
-                    rev = go.AddComponent<AudioReverbFilter>();
-                    ConfigureDesertCanyonReverb(rev, heavy: false);
-                }
-
-                pool[i] = new Voice { source = src, lowPass = lp, reverb = rev };
-            }
-            return pool;
-        }
-
-        private AudioSource CreateLoopSource(string name, out AudioLowPassFilter lp, float cutoffHz)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(transform, false);
-            var src = go.AddComponent<AudioSource>();
-            src.playOnAwake = false;
-            src.loop = true;
-            src.volume = 0f;
-            src.panStereo = 0f; // Player's own engine/tracks/servo are dry & centered in the tank
-            src.spatialBlend = 0f;
-            lp = go.AddComponent<AudioLowPassFilter>();
-            lp.cutoffFrequency = cutoffHz;
-            return src;
         }
 
         private static void ConfigureDesertCanyonReverb(AudioReverbFilter rev, bool heavy)
