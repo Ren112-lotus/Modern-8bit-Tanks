@@ -40,16 +40,19 @@ MonoBehaviour:
     building: {fileID: 8741653659015714409, guid: bd83e40b5741f344cb4dbd72970d58d6, type: 3}
     wall: {fileID: 5364198847046659650, guid: 888639b43b51af942a22a066ce2b2551, type: 3}
     barricade: {fileID: 763103126743302232, guid: e5672a7d7c7c9f94bb138fb563484f7a, type: 3}
+    ridge: {fileID: 2852555616525102991, guid: 93dea71a5af09b24bb87b7ce0d1ecd98, type: 3}
   cityTheme:
     landmark: {fileID: 98349446767452748, guid: 090c6b84c1e57164ab0acb4b0d40df9b, type: 3}
     building: {fileID: 140199888111989486, guid: d67ddc42894f9064c8fcd007401926f9, type: 3}
     wall: {fileID: 6620415479156953579, guid: 910498c385ca377409c64567abe85761, type: 3}
     barricade: {fileID: 68822172909720721, guid: 55418cf9d6de25548813f3a6e117634e, type: 3}
+    ridge: {fileID: 0}
   forestTheme:
     landmark: {fileID: 9128976682460911620, guid: 26841c92c24621c4a912de0bf09f4836, type: 3}
     building: {fileID: 5638426172291757326, guid: ff8f24c9389d9cb4eab66e80df5ba6bb, type: 3}
     wall: {fileID: 683538298334002162, guid: 63763cf46375ada4cbe6eb4431fc4560, type: 3}
     barricade: {fileID: 5658683921761215895, guid: 9238da582c823be479af92fc638f8407, type: 3}
+    ridge: {fileID: 6932785492184657401, guid: 3128484134b56584a9f99fddcacd47d9, type: 3}
   battlefieldPlans:
   - name: Freight Junction
     districts:
@@ -147,6 +150,20 @@ MonoBehaviour:
       groundSize: {x: 208, y: 62}
       angle: 61
       cover: []
+    - center: {x: 191, y: 700}
+      groundSize: {x: 0, y: 0}
+      angle: 27
+      cover:
+      - kind: 4
+        offset: {x: 0, y: 0}
+        angle: 0
+    - center: {x: 529, y: 218}
+      groundSize: {x: 0, y: 0}
+      angle: -21
+      cover:
+      - kind: 4
+        offset: {x: 0, y: 0}
+        angle: 0
   - name: Terraced Approach
     districts:
     - center: {x: 298, y: 675}
@@ -233,6 +250,20 @@ MonoBehaviour:
       groundSize: {x: 212, y: 76}
       angle: 18
       cover: []
+    - center: {x: 174, y: 628}
+      groundSize: {x: 0, y: 0}
+      angle: -28
+      cover:
+      - kind: 4
+        offset: {x: 0, y: 0}
+        angle: 0
+    - center: {x: 487, y: 635}
+      groundSize: {x: 0, y: 0}
+      angle: 18
+      cover:
+      - kind: 4
+        offset: {x: 0, y: 0}
+        angle: 0
   - name: Split Courtyards
     districts:
     - center: {x: 253, y: 263}
@@ -326,3 +357,17 @@ MonoBehaviour:
       groundSize: {x: 228, y: 52}
       angle: -22
       cover: []
+    - center: {x: 168, y: 706}
+      groundSize: {x: 0, y: 0}
+      angle: 21
+      cover:
+      - kind: 4
+        offset: {x: 0, y: 0}
+        angle: 0
+    - center: {x: 493, y: 562}
+      groundSize: {x: 0, y: 0}
+      angle: -32
+      cover:
+      - kind: 4
+        offset: {x: 0, y: 0}
+        angle: 0

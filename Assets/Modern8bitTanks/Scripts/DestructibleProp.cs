@@ -20,6 +20,8 @@ namespace Modern8bitTanks
         public SpriteStackRenderer stack;
         public float initialAngleDeg;
         public float pixelsPerUnit = 16f;
+        [SerializeField, Min(1f)] private float sliceSpacingScale = 1f;
+        [SerializeField] private bool revealOverlappingTank;
 
         [HideInInspector] public SortingGroup sortingGroup;
         [HideInInspector] public bool alive = true;
@@ -32,6 +34,8 @@ namespace Modern8bitTanks
         private Vector3 _savedStartPos;
         private bool _startPosCaptured;
         private float _renderedCameraRoll = float.NaN;
+        private Vector2 _occlusionCenter;
+        private float _occlusionAmount;
 
         private void OnEnable()
         {
@@ -89,10 +93,12 @@ namespace Modern8bitTanks
             stack.angleDeg = initialAngleDeg;
             stack.hitFlash = 0f;
             stack.charred = false;
+            _occlusionAmount = 0f;
+            stack.SetOcclusionFocus(Vector4.zero);
             stack.RebuildStack();
 
             _solidMask = new bool[stack.SliceWidth * stack.SliceHeight];
-            stack.FillSolidMask(_solidMask);
+            stack.FillSolidMask(_solidMask, useGroundFootprint: meta.roundedFootprint);
             _initialPixels = Mathf.Max(1, stack.CountSolidPixels());
             _remainingPixels = _initialPixels;
             approxRadiusUnits = (Mathf.Max(meta.width, meta.length) * 0.52f) / pixelsPerUnit;
@@ -108,13 +114,15 @@ namespace Modern8bitTanks
             if (sortingGroup.sortingOrder != order) sortingGroup.sortingOrder = order;
         }
 
-        public void Tick(float dt, float squash, float spacingPx)
+        public void Tick(float dt, float squash, float spacingPx, Vector2? observerPosition = null)
         {
             if (!alive || stack == null) return;
             bool fadingHit = stack.hitFlash > 0f;
             if (fadingHit) stack.hitFlash = Mathf.Max(0f, stack.hitFlash - dt * 5f);
+            spacingPx *= sliceSpacingScale;
+            bool changedFocus = revealOverlappingTank && UpdateOcclusionFocus(observerPosition, spacingPx);
             float cameraRoll = SpriteStackCamera.RollDeg;
-            if (fadingHit || cameraRoll != _renderedCameraRoll || stack.squash != squash || stack.spacingPx != spacingPx)
+            if (fadingHit || changedFocus || cameraRoll != _renderedCameraRoll || stack.squash != squash || stack.spacingPx != spacingPx)
             {
                 _renderedCameraRoll = cameraRoll;
                 stack.squash = squash;
@@ -122,6 +130,31 @@ namespace Modern8bitTanks
                 stack.ApplyVisuals();
             }
             UpdateSortOrder();
+        }
+
+        private bool UpdateOcclusionFocus(Vector2? observerPosition, float spacingPx)
+        {
+            const float revealRadius = 3f;
+            bool overlaps = false;
+            if (observerPosition is Vector2 observer)
+            {
+                Vector2 offset = observer - (Vector2)transform.position;
+                float forward = Vector2.Dot(offset, SpriteStackCamera.CamUp);
+                float side = Vector2.Dot(offset, SpriteStackCamera.CamRight);
+                float lift = stack.SliceCount * spacingPx / pixelsPerUnit;
+                overlaps = forward > 0f && forward < SpriteRadius + lift + revealRadius
+                    && Mathf.Abs(side) < SpriteRadius + revealRadius &&
+                    (stack.CoversWorldPoint(observer, spacingPx) ||
+                     stack.CoversWorldPoint(observer - SpriteStackCamera.CamUp * 0.85f, spacingPx) ||
+                     stack.CoversWorldPoint(observer + SpriteStackCamera.CamRight * 0.8f, spacingPx) ||
+                     stack.CoversWorldPoint(observer - SpriteStackCamera.CamRight * 0.8f, spacingPx));
+                _occlusionCenter = observer;
+            }
+
+            _occlusionAmount = Mathf.MoveTowards(_occlusionAmount, overlaps ? 1f : 0f, Time.unscaledDeltaTime * 8f);
+            return stack.SetOcclusionFocus(_occlusionAmount > 0f
+                ? new Vector4(_occlusionCenter.x, _occlusionCenter.y, revealRadius, _occlusionAmount)
+                : Vector4.zero);
         }
 
         /// <summary>
@@ -149,6 +182,17 @@ namespace Modern8bitTanks
                 : 0.44f;
             float halfW = Mathf.Max(0.30f, (meta.width * fillRatio) / pixelsPerUnit);
             float halfL = Mathf.Max(0.30f, (meta.length * fillRatio) / pixelsPerUnit);
+
+            if (meta.roundedFootprint)
+            {
+                Vector2 radii = new Vector2(halfW + tankRadius, halfL + tankRadius);
+                Vector2 normalized = new Vector2(local.x / radii.x, local.y / radii.y);
+                if (normalized.sqrMagnitude >= 1f) return;
+                Vector2 edge = Vector2.Scale(normalized.sqrMagnitude > 0.0001f ? normalized.normalized : Vector2.right, radii);
+                Vector2 push = edge - local;
+                tankPos += SpriteStackCamera.Squash(new Vector2(push.x * c + push.y * s, -push.x * s + push.y * c), squash);
+                return;
+            }
 
             Vector2 clamped = new Vector2(
                 Mathf.Clamp(local.x, -halfW, halfW),
@@ -219,7 +263,7 @@ namespace Modern8bitTanks
                 || !ClipAxis(start.y, travel.y, stack.SliceHeight, ref enter, ref exit)) return false;
 
             // Structural walls fill their footprint. Other props retain their per-pixel holes.
-            if (meta != null && meta.fixedCover)
+            if (meta != null && meta.fixedCover && !meta.roundedFootprint)
             {
                 fraction = enter;
                 return true;

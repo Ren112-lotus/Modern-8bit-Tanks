@@ -1117,8 +1117,9 @@ namespace Modern8bitTanks
                     tank.treadAccum = 0f;
                 }
             }
+            Vector2? observerPosition = observer != null ? observer.Position2D : null;
             foreach (var prop in _props)
-                if (prop != null) prop.Tick(dt, squash, spacingPx);
+                if (prop != null) prop.Tick(dt, squash, spacingPx, observerPosition);
 
             UpdateSmokeClouds(dt);
             UpdateParticles(dt);

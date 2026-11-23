@@ -75,6 +75,7 @@ namespace Modern8bitTanks
         public bool ricochetHeavy;
         public bool heavyStructure;
         public bool fixedCover;
+        public bool roundedFootprint;
     }
 
     /// <summary>

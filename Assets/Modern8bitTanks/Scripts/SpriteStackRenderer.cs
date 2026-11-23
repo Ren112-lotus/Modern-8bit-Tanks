@@ -57,11 +57,13 @@ namespace Modern8bitTanks
         private MaterialPropertyBlock _mpb;
         private bool _dirtyRebuild;
         private bool _slicePixelsDamaged;
+        private Vector4 _occlusionFocus;
 
         private static readonly int FlashAmountId = Shader.PropertyToID("_FlashAmount");
         private static readonly int CharredId = Shader.PropertyToID("_Charred");
         private static readonly int Height01Id = Shader.PropertyToID("_Height01");
         private static readonly int MetallicWearId = Shader.PropertyToID("_MetallicWear");
+        private static readonly int OcclusionFocusId = Shader.PropertyToID("_OcclusionFocus");
 
         public int SliceWidth => _sliceW;
         public int SliceHeight => _sliceH;
@@ -72,6 +74,13 @@ namespace Modern8bitTanks
             _visibleInBattle = visible;
             if (_visualRoot != null && _visualRoot.gameObject.activeSelf != visible)
                 _visualRoot.gameObject.SetActive(visible);
+        }
+
+        internal bool SetOcclusionFocus(Vector4 focus)
+        {
+            if (_occlusionFocus == focus) return false;
+            _occlusionFocus = focus;
+            return true;
         }
 
         private bool BuildOnEnable => !Application.isPlaying || _buildOnEnableInPlayMode;
@@ -326,6 +335,7 @@ namespace Modern8bitTanks
                     _mpb.SetFloat(CharredId, charred ? 1f : 0f);
                     _mpb.SetFloat(Height01Id, height01);
                     _mpb.SetFloat(MetallicWearId, metallicWear);
+                    _mpb.SetVector(OcclusionFocusId, _occlusionFocus);
                     _renderers[z].SetPropertyBlock(_mpb);
                 }
 
@@ -350,6 +360,7 @@ namespace Modern8bitTanks
                             _mpb.SetFloat(CharredId, charred ? 1f : 0f);
                             _mpb.SetFloat(Height01Id, fillH01);
                             _mpb.SetFloat(MetallicWearId, metallicWear);
+                            _mpb.SetVector(OcclusionFocusId, _occlusionFocus);
                             _fillRenderers[z].SetPropertyBlock(_mpb);
                         }
                     }
@@ -371,10 +382,10 @@ namespace Modern8bitTanks
             return count;
         }
 
-        public void FillSolidMask(bool[] mask)
+        public void FillSolidMask(bool[] mask, bool useGroundFootprint = false)
         {
             Array.Clear(mask, 0, mask.Length);
-            int[] checkZ = { 2, 5, Mathf.Min(_sliceTextures.Count - 1, 8) };
+            int[] checkZ = useGroundFootprint ? new[] { 0 } : new[] { 2, 5, Mathf.Min(_sliceTextures.Count - 1, 8) };
             foreach (int z in checkZ)
             {
                 if (z < 0 || z >= _sliceTextures.Count || _sliceTextures[z] == null) continue;
@@ -394,6 +405,22 @@ namespace Modern8bitTanks
             float s = Mathf.Sin(rad);
             Vector2 rot = new Vector2(delta.x * c - delta.y * s, delta.x * s + delta.y * c);
             return new Vector2(rot.x * pixelsPerUnit + _sliceW * 0.5f, rot.y * pixelsPerUnit + _sliceH * 0.5f);
+        }
+
+        internal bool CoversWorldPoint(Vector2 position, float spacing)
+        {
+            Vector2 pixel = WorldToLocalPixel(position);
+            Vector2 sliceStep = WorldToLocalPixel(position - SpriteStackCamera.CamUp * (spacing / pixelsPerUnit)) - pixel;
+            pixel += sliceStep * baseZOffsetSlices;
+            for (int i = 0; i < _sliceTextures.Count; i++, pixel += sliceStep)
+            {
+                int x = Mathf.FloorToInt(pixel.x);
+                int y = Mathf.FloorToInt(pixel.y);
+                if (x >= 0 && x < _sliceW && y >= 0 && y < _sliceH && _sliceTextures[i].GetPixel(x, y).a > 0.2f)
+                    return true;
+            }
+
+            return false;
         }
 
         public int CrumbleAtWorldPoint(

@@ -9,6 +9,7 @@ Shader "Modern8bitTanks/URPSpriteStackFlash"
         _Charred ("Charred Wreck", Range(0, 1)) = 0
         _Height01 ("Slice Height Ratio", Range(0, 1)) = 0.5
         _MetallicWear ("Armor Metal & Edge Wear", Range(0, 1)) = 0.35
+        [HideInInspector] _OcclusionFocus ("Occlusion Focus", Vector) = (0, 0, 0, 0)
     }
 
     SubShader
@@ -50,6 +51,7 @@ Shader "Modern8bitTanks/URPSpriteStackFlash"
                 float2 uv          : TEXCOORD0;
                 float2 sunUvDir    : TEXCOORD1;
                 float2 perpUvDir   : TEXCOORD2;
+                float2 worldXY     : TEXCOORD3;
             };
 
             TEXTURE2D(_MainTex);
@@ -66,6 +68,7 @@ Shader "Modern8bitTanks/URPSpriteStackFlash"
                 half   _Charred;
                 half   _Height01;
                 half   _MetallicWear;
+                float4 _OcclusionFocus;
             CBUFFER_END
 
             float hash21(float2 p)
@@ -83,7 +86,9 @@ Shader "Modern8bitTanks/URPSpriteStackFlash"
             Varyings vert(Attributes IN)
             {
                 Varyings OUT;
-                OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
+                float3 world = TransformObjectToWorld(IN.positionOS.xyz);
+                OUT.positionHCS = TransformWorldToHClip(world);
+                OUT.worldXY = world.xy;
                 OUT.uv = IN.uv;
                 OUT.color = IN.color * _Color;
 
@@ -103,6 +108,13 @@ Shader "Modern8bitTanks/URPSpriteStackFlash"
             {
                 half4 texCol = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv) * IN.color;
                 if (texCol.a < 0.01h) discard;
+                if (_OcclusionFocus.w > 0.001)
+                {
+                    float distanceToTank = distance(IN.worldXY, _OcclusionFocus.xy);
+                    float fade = 1.0 - smoothstep(_OcclusionFocus.z * 0.55, _OcclusionFocus.z, distanceToTank);
+                    // Screen pixels share the same coverage test across all overlapping slices.
+                    clip(hash21(floor(IN.positionHCS.xy)) - fade * _OcclusionFocus.w * 0.88);
+                }
 
                 half h = saturate(_Height01);
                 half hd = saturate((half)_Hd2dEnabled);

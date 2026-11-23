@@ -39,7 +39,8 @@ namespace Modern8bitTanks
                 center.y = ControlPoint.y + (center.y - ControlPoint.y) * reflection;
                 bool isConnector = district.Cover.Length == 0;
                 Vector2 groundSize = isConnector ? district.GroundSize * PlanScale : district.GroundSize;
-                _districtGround.Add(new DistrictGround(center, groundSize, Direction(angle * reflection), isConnector));
+                if (groundSize.x > 0f && groundSize.y > 0f)
+                    _districtGround.Add(new DistrictGround(center, groundSize, Direction(angle * reflection), isConnector));
 
                 foreach (var piece in district.Cover)
                 {
@@ -48,6 +49,7 @@ namespace Modern8bitTanks
                     Vector2 position = Vector2Int.RoundToInt(center + offset);
                     float rotation = (angle + piece.Angle) * reflection;
                     var prefab = theme.GetCover(piece.Kind);
+                    if (piece.Kind == BattlefieldCoverKind.Ridge && prefab == null) continue;
                     _cover.Add(new CoverPlacement(prefab, position, rotation));
                     _cover.Add(new CoverPlacement(prefab, Mirror(position), rotation + 180f));
                 }
@@ -94,6 +96,11 @@ namespace Modern8bitTanks
                 Vector2 delta = point - Position;
                 float x = Vector2.Dot(delta, _right);
                 float y = Vector2.Dot(delta, Vector2.Perpendicular(_right));
+                if (Prefab.meta.roundedFootprint)
+                {
+                    var normalized = new Vector2(x / (_halfSize.x + clearance), y / (_halfSize.y + clearance));
+                    return normalized.sqrMagnitude < 1f;
+                }
                 return Mathf.Abs(x) < _halfSize.x + clearance && Mathf.Abs(y) < _halfSize.y + clearance;
             }
         }
