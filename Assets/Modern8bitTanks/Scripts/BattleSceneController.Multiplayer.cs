@@ -210,7 +210,7 @@ namespace Modern8bitTanks
                     Velocity = shot.vel, Kind = shot.kind, Ammo = shot.ammo };
             }
             byte result = _phase == GamePhase.RoundOver ? (_pendingWinner == "ally" ? (byte)1 : (byte)2) : _networkBattleStarted ? (byte)3 : (byte)0;
-            UpdateRadarContacts(transport);
+            UpdateRadarContacts();
             transport.Broadcast(states, shots, count, result, _visibility.NetworkContacts, _killFocusPos, ControlPoint, ControlScores, _wonByControl);
         }
 
@@ -487,23 +487,14 @@ namespace Modern8bitTanks
             var keyboard = Keyboard.current;
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) _hud?.HandleEscapeKey();
             if (keyboard != null && keyboard.hKey.wasPressedThisFrame) _hud?.CycleHudDensity();
-            var mouse = Mouse.current;
-            if (mouse != null && _phase == GamePhase.Playing)
-            {
-                float scrollY = mouse.scroll.ReadValue().y;
-                if (Mathf.Abs(scrollY) > 0.01f)
-                    cameraZoom = Mathf.Clamp(cameraZoom + Mathf.Sign(scrollY) * 0.08f, 0.76f, 1.48f);
-            }
+            UpdateCameraZoom();
             var menuOpen = _hud != null && _hud.IsMenuOpen;
             _audio?.UpdateBgm(active: true, bgmEnabled, bgmVolume, duckForMenu: menuOpen);
 
             var input = new TankControlInput { Arcade = arcadeWASD, AimWorld = GetMouseWorld2D(), AmmoSlot = -1 };
             if (!menuOpen && _networkBattleStarted && player != null && player.alive && _phase == GamePhase.Playing && TryReadTankControl(out input))
             {
-                var control = PackControl(input);
-                control.ViewCenter = _cam.transform.position;
-                control.ViewHalfHeight = _cam.orthographicSize;
-                transport.SendControl(control);
+                transport.SendControl(PackControl(input));
             }
             else
             {

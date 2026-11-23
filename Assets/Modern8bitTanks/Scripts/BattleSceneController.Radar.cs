@@ -4,10 +4,6 @@ namespace Modern8bitTanks
 {
     public partial class BattleSceneController
     {
-        private bool UsesTeamVisibility => _multiplayer.IsInBattle || UsesControlPoints;
-
-        private float ViewAspect => (float)renderWidth / renderHeight;
-
         private bool HasTankSight(TankEntity observer, TankEntity target)
         {
             Vector2 from = observer.Position2D;
@@ -18,7 +14,7 @@ namespace Modern8bitTanks
             return HasLineOfSight(from, position + shoulder) || HasLineOfSight(from, position - shoulder);
         }
 
-        private void UpdateRadarContacts(MultiplayerMatchTransport transport)
+        private void UpdateRadarContacts()
         {
             if (_phase != GamePhase.Playing)
             {
@@ -26,8 +22,7 @@ namespace Modern8bitTanks
                 return;
             }
 
-            _visibility.RefreshNetworkContacts(_networkTanks, transport, _cam,
-                new Vector2(WorldW, WorldH), ViewAspect, renderHeight / PPU * .5f, _hasTankSight);
+            _visibility.RefreshNetworkContacts(_networkTanks, _hasTankSight);
         }
 
         internal bool IsTankVisible(TankEntity target) => _visibility.IsVisible(target);

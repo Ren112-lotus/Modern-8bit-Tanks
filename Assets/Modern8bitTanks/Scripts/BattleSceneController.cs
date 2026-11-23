@@ -936,14 +936,7 @@ namespace Modern8bitTanks
             if (kb != null && kb.hKey.wasPressedThisFrame)
                 _hud?.CycleHudDensity();
 
-            // Mouse wheel camera zoom for wide top-down battlefield sightlines
-            var mouse = Mouse.current;
-            if (mouse != null && _phase == GamePhase.Playing)
-            {
-                float scrollY = mouse.scroll.ReadValue().y;
-                if (Mathf.Abs(scrollY) > 0.01f)
-                    cameraZoom = Mathf.Clamp(cameraZoom + Mathf.Sign(scrollY) * 0.08f, 0.76f, 1.48f);
-            }
+            UpdateCameraZoom();
 
             if (_hitStop > 0f)
             {
@@ -1078,8 +1071,8 @@ namespace Modern8bitTanks
             if (_controlMarker != null) _controlMarker.color = ControlPointColor();
             _shake = Mathf.Max(0f, _shake - Time.unscaledDeltaTime * 15f);
             UpdateCameraRoll(player, dt);
-            _visibility.Refresh(_tanks, _networkTanks, player, UsesTeamVisibility && _phase == GamePhase.Playing,
-                _cam, ViewAspect, _hasTankSight);
+            bool limitVisibility = _phase == GamePhase.Playing && battleMode != BattleMode.FiringRange;
+            _visibility.Refresh(_tanks, _networkTanks, player, limitVisibility, _hasTankSight);
             foreach (var tank in _tanks)
             {
                 if (tank == null || !tank.gameObject.activeInHierarchy) continue;
@@ -1431,11 +1424,13 @@ namespace Modern8bitTanks
             Vector2 delta = target.Position2D - piv;
             float dist = delta.magnitude;
 
-            bool losClear = HasLineOfSight(t.Position2D, target.Position2D);
+            bool targetVisible = BattleVisibility.IsWithinSightRange(t, target) &&
+                HasLineOfSight(t.Position2D, target.Position2D);
+            float preferredDistance = Mathf.Min(19.5f, BattleVisibility.SightRange(t) * 0.85f);
+            float retreatDistance = Mathf.Min(8f, preferredDistance * 0.75f);
 
-            // Only lock turret tightly if enemy isn't hidden behind smoke/cover
             float aiTurretDegPerSec = t.turretTurnSpeed * t.TraverseFactor;
-            if (losClear)
+            if (targetVisible)
             {
                 float desiredTurret = TankEntity.TargetDeltaToSliceAngle(delta, squash);
                 t.turretAngleDeg = Mathf.MoveTowardsAngle(t.turretAngleDeg, desiredTurret, aiTurretDegPerSec * 0.72f * dt);
@@ -1455,12 +1450,12 @@ namespace Modern8bitTanks
 
             Vector2 u = delta / Mathf.Max(0.01f, dist);
             Vector2 move = Vector2.zero;
-            bool pursuingControl = UsesControlPoints && (!losClear || dist > 20f)
+            bool pursuingControl = UsesControlPoints && (!targetVisible || dist > 20f)
                 && TryGetControlSteering(t, out move);
             if (!pursuingControl)
             {
-                if (dist > 19.5f) move += u;
-                else if (dist < 8.0f) move -= u;
+                if (dist > preferredDistance) move += u;
+                else if (dist < retreatDistance) move -= u;
                 move += new Vector2(-u.y, u.x) * (t.aiStrafeDir * 0.95f);
             }
 
@@ -1498,7 +1493,7 @@ namespace Modern8bitTanks
             t.moveSpeed = 0f;
             if (move.sqrMagnitude > 0.02f)
             {
-                bool aimWithHull = !pursuingControl && t.vehicleDef?.fixedGunTraverse is > 0 && losClear && dist < 38f;
+                bool aimWithHull = !pursuingControl && t.vehicleDef?.fixedGunTraverse is > 0 && targetVisible && dist < 38f;
                 float targetHull = TankEntity.TargetDeltaToSliceAngle(aimWithHull ? delta : move.normalized, squash);
                 float initialHullAngle = t.hullAngleDeg;
                 float aiHullDegPerSec = t.hullTurnSpeed * 0.85f * t.TurnFactor;
@@ -1507,16 +1502,16 @@ namespace Modern8bitTanks
                 if (t.HasDisabled(TankModule.Traverse))
                     t.turretAngleDeg += Mathf.DeltaAngle(initialHullAngle, t.hullAngleDeg);
                 t.moveSpeed = ((t.vehicleDef != null ? t.vehicleDef.speed : 60f) * 0.68f) / PPU * t.DriveFactor;
-                if ((aimWithHull && dist >= 8f && dist <= 19.5f)
+                if ((aimWithHull && dist >= retreatDistance && dist <= preferredDistance)
                     || (pursuingControl && Mathf.Abs(Mathf.DeltaAngle(t.hullAngleDeg, targetHull)) > 55f))
                     t.moveSpeed = 0f;
-                Vector2 dir = TankEntity.SliceAngleToDir(t.hullAngleDeg) * (aimWithHull && dist < 8f ? -1f : 1f);
+                Vector2 dir = TankEntity.SliceAngleToDir(t.hullAngleDeg) * (aimWithHull && dist < retreatDistance ? -1f : 1f);
                 t.Position2D += SpriteStackCamera.Squash(dir * (t.moveSpeed * dt), squash);
                 t.treadAccum += (Mathf.Abs(t.moveSpeed) * dt) + (turnedDeg * 0.0085f);
             }
 
             t.turretAngleDeg = LimitGunTraverse(t, t.turretAngleDeg);
-            if (losClear && dist < 38f)
+            if (targetVisible && dist < 38f)
             {
                 float desiredTurret = TankEntity.TargetDeltaToSliceAngle(delta, squash);
                 float aimErr = Mathf.Abs(Mathf.DeltaAngle(t.turretAngleDeg, desiredTurret));
@@ -2856,6 +2851,15 @@ namespace Modern8bitTanks
             SpriteStackCamera.SetRoll(_camRollDeg);
             if (_cam != null)
                 _cam.transform.rotation = Quaternion.Euler(0f, 0f, _camRollDeg);
+        }
+
+        private void UpdateCameraZoom()
+        {
+            if (_phase != GamePhase.Playing || Mouse.current == null) return;
+
+            float scrollY = Mouse.current.scroll.ReadValue().y;
+            if (Mathf.Abs(scrollY) > 0.01f)
+                cameraZoom = Mathf.Clamp(cameraZoom + Mathf.Sign(scrollY) * 0.08f, 0.76f, 1.48f);
         }
 
         private void UpdateCameraAndAim(TankEntity player, float dt)

@@ -14,8 +14,6 @@ namespace Modern8bitTanks
             public byte Arcade;
             public sbyte Ammo;
             public float AimX, AimY;
-            public Vector2 ViewCenter;
-            public float ViewHalfHeight;
         }
 
         public struct TankState
@@ -42,11 +40,11 @@ namespace Modern8bitTanks
         private const float ControlHeartbeat = 0.15f;
         private const byte ActionMask = 0xC0;
         private const int TankStateBytes = 48;
-        private const int ControlBytes = 22;
+        private const int ControlBytes = 2 * sizeof(byte) + 2 * sizeof(float);
         private const int ControlStateBytes = 3 * sizeof(float) + sizeof(sbyte) + 2 * sizeof(bool);
         private const int RoundBytes = sizeof(ushort);
 
-        private const string ControlMessage = "m8t.control.v2";
+        private const string ControlMessage = "m8t.control.v3";
         private const string ActionMessage = "m8t.actions.v2";
         private const string StateMessage = "m8t.state.v4";
         private const string PropMessage = "m8t.prop.v1";
@@ -160,8 +158,6 @@ namespace Modern8bitTanks
             writer.WriteValueSafe(control.Arcade);
             writer.WriteValueSafe(control.AimX);
             writer.WriteValueSafe(control.AimY);
-            writer.WriteValueSafe(control.ViewCenter);
-            writer.WriteValueSafe(control.ViewHalfHeight);
             _network.CustomMessagingManager.SendNamedMessage(ControlMessage, NetworkManager.ServerClientId, writer, NetworkDelivery.UnreliableSequenced);
         }
 
@@ -259,13 +255,10 @@ namespace Modern8bitTanks
             reader.ReadValueSafe(out byte arcade);
             reader.ReadValueSafe(out float aimX);
             reader.ReadValueSafe(out float aimY);
-            reader.ReadValueSafe(out Vector2 viewCenter);
-            reader.ReadValueSafe(out float viewHalfHeight);
             if (!float.IsFinite(aimX) || !float.IsFinite(aimY)) return;
             _controls[slot] = new Control
             {
-                Buttons = (byte)(buttons & ~ActionMask), Arcade = arcade, Ammo = -1, AimX = aimX, AimY = aimY,
-                ViewCenter = viewCenter, ViewHalfHeight = viewHalfHeight
+                Buttons = (byte)(buttons & ~ActionMask), Arcade = arcade, Ammo = -1, AimX = aimX, AimY = aimY
             };
             _lastControl[slot] = Time.unscaledTime;
         }
