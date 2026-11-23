@@ -32,6 +32,7 @@ namespace Modern8bitTanks
         private void ResetControlPoint()
         {
             _controlPoints.Reset(UsesControlPoints ? CurrentLayout.ControlPoint / PPU : Vector2.zero);
+            ResetControlPointVoiceTracking();
             _controlMarker = null;
             _flankRoutes.Clear();
             if (!UsesControlPoints) return;
@@ -44,7 +45,11 @@ namespace Modern8bitTanks
         {
             sbyte winner = _controlPoints.Advance(_tanks, dt);
             if (winner != 0)
+            {
                 FinishRound(winner == 1 ? "ally" : "enemy", ControlVictorySubtitle, ControlPointPosition, wonByControl: true);
+                return;
+            }
+            SyncControlPointVoice();
         }
 
         private void AssignFlankRoute(TankEntity tank, bool west, int deploymentSlot)

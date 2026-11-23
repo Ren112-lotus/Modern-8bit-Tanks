@@ -452,6 +452,7 @@ namespace Modern8bitTanks
             _sfxMissileHeavy = Resources.Load<AudioClip>("SFX/missile_heavy") ?? _sfxMissileLaunch;
             _sfxMissileMotor = Resources.Load<AudioClip>("SFX/missile_motor");
             _sfxBattleBgm = Resources.Load<AudioClip>("SFX/battle_bgm");
+            LoadVoiceResources();
 
             _fxMpb = new MaterialPropertyBlock();
         }
@@ -672,6 +673,10 @@ namespace Modern8bitTanks
                 };
                 _hud.ShowWaveToast(startMsg, 2.2f);
             }
+
+            ResetVoiceState();
+            if (!_multiplayer.IsInBattle)
+                NotifyVoiceBattleStart();
         }
 
         private void ClearDynamicFXAndExtraTanks()
@@ -1366,6 +1371,7 @@ namespace Modern8bitTanks
             }
 
             PlaySFXAt(_sfxSmokePop, t.Position2D, SoundBus.Dry, 0.68f);
+            NotifyVoiceSmokeDeployed(t);
             if (_hud != null) _hud.SpawnPopup(t.Position2D + Vector2.up * 1.5f, "SMOKE DEPLOYED!", new Color(0.72f, 0.90f, 1f));
         }
 
@@ -2345,6 +2351,7 @@ namespace Modern8bitTanks
                 _waitingNextWave = true;
                 _nextWaveDelay = 2.4f;
                 _hud?.ShowWaveToast($"WAVE {_currentWave} CLEAR  FIELD SERVICE", 2.2f);
+                NotifyVoiceWaveClear();
                 return;
             }
 
@@ -2381,6 +2388,7 @@ namespace Modern8bitTanks
             _pendingSubtitle = subtitle;
             _wonByControl = wonByControl;
             if (winner == "ally") _winsAlly++; else _winsEnemy++;
+            NotifyVoiceRoundFinished(winner);
         }
 
         // ============================================================

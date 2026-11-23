@@ -76,6 +76,7 @@ namespace Modern8bitTanks
                 }
                 _networkBattleStarted = true;
                 _hud?.ShowWaveToast("BATTLE START", 2f);
+                NotifyVoiceBattleStart();
             }
             return _networkBattleStarted;
         }
@@ -221,6 +222,7 @@ namespace Modern8bitTanks
             if (_networkTanks == null || states.Length != _networkTanks.Length) return;
             System.Array.Copy(spots, _visibility.NetworkContacts, _visibility.NetworkContacts.Length);
             _controlPoints.ApplySnapshot(controlPoint, controlScores);
+            SyncControlPointVoice();
             float now = Time.unscaledTime;
             float sampleOffset = now - hostTime;
             _clockOffset = _poseCount == 0 ? sampleOffset : Mathf.Min(sampleOffset, _clockOffset + MultiplayerMatchTransport.SnapshotInterval * .02f);
@@ -262,6 +264,7 @@ namespace Modern8bitTanks
             {
                 _networkBattleStarted = true;
                 _hud?.ShowWaveToast("BATTLE START", 2f);
+                NotifyVoiceBattleStart();
             }
             if ((result == 1 || result == 2) && !_networkResultShown)
             {

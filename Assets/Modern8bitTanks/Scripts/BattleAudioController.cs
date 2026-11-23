@@ -24,6 +24,7 @@ namespace Modern8bitTanks
         [Range(0f, 1f)] public float tracksMaster = 0.28f;
         [Range(0f, 1f)] public float servoMaster = 0.35f;
         [Range(0f, 1.2f)] public float combatSfxMaster = 0.95f;
+        [Range(0f, 1.5f)] public float voiceMaster = 0.95f;
         [Range(0f, 1.2f)] public float bgmMaster = 0.65f;
 
         // Stereo & attenuation tuning (in Unity world units; expanded 1280x860 battlefield is 80 x 53.75 units)
@@ -59,6 +60,46 @@ namespace Modern8bitTanks
 
         // Dedicated full-bandwidth stereo Battle BGM player (completely independent of SE/SFX!)
         [SerializeField] private AudioSource _bgmSource;
+
+        // Dedicated dry 2D channel for tank crew radio voices
+        [SerializeField] private AudioSource _voiceSource;
+
+        public bool IsVoicePlaying => _voiceSource != null && _voiceSource.isPlaying;
+
+        private void EnsureVoiceSource()
+        {
+            if (_voiceSource != null) return;
+            var go = new GameObject("RadioVoiceSource");
+            go.transform.SetParent(transform, false);
+            _voiceSource = go.AddComponent<AudioSource>();
+            _voiceSource.playOnAwake = false;
+            _voiceSource.loop = false;
+            _voiceSource.spatialBlend = 0f;
+            _voiceSource.panStereo = 0f;
+            _voiceSource.priority = 64;
+        }
+
+        public void PlayVoice(AudioClip clip, bool sfxEnabled, float sfxVolume = 1f, float volumeScale = 1f)
+        {
+            float vol01 = Mathf.Clamp01(sfxVolume);
+            if (!sfxEnabled || vol01 <= 0.001f || clip == null) return;
+            EnsureVoiceSource();
+            _voiceSource.Stop();
+            _voiceSource.clip = clip;
+            _voiceSource.pitch = 1f;
+            _voiceSource.panStereo = 0f;
+            _voiceSource.volume = Mathf.Clamp01(voiceMaster * vol01 * volumeScale);
+            _voiceSource.Play();
+        }
+
+        public void StopVoice()
+        {
+            if (_voiceSource != null)
+            {
+                _voiceSource.Stop();
+                _voiceSource.clip = null;
+            }
+        }
 
         public void Initialize(AudioClip trackClip, AudioClip servoClip, AudioClip missileMotorClip = null)
         {
@@ -284,9 +325,10 @@ namespace Modern8bitTanks
             if (_bgmSource == null || _bgmSource.clip == null) return;
 
             float vol01 = Mathf.Clamp01(bgmVolume);
+            float duckMul = (duckForMenu ? 0.55f : 1f) * (IsVoicePlaying ? 0.78f : 1f);
             float targetVol = (!active || !bgmEnabled || vol01 <= 0.001f)
                 ? 0f
-                : Mathf.Clamp01(vol01 * bgmMaster * (duckForMenu ? 0.55f : 1f));
+                : Mathf.Clamp01(vol01 * bgmMaster * duckMul);
 
             if (targetVol > 0.001f && !_bgmSource.isPlaying)
                 _bgmSource.Play();

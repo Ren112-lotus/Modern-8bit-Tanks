@@ -72,9 +72,14 @@ namespace Modern8bitTanks
                     if (target == null) break;
                     if (target.isPlayer) _postProcess?.PulsePlayerDamage();
                     if (effect.Loss == TankLoss.None) PresentHitLabel(target, effect.Hit);
+                    NotifyVoiceSplashHit(target, effect.Hit, effect.Loss);
                     break;
                 case BattleEffectKind.TankLoss:
-                    if (target != null) PresentTankLoss(target, effect.Loss, effect.Ground);
+                    if (target != null)
+                    {
+                        PresentTankLoss(target, effect.Loss, effect.Ground);
+                        NotifyVoiceTankLoss(target);
+                    }
                     break;
                 case BattleEffectKind.LossReplay:
                     if (target != null && (effect.EndsRound || target.isPlayer))
@@ -98,6 +103,7 @@ namespace Modern8bitTanks
         private void PresentArmorImpact(BattleEffect effect, TankEntity target, bool firedLocally)
         {
             TankHit hit = effect.Hit;
+            NotifyVoiceArmorImpact(effect, target, firedLocally);
             bool decisive = effect.Loss != TankLoss.None && (effect.EndsRound || target.isPlayer);
             if (firedLocally || decisive)
                 _hud?.ShowHitCamera(target, effect.Trace, hit, effect.Projectile, _cam, decisive, confirmedLoss: effect.Loss);
