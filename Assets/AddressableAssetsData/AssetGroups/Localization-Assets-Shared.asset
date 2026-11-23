@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Localization-Assets-Shared
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Localization-Assets-Shared
+  m_GUID: 5ba2fcdf0c7fd8d43a9ba5656232c445
+  m_SerializeEntries:
+  - m_GUID: 1a103095374a7004584419b1066b62a1
+    m_Address: Assets/Modern8bitTanks/Localization/Game UI Shared Data.asset
+    m_ReadOnly: 1
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 1
+  m_Settings: {fileID: 11400000, guid: 681da6375711c1844a63fc294ac8b351, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 3ccfeb349ac7b684c823f08e999318fa, type: 2}
+    - {fileID: 11400000, guid: 8f183f62feddfe2438b963066cbb65bc, type: 2}
+    - {fileID: 11400000, guid: 2f4611f25abc526409b507b0e505351c, type: 2}

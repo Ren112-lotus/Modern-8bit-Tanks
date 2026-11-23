@@ -669,14 +669,14 @@ namespace Modern8bitTanks
                 VehicleDef eDef = SelectedEnemyVehicle;
                 string eLabel = eDef != null ? $"{eDef.name.ToUpper()} ({eDef.TierRoman})" : "HOSTILE";
                 string pTier = playerDef != null ? playerDef.TierRoman : "IX";
-                string mapTag = GetMapDisplayName(battleMap);
+                string mapTag = UiText.Get(GetMapDisplayName(battleMap));
                 string startMsg = battleMode switch
                 {
-                    BattleMode.FiringRange => $"{mapTag}  FIRING RANGE  [R] RESET",
-                    BattleMode.Battle5v5 => $"{mapTag}  5v5 (TIER {pTier})",
-                    BattleMode.Squad2v2 => $"{mapTag}  2v2 VS {eLabel}",
-                    BattleMode.SurvivalWave => $"{mapTag}  WAVE 1",
-                    _ => $"{mapTag}  VS {eLabel}"
+                    BattleMode.FiringRange => UiText.Format("{0}  FIRING RANGE  [R] RESET", mapTag),
+                    BattleMode.Battle5v5 => UiText.Format("{0}  5v5 (TIER {1})", mapTag, pTier),
+                    BattleMode.Squad2v2 => UiText.Format("{0}  2v2 VS {1}", mapTag, eLabel),
+                    BattleMode.SurvivalWave => UiText.Format("{0}  WAVE 1", mapTag),
+                    _ => UiText.Format("{0}  VS  {1}", mapTag, eLabel)
                 };
                 _hud.ShowWaveToast(startMsg, 2.2f);
             }
@@ -839,7 +839,7 @@ namespace Modern8bitTanks
                 SpawnTankFromPrefab(PickSurvivalWaveEnemy(_currentWave, k), "enemy", spawnPts[k % spawnPts.Length], -90f, isPlayerTank: false);
             }
 
-            _hud.ShowWaveToast($"WAVE {_currentWave} — {enemyCount} HOSTILES!", 2.2f);
+            _hud.ShowWaveToast(UiText.Format("WAVE {0} — {1} HOSTILES!", _currentWave, enemyCount), 2.2f);
         }
 
         private TankEntity GetPlayerTank()
@@ -2357,7 +2357,7 @@ namespace Modern8bitTanks
                 _winsAlly++;
                 _waitingNextWave = true;
                 _nextWaveDelay = 2.4f;
-                _hud?.ShowWaveToast($"WAVE {_currentWave} CLEAR  FIELD SERVICE", 2.2f);
+                _hud?.ShowWaveToast(UiText.Format("WAVE {0} CLEAR  FIELD SERVICE", _currentWave), 2.2f);
                 NotifyVoiceWaveClear();
                 return;
             }
@@ -2374,10 +2374,10 @@ namespace Modern8bitTanks
             string eName = SelectedEnemyVehicle != null ? SelectedEnemyVehicle.name.ToUpper() : "HOSTILE";
             string subtitle = _multiplayer.IsInBattle ? "ONLINE BATTLE" : battleMode switch
             {
-                BattleMode.SurvivalWave => $"{pName} SURVIVED TO WAVE {_currentWave}",
+                BattleMode.SurvivalWave => UiText.Format("{0} SURVIVED TO WAVE {1}", pName, _currentWave),
                 BattleMode.Battle5v5 => winner == "ally" ? "5v5 ALLIED VICTORY" : "5v5 ENEMY VICTORY",
                 BattleMode.Squad2v2 => winner == "ally" ? "2v2 SQUAD VICTORY" : "2v2 HOSTILE VICTORY",
-                _ => winner == "ally" ? $"{pName} VICTORY" : $"{eName} VICTORY"
+                _ => UiText.Format("{0} VICTORY", winner == "ally" ? pName : eName)
             };
             FinishRound(winner, subtitle, justKilled.Position2D);
         }

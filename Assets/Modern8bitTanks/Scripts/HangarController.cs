@@ -267,6 +267,11 @@ namespace Modern8bitTanks
             if (connection != null && connection.IsReturningToLobby) connection.ReadyInLobby();
             _onlineError = _multiplayer.TakeNotice();
             if (_onlineError != null || (connection != null && connection.Room != null && !connection.IsLeaving)) SetOnlineRoomOpen(true);
+            UiText.Prepare(_pixelCanvas, () =>
+            {
+                RefreshSettingsLabels();
+                RefreshAllUI();
+            });
         }
 
         private void LoadResourcesAndCatalog()
@@ -703,13 +708,13 @@ namespace Modern8bitTanks
                 _setBgmLabel.color = (_sessionState.BgmEnabled && _sessionState.BgmVolume > 0.001f) ? LightCyan : TextMuted;
             }
             if (_setDriveLabel != null)
-                _setDriveLabel.text = _sessionState.ArcadeWASD ? "DRIVE: ARCADE WASD" : "DRIVE: TANK STEER";
+                _setDriveLabel.text = UiText.Get(_sessionState.ArcadeWASD ? "DRIVE: ARCADE WASD" : "DRIVE: TANK STEER");
             if (_setAiLabel != null)
-                _setAiLabel.text = _sessionState.AiEnabled ? "ENEMY AI: ON" : "ENEMY AI: OFF";
+                _setAiLabel.text = UiText.Get(_sessionState.AiEnabled ? "ENEMY AI: ON" : "ENEMY AI: OFF");
             if (_setGfxLabel != null)
-                _setGfxLabel.text = _sessionState.PostProcessEnabled ? "GFX: HD-2D" : "GFX: RETRO";
+                _setGfxLabel.text = UiText.Get(_sessionState.PostProcessEnabled ? "GFX: HD-2D" : "GFX: RETRO");
             if (_setViewLabel != null)
-                _setViewLabel.text = _sessionState.IntegerWindowbox ? "VIEW: INT WINDOWBOX" : "VIEW: 16:9 LETTERBOX";
+                _setViewLabel.text = UiText.Get(_sessionState.IntegerWindowbox ? "VIEW: INT WINDOWBOX" : "VIEW: 16:9 LETTERBOX");
         }
 
         private void SetSettingsOpen(bool open)
@@ -770,7 +775,7 @@ namespace Modern8bitTanks
                 {
                     var nationList = Array.FindAll(_allVehicles, v => v != null && v.nation == sel.nation);
                     int idx = Array.FindIndex(nationList, v => v.id == sel.id);
-                    _garageIndexBadge.text = $"UNIT {(idx >= 0 ? idx + 1 : 1):00}/{nationList.Length:00}";
+                    _garageIndexBadge.text = UiText.Format("UNIT {0:00}/{1:00}", idx >= 0 ? idx + 1 : 1, nationList.Length);
                 }
 
                 // 6 Segmented Pixel Stat Bars
@@ -783,22 +788,23 @@ namespace Modern8bitTanks
                 UpdateStatBar(_statTur, sel.EffectiveTurretTurnSpeed / 355f, $"{Mathf.RoundToInt(sel.EffectiveTurretTurnSpeed)}");
 
                 // Hull & Drivetrain mini telemetry
-                string gearStr = sel.IsWheeled ? $"{sel.WheelAxleCount * 2}x{sel.WheelAxleCount * 2} WHEEL" : "TRACKED";
-                string engStr = sel.IsFrontEngine ? "FRONT ENG" : "REAR ENG";
-                string turStr = sel.IsTurretless ? "CASEMATE" : (sel.IsUnmannedTurret ? "UNMANNED" : "MANNED");
-                if (_garageCrewLine != null) _garageCrewLine.text = $"CREW {sel.CrewCapacity}  •  {gearStr}";
-                if (_garageEngineLine != null) _garageEngineLine.text = $"ENG: {(string.IsNullOrEmpty(sel.engine) ? "DIESEL" : sel.engine.ToUpper())}";
+                string gearStr = sel.IsWheeled ? UiText.Format("{0}x{0} WHEEL", sel.WheelAxleCount * 2) : UiText.Get("TRACKED");
+                string engStr = UiText.Get(sel.IsFrontEngine ? "FRONT ENG" : "REAR ENG");
+                string turStr = UiText.Get(sel.IsTurretless ? "CASEMATE" : (sel.IsUnmannedTurret ? "UNMANNED" : "MANNED"));
+                if (_garageCrewLine != null) _garageCrewLine.text = UiText.Format("CREW {0}  •  {1}", sel.CrewCapacity, gearStr);
+                if (_garageEngineLine != null)
+                    _garageEngineLine.text = UiText.Format("ENG: {0}", UiText.Get(string.IsNullOrEmpty(sel.engine) ? "DIESEL" : sel.engine.ToUpperInvariant()));
                 if (_garageLayoutLine != null) _garageLayoutLine.text = $"{engStr} • {turStr}";
 
                 // Right Card: Armament & Operation
-                if (_garageRoleLine != null) _garageRoleLine.text = FormatRoleFull(sel.role);
-                if (_garageWeaponLine != null) _garageWeaponLine.text = $"WPN: {sel.WeaponLabel}";
+                if (_garageRoleLine != null) _garageRoleLine.text = UiText.Get(FormatRoleFull(sel.role));
+                if (_garageWeaponLine != null) _garageWeaponLine.text = UiText.Format("WPN: {0}", sel.WeaponLabel);
                 if (_garageAmmoLine != null) _garageAmmoLine.text = FormatAmmoSummary(sel);
                 if (_garageSpecialLine != null)
                 {
-                    if (sel.HasSecondaryAtgm) _garageSpecialLine.text = "RMB: GUIDED ATGM";
-                    else if (sel.weapon == "ATGM") _garageSpecialLine.text = "SACLOS MISSILE";
-                    else _garageSpecialLine.text = "SMOKE [Q] • COAX MG";
+                    if (sel.HasSecondaryAtgm) _garageSpecialLine.text = UiText.Get("RMB: GUIDED ATGM");
+                    else if (sel.weapon == "ATGM") _garageSpecialLine.text = UiText.Get("SACLOS MISSILE");
+                    else _garageSpecialLine.text = UiText.Get("SMOKE [Q] • COAX MG");
                 }
 
                 string mapTag = BattleSceneController.GetMapDisplayName(_sessionState.SelectedBattleMap);
@@ -810,10 +816,10 @@ namespace Modern8bitTanks
                     BattleMode.SurvivalWave => "SURVIVAL",
                     _ => "1v1 DUEL"
                 };
-                if (_garageModeLine != null) _garageModeLine.text = $"MODE: {modeShort}";
+                if (_garageModeLine != null) _garageModeLine.text = UiText.Format("MODE: {0}", UiText.Get(modeShort));
                 if (_garageMapLine != null)
                 {
-                    _garageMapLine.text = $"MAP: {mapTag}";
+                    _garageMapLine.text = UiText.Format("MAP: {0}", UiText.Get(mapTag));
                     _garageMapLine.color = _sessionState.SelectedBattleMap switch
                     {
                         BattleMap.Forest => MbtGreen,
@@ -824,8 +830,8 @@ namespace Modern8bitTanks
                 if (_garageMatchLine != null)
                 {
                     _garageMatchLine.text = _sessionState.SelectedBattleMode == BattleMode.FiringRange
-                        ? "6 TARGETS • TEST"
-                        : $"TIER {sel.TierRoman} BRACKET";
+                        ? UiText.Get("6 TARGETS • TEST")
+                        : UiText.Format("TIER {0} BRACKET", sel.TierRoman);
                     _garageMatchLine.color = _sessionState.SelectedBattleMode == BattleMode.FiringRange ? LightCyan : TextMuted;
                 }
 

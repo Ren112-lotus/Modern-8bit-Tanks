@@ -66,28 +66,29 @@ namespace Modern8bitTanks
             var canSelect = inRoom && !connection.IsStarting && !busy;
             _onlineSelectVisuals.SetActive(canSelect);
             _onlineSelectHits.SetActive(canSelect);
-            _onlineBack.text = inRoom ? "LEAVE ROOM" : "BACK";
-            _onlineCodeLabel.text = inRoom && !string.IsNullOrEmpty(connection.JoinCode) ? $"CODE {connection.JoinCode}" : "";
+            _onlineBack.text = UiText.Get(inRoom ? "LEAVE ROOM" : "BACK");
+            _onlineCodeLabel.text = inRoom && !string.IsNullOrEmpty(connection.JoinCode) ? UiText.Format("CODE {0}", connection.JoinCode) : "";
             _onlineRoster.text = inRoom
                 ? $"ALPHA {room.CountTeam(true)}/4    BRAVO {room.CountTeam(false)}/4\nYOUR TEAM: {(room.LocalSlot < MultiplayerSessionConnection.MaxPlayers / 2 ? "ALPHA" : "BRAVO")}" 
                 : "";
-            _onlineVehicle.text = inRoom && GetSelectedVehicle() is { } vehicle ? $"YOUR TANK: {vehicle.name.ToUpperInvariant()}" : "";
+            _onlineVehicle.text = inRoom && GetSelectedVehicle() is { } vehicle
+                ? UiText.Format("YOUR TANK: {0}", vehicle.name.ToUpperInvariant()) : "";
             if (connection != null && connection.IsLeaving)
-                _onlineStatus.text = "LEAVING ROOM...";
+                _onlineStatus.text = UiText.Get("LEAVING ROOM...");
             else if (busy)
-                _onlineStatus.text = inRoom ? "UPDATING ROOM..." : "CONNECTING...";
+                _onlineStatus.text = UiText.Get(inRoom ? "UPDATING ROOM..." : "CONNECTING...");
             else if (!string.IsNullOrEmpty(_onlineError))
-                _onlineStatus.text = _onlineError;
+                _onlineStatus.text = UiText.Get(_onlineError);
             else if (!inRoom)
-                _onlineStatus.text = "CREATE A ROOM OR JOIN A FRIEND";
+                _onlineStatus.text = UiText.Get("CREATE A ROOM OR JOIN A FRIEND");
             else if (connection.IsStarting)
-                _onlineStatus.text = "LOADING BATTLE...";
+                _onlineStatus.text = UiText.Get("LOADING BATTLE...");
             else
             {
                 string nextAction = connection.IsHost
                     ? (room.PlayerCount < 2 ? "WAITING FOR A PLAYER" : room.CanDeploy ? "READY TO START" : "WAITING FOR TANK SELECTION")
                     : "WAITING FOR HOST";
-                _onlineStatus.text = nextAction;
+                _onlineStatus.text = UiText.Get(nextAction);
             }
         }
 
@@ -104,8 +105,8 @@ namespace Modern8bitTanks
         private void SetOnlineVehicleSelection(bool choosing)
         {
             _choosingOnlineVehicle = choosing;
-            _garageTitleButton.text = choosing ? "ROOM" : "TITLE";
-            _garageDeployButton.text = choosing ? "CONFIRM TANK" : "BATTLE!";
+            _garageTitleButton.text = UiText.Get(choosing ? "ROOM" : "TITLE");
+            _garageDeployButton.text = UiText.Get(choosing ? "CONFIRM TANK" : "BATTLE!");
             _treeDeployButton.text = _garageDeployButton.text;
             if (choosing) SetTitleOpen(false);
             else SetTechTreeOpen(false);

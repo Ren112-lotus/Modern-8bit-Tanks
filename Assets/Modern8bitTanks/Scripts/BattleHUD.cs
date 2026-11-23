@@ -154,6 +154,11 @@ namespace Modern8bitTanks
 
             InitializeLayout();
             _controlPointHud.SetVisible(_mgr.UsesControlPoints);
+            UiText.Prepare(_pixelCanvas, () =>
+            {
+                RefreshMenuLabels();
+                _controlPointHud.RefreshObjective();
+            });
         }
 
         private void OnFontTextureRebuilt(Font f)
@@ -182,7 +187,7 @@ namespace Modern8bitTanks
         public void ShowWaveToast(string message, float duration = 2.1f)
         {
             if (_waveToastGo == null) return;
-            _waveToastText.text = message;
+            _waveToastText.text = UiText.Get(message);
             _waveToastTimer = duration;
             _waveToastGo.SetActive(true);
         }
@@ -241,7 +246,7 @@ namespace Modern8bitTanks
         {
             if (_mgr == null) return;
             if (_btnNextRivalLabel != null)
-                _btnNextRivalLabel.text = _mgr.battleMode == BattleMode.FiringRange ? "RESET RANGE" : "NEXT RIVAL";
+                _btnNextRivalLabel.text = UiText.Get(_mgr.battleMode == BattleMode.FiringRange ? "RESET RANGE" : "NEXT RIVAL");
             if (_btnSfxLabel != null)
             {
                 _btnSfxLabel.text = BattleSessionState.FormatVolumeLabel("SE", _mgr.sfxEnabled, _mgr.sfxVolume);
@@ -253,20 +258,20 @@ namespace Modern8bitTanks
                 _btnBgmLabel.color = (_mgr.bgmEnabled && _mgr.bgmVolume > 0.001f) ? SmokeCyan : TextMuted;
             }
             if (_btnControlModeLabel != null)
-                _btnControlModeLabel.text = _mgr.arcadeWASD ? "DRIVE: ARCADE WASD" : "DRIVE: TANK STEER";
+                _btnControlModeLabel.text = UiText.Get(_mgr.arcadeWASD ? "DRIVE: ARCADE WASD" : "DRIVE: TANK STEER");
             if (_btnAiLabel != null)
-                _btnAiLabel.text = _mgr.aiEnabled ? "ENEMY AI: ON" : "ENEMY AI: OFF";
+                _btnAiLabel.text = UiText.Get(_mgr.aiEnabled ? "ENEMY AI: ON" : "ENEMY AI: OFF");
             if (_btnPostProcessLabel != null)
-                _btnPostProcessLabel.text = _mgr.postProcessEnabled ? "GFX: HD-2D" : "GFX: RETRO";
+                _btnPostProcessLabel.text = UiText.Get(_mgr.postProcessEnabled ? "GFX: HD-2D" : "GFX: RETRO");
             if (_btnDisplayModeLabel != null)
-                _btnDisplayModeLabel.text = _mgr.integerWindowbox ? "VIEW: INT WINDOWBOX" : "VIEW: 16:9 LETTERBOX";
+                _btnDisplayModeLabel.text = UiText.Get(_mgr.integerWindowbox ? "VIEW: INT WINDOWBOX" : "VIEW: 16:9 LETTERBOX");
         }
 
         public void SpawnPopup(Vector2 worldPos, string label, Color color)
         {
             if (_popupLayer == null) return;
             var txt = Instantiate(popupPrefab, _popupLayer, false);
-            txt.text = label;
+            txt.text = UiText.Get(label);
             txt.color = color;
             var rt = txt.rectTransform;
 
@@ -291,9 +296,9 @@ namespace Modern8bitTanks
         public void ShowResult(bool playerWon, string subtitle)
         {
             if (_resultOverlay == null) return;
-            _resultTitle.text = playerWon ? "VICTORY" : "DEFEATED";
+            _resultTitle.text = UiText.Get(playerWon ? "VICTORY" : "DEFEATED");
             _resultTitle.color = playerWon ? AbramsGold : DangerRed;
-            _resultSubtitle.text = subtitle;
+            _resultSubtitle.text = UiText.Get(subtitle);
             _resultShowing = true;
             _resultFadeAlpha = 0f;
             if (_resultCanvasGroup != null) _resultCanvasGroup.alpha = 0f;
@@ -398,22 +403,22 @@ namespace Modern8bitTanks
             VehicleDef eDef = _mgr.SelectedEnemyVehicle;
             if (mode == BattleMode.FiringRange)
             {
-                if (_allyNameText != null) _allyNameText.text = pDef != null ? TrimHudName(pDef.name, 7) : "YOU";
-                if (_enemyNameText != null) _enemyNameText.text = $"TGT x{enemyAlive}";
+                if (_allyNameText != null) _allyNameText.text = pDef != null ? TrimHudName(pDef.name, 7) : UiText.Get("YOU");
+                if (_enemyNameText != null) _enemyNameText.text = UiText.Format("TGT x{0}", enemyAlive);
                 if (_allyActiveText != null) _allyActiveText.text = "";
                 if (_enemyActiveText != null) _enemyActiveText.text = "";
             }
             else if (mode == BattleMode.Battle5v5 || mode == BattleMode.Squad2v2)
             {
-                if (_allyNameText != null) _allyNameText.text = $"ALLY x{allyAlive}";
-                if (_enemyNameText != null) _enemyNameText.text = $"x{enemyAlive} FOE";
+                if (_allyNameText != null) _allyNameText.text = UiText.Format("ALLY x{0}", allyAlive);
+                if (_enemyNameText != null) _enemyNameText.text = UiText.Format("x{0} FOE", enemyAlive);
                 if (_allyActiveText != null) _allyActiveText.text = "";
                 if (_enemyActiveText != null) _enemyActiveText.text = "";
             }
             else if (mode == BattleMode.SurvivalWave)
             {
-                if (_allyNameText != null) _allyNameText.text = pDef != null ? TrimHudName(pDef.name, 7) : "YOU";
-                if (_enemyNameText != null) _enemyNameText.text = $"FOE x{enemyAlive}";
+                if (_allyNameText != null) _allyNameText.text = pDef != null ? TrimHudName(pDef.name, 7) : UiText.Get("YOU");
+                if (_enemyNameText != null) _enemyNameText.text = UiText.Format("FOE x{0}", enemyAlive);
                 if (_allyActiveText != null) _allyActiveText.text = "";
                 if (_enemyActiveText != null) _enemyActiveText.text = "";
             }
@@ -432,14 +437,14 @@ namespace Modern8bitTanks
             {
                 _reloadFill.rectTransform.anchorMax = new Vector2(0f, 1f);
                 _reloadFill.color = DangerRed;
-                _reloadStatusText.text = "LOST";
+                _reloadStatusText.text = UiText.Get("LOST");
                 _reloadStatusText.color = DangerRed;
             }
             else if (!player.CanFire)
             {
                 _reloadFill.rectTransform.anchorMax = new Vector2(0f, 1f);
                 _reloadFill.color = DangerRed;
-                _reloadStatusText.text = player.Repairing ? "FIXING" : "GUN OUT";
+                _reloadStatusText.text = UiText.Get(player.Repairing ? "FIXING" : "GUN OUT");
                 _reloadStatusText.color = player.Repairing ? AbramsGold : DangerRed;
             }
             else if (player.reloadTimer > 0f)
@@ -447,14 +452,14 @@ namespace Modern8bitTanks
                 float prog = Mathf.Clamp01(1f - player.reloadTimer / Mathf.Max(0.01f, player.ActiveReloadDuration));
                 _reloadFill.rectTransform.anchorMax = new Vector2(Mathf.Round(prog * ReloadTrackWidth) / ReloadTrackWidth, 1f);
                 _reloadFill.color = AbramsGold;
-                _reloadStatusText.text = player.reloadDuration < 0.4f ? "FIRE" : $"{player.reloadTimer:F1}s";
+                _reloadStatusText.text = player.reloadDuration < 0.4f ? UiText.Get("FIRE") : $"{player.reloadTimer:F1}s";
                 _reloadStatusText.color = AbramsGold;
             }
             else
             {
                 _reloadFill.rectTransform.anchorMax = new Vector2(1f, 1f);
                 _reloadFill.color = ReadyGreen;
-                _reloadStatusText.text = (pDef != null && pDef.weapon == "ATGM") ? "ATGM" : "READY";
+                _reloadStatusText.text = (pDef != null && pDef.weapon == "ATGM") ? "ATGM" : UiText.Get("READY");
                 _reloadStatusText.color = ReadyGreen;
             }
 
@@ -507,7 +512,7 @@ namespace Modern8bitTanks
                 {
                     _smokeFill.rectTransform.anchorMax = new Vector2(1f, 1f);
                     _smokeFill.color = SmokeCyan;
-                    _smokeStatusText.text = "SMK[Q]";
+                    _smokeStatusText.text = UiText.Get("SMK[Q]");
                     _smokeStatusText.color = SmokeCyan;
                 }
             }

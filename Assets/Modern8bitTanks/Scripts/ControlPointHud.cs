@@ -16,9 +16,12 @@ namespace Modern8bitTanks
             if (gameObject.activeSelf == visible) return;
 
             _waveToast.anchoredPosition += Vector2.down * (visible ? 26f : -26f);
-            if (visible) _objective.text = $"CAPTURE / {ControlPointSystem.ScoreToWin} TO WIN";
+            if (visible) RefreshObjective();
             gameObject.SetActive(visible);
         }
+
+        internal void RefreshObjective() =>
+            _objective.text = UiText.Format("CAPTURE / {0} TO WIN", ControlPointSystem.ScoreToWin);
 
         internal void Render(ControlPointState state, Vector2 scores, Color ally, Color enemy, Color status)
         {
@@ -26,10 +29,10 @@ namespace Modern8bitTanks
             _enemyScore.text = Mathf.FloorToInt(scores.y).ToString();
             _allyScore.color = ally;
             _enemyScore.color = enemy;
-            _status.text = state.Contested ? "CONTESTED"
-                : Mathf.Abs(state.Progress) == 1f ? "POINT HELD"
-                : state.Progress == 0f ? "POINT NEUTRAL"
-                : $"CONTROL  {Mathf.FloorToInt(Mathf.Abs(state.Progress) * 100f)}%";
+            _status.text = state.Contested ? UiText.Get("CONTESTED")
+                : Mathf.Abs(state.Progress) == 1f ? UiText.Get("POINT HELD")
+                : state.Progress == 0f ? UiText.Get("POINT NEUTRAL")
+                : UiText.Format("CONTROL  {0}%", Mathf.FloorToInt(Mathf.Abs(state.Progress) * 100f));
             _status.color = status;
         }
     }

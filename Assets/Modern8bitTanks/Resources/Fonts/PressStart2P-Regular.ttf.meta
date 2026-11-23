@@ -10,7 +10,9 @@ TrueTypeFontImporter:
   includeFontData: 1
   fontNames:
   - Press Start 2P
-  fallbackFontReferences: []
+  - MisakiGothic
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: 4194e4d6a6f7a924ba26d21e16528ead, type: 3}
   customCharacters: 
   fontRenderingMode: 2
   ascentCalculationMode: 1

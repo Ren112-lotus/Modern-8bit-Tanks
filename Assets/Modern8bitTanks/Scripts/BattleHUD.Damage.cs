@@ -66,26 +66,27 @@ namespace Modern8bitTanks
             if (fire)
             {
                 _serviceKeyText.color = DangerRed;
-                _serviceKeyText.text = player.ExtinguisherReady ? $"[F] {Mathf.CeilToInt(player.FireTime)}s" : $"FIRE {Mathf.CeilToInt(player.FireTime)}s";
+                int seconds = Mathf.CeilToInt(player.FireTime);
+                _serviceKeyText.text = player.ExtinguisherReady ? $"[F] {seconds}s" : UiText.Format("FIRE {0}s", seconds);
             }
             else if (player.Repairing)
             {
                 _serviceKeyText.color = AbramsGold;
-                _serviceKeyText.text = $"FIX {player.RepairTime:F1}s";
+                _serviceKeyText.text = UiText.Format("FIX {0:F1}s", player.RepairTime);
             }
             else if (service)
             {
                 _serviceKeyText.color = DangerRed;
-                string penalty = player.HasDisabled(TankModule.Weapon) ? "GUN"
+                string penalty = UiText.Get(player.HasDisabled(TankModule.Weapon) ? "GUN"
                     : player.HasDisabled(TankModule.Engine) ? "ENG"
                     : player.HasDisabled(TankModule.Traverse) ? "TRV"
-                    : "TRK";
+                    : "TRK");
                 _serviceKeyText.text = Mathf.Abs(player.moveSpeed) <= 0.08f ? $"[F] {penalty}" : penalty;
             }
             else if (player.alive && player.CrewRemaining < player.CrewCapacity)
             {
                 _serviceKeyText.color = AbramsGold;
-                _serviceKeyText.text = $"CRW {player.CrewRemaining}/{player.CrewCapacity}";
+                _serviceKeyText.text = UiText.Format("CRW {0}/{1}", player.CrewRemaining, player.CrewCapacity);
             }
             else
             {
@@ -142,7 +143,7 @@ namespace Modern8bitTanks
                 if (priority >= _hitCameraPriority)
                 {
                     _hitCameraPriority = priority;
-                    _hitCameraResult.text = loss switch
+                    _hitCameraResult.text = UiText.Get(loss switch
                     {
                         TankLoss.Ammo => "AMMO BLOWN!",
                         TankLoss.Fire => "BURNED OUT",
@@ -151,7 +152,7 @@ namespace Modern8bitTanks
                         _ when hit.Armor == ArmorHit.Penetrated => "HIT",
                         _ when hit.Armor == ArmorHit.Ricochet => "RICOCHET",
                         _ => "NO PEN"
-                    };
+                    });
                     _hitCameraResult.color = priority >= 2 ? DangerRed : (hit.Armor == ArmorHit.Ricochet ? SmokeCyan : WtAccent);
                 }
 
@@ -163,9 +164,9 @@ namespace Modern8bitTanks
                     : $"{penS}/{effS} {angS}D";
 
                 _hitCameraParts.text = loss == TankLoss.Ammo
-                    ? "AMMUNITION COOKOFF"
+                    ? UiText.Get("AMMUNITION COOKOFF")
                     : loss == TankLoss.Fire
-                        ? "ENGINE FIRE BURNOUT"
+                        ? UiText.Get("ENGINE FIRE BURNOUT")
                         : DescribeHitParts(_burstStruckModules, _burstKnockedOut, target.IsWheeled);
                 _hitCameraParts.color = loss == TankLoss.Ammo ? WtAccent : TextLight;
                 _hitCameraParts.enabled = true;
@@ -199,14 +200,14 @@ namespace Modern8bitTanks
             _hitCameraPriority = priority;
 
             string rawName = target.vehicleDef != null ? target.vehicleDef.name : target.tankType;
-            _hitCameraTarget.text = target.isPlayer ? ("YOU " + TrimHudName(rawName, 7)) : TrimHudName(rawName, 11);
+            _hitCameraTarget.text = target.isPlayer ? UiText.Get("YOU") + " " + TrimHudName(rawName, 7) : TrimHudName(rawName, 11);
             _hitCameraTarget.color = target.isPlayer ? DangerRed : TextLight;
 
             _hitCameraRound.text = !string.IsNullOrEmpty(roundOverride)
                 ? roundOverride
                 : AmmoInfo.FullLabel(hit.Ammo);
 
-            _hitCameraResult.text = loss switch
+            _hitCameraResult.text = UiText.Get(loss switch
             {
                 TankLoss.Ammo => "AMMO BLOWN!",
                 TankLoss.Fire => "BURNED OUT",
@@ -215,23 +216,23 @@ namespace Modern8bitTanks
                 _ when hit.Armor == ArmorHit.Penetrated => "HIT",
                 _ when hit.Armor == ArmorHit.Ricochet => "RICOCHET",
                 _ => "NO PEN"
-            };
+            });
             _hitCameraResult.color = priority >= 2 ? DangerRed : (hit.Armor == ArmorHit.Ricochet ? SmokeCyan : WtAccent);
 
             int pen = Mathf.RoundToInt(hit.PenetrationValue);
             int eff = Mathf.RoundToInt(hit.EffectiveArmor);
             int ang = Mathf.RoundToInt(hit.ImpactAngleDeg);
             if (!string.IsNullOrEmpty(roundOverride))
-                _hitCameraBallistics.text = loss == TankLoss.Ammo ? "COOKOFF" : "FATAL";
+                _hitCameraBallistics.text = UiText.Get(loss == TankLoss.Ammo ? "COOKOFF" : "FATAL");
             else
                 _hitCameraBallistics.text = hit.Armor == ArmorHit.Ricochet
                     ? $"{ang} DEG"
                     : $"{pen}/{eff} {ang}D";
 
             _hitCameraParts.text = loss == TankLoss.Ammo
-                ? "AMMUNITION COOKOFF"
+                ? UiText.Get("AMMUNITION COOKOFF")
                 : loss == TankLoss.Fire
-                    ? "ENGINE FIRE BURNOUT"
+                    ? UiText.Get("ENGINE FIRE BURNOUT")
                     : DescribeHitParts(_burstStruckModules, _burstKnockedOut, target.IsWheeled);
             _hitCameraParts.color = loss == TankLoss.Ammo ? WtAccent : TextLight;
             _hitCameraParts.enabled = false;

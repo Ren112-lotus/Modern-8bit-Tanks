@@ -1,0 +1,743 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9620f8c34305754d8cc9a7e49e852d9, type: 3}
+  m_Name: Game UI_en
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.StringTable
+  m_LocaleId:
+    m_Code: en
+  m_SharedData: {fileID: 11400000, guid: 1a103095374a7004584419b1066b62a1, type: 2}
+  m_Metadata:
+    m_Items: []
+  m_TableData:
+  - m_Id: 678420480
+    m_Localized: START GAME (ENTER)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169216
+    m_Localized: ONLINE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169217
+    m_Localized: ONLINE BATTLE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169218
+    m_Localized: SETTINGS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169219
+    m_Localized: SYSTEM SETTINGS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169220
+    m_Localized: 'CLOSE [ESC]'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169221
+    m_Localized: 'BACK [ESC]'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169222
+    m_Localized: BACK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169223
+    m_Localized: TITLE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169224
+    m_Localized: 'GARAGE [ESC]'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169225
+    m_Localized: BATTLE!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169226
+    m_Localized: DEPLOY! (ENTER)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169227
+    m_Localized: DEPLOYMENT BRIEFING
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169228
+    m_Localized: THEATER OF OPERATIONS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169229
+    m_Localized: OPERATION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169230
+    m_Localized: 1v1 DUEL   - SAME-TIER RIVAL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169231
+    m_Localized: 2v2 SQUAD  - WINGMAN CLASH
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169232
+    m_Localized: 5v5 BATTLE - COMPANY WAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169233
+    m_Localized: SURVIVAL   - ENDLESS WAVES
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169234
+    m_Localized: RANGE      - FIRING PRACTICE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169235
+    m_Localized: 1v1 DUEL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169236
+    m_Localized: 2v2 SQUAD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169237
+    m_Localized: 5v5 COMPANY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169238
+    m_Localized: SURVIVAL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169239
+    m_Localized: FIRING RANGE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169240
+    m_Localized: DESERT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169241
+    m_Localized: CITY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169242
+    m_Localized: FOREST
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169243
+    m_Localized: SELECT TANK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169244
+    m_Localized: 'TECH TREE [T]'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169245
+    m_Localized: VIEW TANK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169246
+    m_Localized: 'X-RAY VIEW [X]'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169247
+    m_Localized: "FCS X-RAY  \u2022  DRAG 360"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169248
+    m_Localized: SPECS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169249
+    m_Localized: ARMAMENT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169250
+    m_Localized: ARM
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169251
+    m_Localized: PEN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169252
+    m_Localized: RLD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169253
+    m_Localized: SPD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169254
+    m_Localized: TRN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169255
+    m_Localized: TUR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169256
+    m_Localized: SPECIAL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169257
+    m_Localized: WWI / WWII
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169258
+    m_Localized: FIRST TANKS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169259
+    m_Localized: INTERWAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169260
+    m_Localized: EARLY WAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169261
+    m_Localized: MID WAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169262
+    m_Localized: LATE WAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169263
+    m_Localized: TRANSITION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169264
+    m_Localized: JOIN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169265
+    m_Localized: CREATE ROOM
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169266
+    m_Localized: ENTER JOIN CODE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169267
+    m_Localized: START MATCH
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169268
+    m_Localized: LEAVE ROOM
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169269
+    m_Localized: RETURN TO ROOM
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169270
+    m_Localized: CLOSE ROOM
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169271
+    m_Localized: ROOM
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169272
+    m_Localized: CONFIRM TANK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169273
+    m_Localized: CREATE A ROOM OR JOIN A FRIEND
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169274
+    m_Localized: LOADING BATTLE...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169275
+    m_Localized: UPDATING ROOM...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169276
+    m_Localized: CONNECTING...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169277
+    m_Localized: LEAVING ROOM...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169278
+    m_Localized: WAITING FOR HOST
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169279
+    m_Localized: WAITING FOR PLAYERS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169280
+    m_Localized: BATTLE START
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169281
+    m_Localized: ENGAGE!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169282
+    m_Localized: COMMAND MENU
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169283
+    m_Localized: RESUME
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169284
+    m_Localized: HANGAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169285
+    m_Localized: BACK TO HANGAR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169286
+    m_Localized: NEXT BATTLE (R)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169287
+    m_Localized: NEXT RIVAL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169288
+    m_Localized: RESET RANGE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169289
+    m_Localized: VICTORY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169290
+    m_Localized: DEFEATED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169291
+    m_Localized: CAPTURE VICTORY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169292
+    m_Localized: CAPTURE / {0} TO WIN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169293
+    m_Localized: POINT NEUTRAL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169294
+    m_Localized: POINT HELD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169295
+    m_Localized: CONTESTED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169296
+    m_Localized: CONTROL  {0}%
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169297
+    m_Localized: READY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169298
+    m_Localized: LOST
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169299
+    m_Localized: FIXING
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169300
+    m_Localized: GUN OUT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169301
+    m_Localized: FIRE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169302
+    m_Localized: 'SMK[Q]'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169303
+    m_Localized: YOU
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169304
+    m_Localized: ALLY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169305
+    m_Localized: FOE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169306
+    m_Localized: ALLY x{0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169307
+    m_Localized: x{0} FOE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169308
+    m_Localized: FOE x{0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169309
+    m_Localized: TGT x{0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 716169310
+    m_Localized: BLOWN OUT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363520
+    m_Localized: AMMO BLOWN!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363521
+    m_Localized: AMMUNITION COOKOFF
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363522
+    m_Localized: ENGINE FIRE BURNOUT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363523
+    m_Localized: KNOCKED OUT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363524
+    m_Localized: DESTROYED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363525
+    m_Localized: HIT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363526
+    m_Localized: RICOCHET
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363527
+    m_Localized: NO PEN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363528
+    m_Localized: FIRE!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363529
+    m_Localized: COOKOFF
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363530
+    m_Localized: FATAL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363531
+    m_Localized: FIX {0:F1}s
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363532
+    m_Localized: FIRE {0}s
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363533
+    m_Localized: CRW {0}/{1}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363534
+    m_Localized: 'DRIVE: ARCADE WASD'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363535
+    m_Localized: 'DRIVE: TANK STEER'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363536
+    m_Localized: 'ENEMY AI: ON'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363537
+    m_Localized: 'ENEMY AI: OFF'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363538
+    m_Localized: 'GFX: HD-2D'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363539
+    m_Localized: 'GFX: RETRO'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363540
+    m_Localized: 'VIEW: INT WINDOWBOX'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363541
+    m_Localized: 'VIEW: 16:9 LETTERBOX'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363542
+    m_Localized: 'MODE: {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363543
+    m_Localized: 'MAP: {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363544
+    m_Localized: UNIT {0:00}/{1:00}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363545
+    m_Localized: "CREW {0}  \u2022  {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363546
+    m_Localized: TRACKED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363547
+    m_Localized: '{0}x{0} WHEEL'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363548
+    m_Localized: 'ENG: {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363549
+    m_Localized: TURBINE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363550
+    m_Localized: DIESEL
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363551
+    m_Localized: GASOLINE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363552
+    m_Localized: FRONT ENG
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363553
+    m_Localized: REAR ENG
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363554
+    m_Localized: CASEMATE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363555
+    m_Localized: MANNED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363556
+    m_Localized: UNMANNED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363557
+    m_Localized: 'WPN: {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363558
+    m_Localized: MAIN BATTLE TANK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363559
+    m_Localized: LIGHT TANK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363560
+    m_Localized: HEAVY TANK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363561
+    m_Localized: MEDIUM TANK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363562
+    m_Localized: TANK DESTROYER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363563
+    m_Localized: SUPPORT VEHICLE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363564
+    m_Localized: 'RMB: GUIDED ATGM'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363565
+    m_Localized: SACLOS MISSILE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363566
+    m_Localized: "SMOKE [Q] \u2022 COAX MG"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363567
+    m_Localized: "6 TARGETS \u2022 TEST"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363568
+    m_Localized: TIER {0} BRACKET
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363569
+    m_Localized: CODE {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363570
+    m_Localized: 'YOUR TANK: {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363571
+    m_Localized: "ARMORED WARFARE  \u2022  121 HISTORICAL & MODERN VEHICLES"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363572
+    m_Localized: '{0}  VS  {1} ({2})'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363573
+    m_Localized: '{0}  FIRING RANGE  [R] RESET'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363574
+    m_Localized: '{0}  5v5 (TIER {1})'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363575
+    m_Localized: '{0}  2v2 VS {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363576
+    m_Localized: '{0}  WAVE 1'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363577
+    m_Localized: 'HUD: SLIM [H]'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363578
+    m_Localized: 'HUD: MINIMAL [H]'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 720363579
+    m_Localized: 'HUD: FULL [H]'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660622794752
+    m_Localized: '{0}  VS  {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183360
+    m_Localized: WAITING FOR A PLAYER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183361
+    m_Localized: READY TO START
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183362
+    m_Localized: WAITING FOR TANK SELECTION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183363
+    m_Localized: GUN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183364
+    m_Localized: ENG
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183365
+    m_Localized: TRV
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183366
+    m_Localized: TRK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183367
+    m_Localized: "WAVE {0} \u2014 {1} HOSTILES!"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183368
+    m_Localized: WAVE {0} CLEAR  FIELD SERVICE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183369
+    m_Localized: '{0} SURVIVED TO WAVE {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183370
+    m_Localized: '{0} VICTORY'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183371
+    m_Localized: 5v5 ALLIED VICTORY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183372
+    m_Localized: 5v5 ENEMY VICTORY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183373
+    m_Localized: 2v2 SQUAD VICTORY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183374
+    m_Localized: 2v2 HOSTILE VICTORY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183375
+    m_Localized: SMOKE DEPLOYED!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183376
+    m_Localized: TARGET RESET
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183377
+    m_Localized: 'CAM: TURRET LOCK [C]'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183378
+    m_Localized: 'CAM: HULL LOCK [C]'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183379
+    m_Localized: 'CAM: FIXED TOP [C]'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183380
+    m_Localized: HOSTILE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183381
+    m_Localized: LIGHT COMBAT VEHICLE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 660631183382
+    m_Localized: SUPPORT / ATGM
+    m_Metadata:
+      m_Items: []
+  references:
+    version: 2
+    RefIds: []
