@@ -75,6 +75,7 @@ namespace Modern8bitTanks
         private readonly List<Vector2> _occluderPointsPx = new(16);
 
         // Wave / Matchup announcement toast
+        [SerializeField] private ControlPointHud _controlPointHud;
         [SerializeField] private GameObject _waveToastGo;
         [SerializeField] private Text _waveToastText;
         private float _waveToastTimer;
