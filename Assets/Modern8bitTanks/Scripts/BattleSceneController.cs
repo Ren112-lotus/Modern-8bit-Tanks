@@ -15,14 +15,9 @@ namespace Modern8bitTanks
     }
 
     /// <summary>
-    /// Complete Desert Sprite Stacking Tank Battle Manager for Unity 6 (URP 17 + New Input System):
-    /// - Live 360° Hangar Title Screen (Tank & Mode Select: 1v1 Duel / 2v2 Squad / Survival Wave)
-    /// - Directional Armor (Front / Side / Rear Crit) + Smoke Grenade Launcher [Q/Shift] breaking AI LOS
-    /// - Ballistic Turret Toss on kill / ammo cook-off + cinematic slow-motion kill cam
-    /// - Procedural Engine (Abrams Gas Turbine / T-90 Diesel), Track Clatter, Turret Servo, & Reload Clank SFX
-    /// - Real CC0 Cannon, Ricochet, Explosion, & MG SFX + Natural Desert Daylight & URP HDR Bloom
+    /// Coordinates battle rounds, vehicle simulation, and presentation for the selected map.
     /// </summary>
-    public partial class DesertBattleManager : MonoBehaviour
+    public partial class BattleSceneController : MonoBehaviour
     {
         public const int WorldWidthPx = 2048;
         public const int WorldHeightPx = 1360;

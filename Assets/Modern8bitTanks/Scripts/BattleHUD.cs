@@ -30,7 +30,7 @@ namespace Modern8bitTanks
     /// </summary>
     public partial class BattleHUD : MonoBehaviour
     {
-        private DesertBattleManager _mgr;
+        private BattleSceneController _mgr;
         private PixelWindowbox _windowbox;
         private Font _font;
         private Font _titleFont;
@@ -134,7 +134,7 @@ namespace Modern8bitTanks
 
         private MultiplayerSessionState _multiplayer;
 
-        public void Initialize(DesertBattleManager manager, PixelWindowbox windowbox, MultiplayerSessionState multiplayer)
+        public void Initialize(BattleSceneController manager, PixelWindowbox windowbox, MultiplayerSessionState multiplayer)
         {
             _mgr = manager;
             _multiplayer = multiplayer;

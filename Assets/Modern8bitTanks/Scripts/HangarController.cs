@@ -21,8 +21,8 @@ namespace Modern8bitTanks
     public partial class HangarController : MonoBehaviour
     {
         public const float PPU = 16f;
-        private float WorldW => DesertBattleManager.WorldWidthPx / PPU;
-        private float WorldH => DesertBattleManager.WorldHeightPx / PPU;
+        private float WorldW => BattleSceneController.WorldWidthPx / PPU;
+        private float WorldH => BattleSceneController.WorldHeightPx / PPU;
 
         [Header("Scene References")]
         public SpriteRenderer desertGroundRenderer;
@@ -800,7 +800,7 @@ namespace Modern8bitTanks
                     else _garageSpecialLine.text = "SMOKE [Q] • COAX MG";
                 }
 
-                string mapTag = DesertBattleManager.GetMapDisplayName(_sessionState.SelectedBattleMap);
+                string mapTag = BattleSceneController.GetMapDisplayName(_sessionState.SelectedBattleMap);
                 string modeShort = _sessionState.SelectedBattleMode switch
                 {
                     BattleMode.FiringRange => "FIRING RANGE",

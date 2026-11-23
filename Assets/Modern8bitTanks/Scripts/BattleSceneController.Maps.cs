@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Modern8bitTanks
 {
-    public partial class DesertBattleManager
+    public partial class BattleSceneController
     {
         private readonly Dictionary<string, Texture2D> _propTexCache = new();
         private PropsMetaFile _propsMeta;

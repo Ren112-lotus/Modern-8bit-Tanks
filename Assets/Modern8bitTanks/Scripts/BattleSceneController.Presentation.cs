@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Modern8bitTanks
 {
-    public partial class DesertBattleManager
+    public partial class BattleSceneController
     {
         private readonly SpriteRenderer[] _scorchDecals = new SpriteRenderer[64];
         private int _nextScorchDecal;

@@ -10,7 +10,7 @@ namespace Modern8bitTanks
         [SerializeField] private Camera worldCamera;
         [SerializeField] private PixelWindowbox presentation;
         [SerializeField] private HangarController hangar;
-        [SerializeField] private DesertBattleManager battle;
+        [SerializeField] private BattleSceneController battle;
 
         protected override void Configure(IContainerBuilder builder)
         {

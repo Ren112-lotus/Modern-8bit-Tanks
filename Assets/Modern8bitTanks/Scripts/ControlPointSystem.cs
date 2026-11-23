@@ -15,7 +15,7 @@ namespace Modern8bitTanks
         internal const int ScoreToWin = 25;
         internal const int RadiusPixels = 60;
         private const float CaptureSeconds = 6f;
-        private const float Radius = RadiusPixels / DesertBattleManager.PPU;
+        private const float Radius = RadiusPixels / BattleSceneController.PPU;
 
         internal Vector2 Position { get; private set; }
         internal ControlPointState State { get; private set; }

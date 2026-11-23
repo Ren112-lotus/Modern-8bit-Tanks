@@ -3985,7 +3985,7 @@ GameObject:
   - component: {fileID: 1918088797}
   - component: {fileID: 1918088799}
   m_Layer: 0
-  m_Name: DesertBattleManager
+  m_Name: BattleSceneController
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4002,7 +4002,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1f79f4012ff26f94aa00de58fab67e80, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.DesertBattleManager
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.BattleSceneController
   _mapPropsRoot: {fileID: 969891249}
   desertGroundRenderer: {fileID: 3406651}
   _tankPrefab: {fileID: 1073552176552975900, guid: c44326c399a2a474682082e67f7efa3e, type: 3}

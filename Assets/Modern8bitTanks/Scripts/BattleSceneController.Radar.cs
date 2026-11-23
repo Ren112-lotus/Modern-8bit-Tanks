@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Modern8bitTanks
 {
-    public partial class DesertBattleManager
+    public partial class BattleSceneController
     {
         private bool UsesTeamVisibility => _multiplayer.IsInBattle ||
             battleMode is BattleMode.Duel1v1 or BattleMode.Squad2v2 or BattleMode.Battle5v5;

@@ -3,7 +3,7 @@ using UnityEngine.InputSystem;
 
 namespace Modern8bitTanks
 {
-    public partial class DesertBattleManager
+    public partial class BattleSceneController
     {
         private TankEntity[] _networkTanks;
         private Vector2[] _networkSpawns;
