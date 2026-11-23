@@ -7,133 +7,29 @@ namespace Modern8bitTanks
 {
     public partial class HangarController
     {
-        private GameObject _onlineVisuals;
-        private GameObject _onlineHits;
-        private GameObject _onlineEntryVisuals;
-        private GameObject _onlineEntryHits;
-        private GameObject _onlineStartVisuals;
-        private GameObject _onlineStartHits;
-        private GameObject _onlineSelectVisuals;
-        private GameObject _onlineSelectHits;
-        private InputField _onlineCode;
-        private Text _onlineStatus;
-        private Text _onlineCodeLabel;
+        [SerializeField] private GameObject _onlineVisuals;
+        [SerializeField] private GameObject _onlineHits;
+        [SerializeField] private GameObject _onlineEntryVisuals;
+        [SerializeField] private GameObject _onlineEntryHits;
+        [SerializeField] private GameObject _onlineStartVisuals;
+        [SerializeField] private GameObject _onlineStartHits;
+        [SerializeField] private GameObject _onlineSelectVisuals;
+        [SerializeField] private GameObject _onlineSelectHits;
+        [SerializeField] private InputField _onlineCode;
+        [SerializeField] private Text _onlineStatus;
+        [SerializeField] private Text _onlineCodeLabel;
         private float _nextOnlineRefresh;
-        private Text _onlineRoster;
-        private Text _onlineVehicle;
-        private Text _onlineBack;
-        private Text _garageTitleButton;
-        private Text _garageDeployButton;
+        [SerializeField] private Text _onlineRoster;
+        [SerializeField] private Text _onlineVehicle;
+        [SerializeField] private Text _onlineBack;
+        [SerializeField] private Text _garageTitleButton;
+        [SerializeField] private Text _garageDeployButton;
         private Text _treeDeployButton;
         private string _onlineError;
         private bool _onlineOpen;
         private bool _onlineBusy;
         private bool _waitingForVehicleSelection;
         private bool _choosingOnlineVehicle;
-
-        private void BuildOnlineRoomUI()
-        {
-            _onlineVisuals = new GameObject("OnlineRoomVisuals") { layer = 5 };
-            var vp = _onlineVisuals.AddComponent<RectTransform>();
-            vp.SetParent(_hudRoot, false);
-            Stretch(vp);
-
-            _onlineHits = CreateHitGroup("OnlineRoomHits");
-            Transform hp = _onlineHits.transform;
-            const int w = 288;
-            const int h = 184;
-            int x = (renderWidth - w) / 2;
-            int y = (renderHeight - h) / 2;
-
-            CreatePixelSolid(vp, "OnlineRoomDim", 0, 0, renderWidth, renderHeight, new Color(.03f, .03f, .03f, .76f));
-            var card = CreateTacticalCard(vp, "OnlineRoomCard", x, y, w, h, PanelGlassModal, BrassDim, LightCyan);
-            MilitaryUiSprites.CreateIcon(card, "OnlineIcon", MilitaryUiSprites.IconCrosshair, 15, 154, LightCyan);
-            CreatePixelText(card, "ONLINE BATTLE", 10, GoldColor, TextAnchor.MiddleCenter, 0, 150, w, 22, useTitleFont: true);
-            _onlineCodeLabel = CreatePixelText(card, "", 10, GoldColor, TextAnchor.MiddleCenter, 12, 130, w - 24, 18);
-            _onlineStatus = CreatePixelText(card, "", 8, TextLight, TextAnchor.MiddleCenter, 12, 112, w - 24, 17);
-            _onlineRoster = CreatePixelText(card, "", 8, LightCyan, TextAnchor.MiddleCenter, 12, 83, w - 24, 26);
-            _onlineVehicle = CreatePixelText(card, "", 8, TextLight, TextAnchor.MiddleCenter, 12, 60, w - 24, 18);
-
-            _onlineEntryVisuals = new GameObject("RoomEntryVisuals") { layer = 5 };
-            _onlineEntryVisuals.transform.SetParent(vp, false);
-            var entry = _onlineEntryVisuals.AddComponent<RectTransform>();
-            Stretch(entry);
-            _onlineEntryHits = CreateHitGroup("RoomEntryHits");
-            _onlineEntryHits.transform.SetParent(hp, false);
-            Stretch((RectTransform)_onlineEntryHits.transform);
-
-            MilitaryUiSprites.CreateSlicedSprite(entry, "CodeField", MilitaryUiSprites.SteelButton,
-                x + 12, y + 62, 172, 22, BtnBg, out _);
-            BuildOnlineCodeInput(_onlineEntryHits.transform, x + 16, y + 62, 164, 22);
-            CreatePixelButton(entry, _onlineEntryHits.transform, "JOIN", x + 192, y + 62, 84, 22,
-                BtnBg, LightCyan, LightCyan, 8, () => ConnectOnlineRoom(false));
-            CreatePrimaryCtaButton(entry, _onlineEntryHits.transform, "CREATE ROOM", x + 12, y + 34, w - 24, 22,
-                () => ConnectOnlineRoom(true));
-
-            _onlineStartVisuals = new GameObject("RoomStartVisuals") { layer = 5 };
-            _onlineStartVisuals.transform.SetParent(vp, false);
-            Stretch(_onlineStartVisuals.AddComponent<RectTransform>());
-            _onlineStartHits = CreateHitGroup("RoomStartHits");
-            _onlineStartHits.transform.SetParent(hp, false);
-            Stretch((RectTransform)_onlineStartHits.transform);
-            CreatePrimaryCtaButton(_onlineStartVisuals.transform, _onlineStartHits.transform, "START MATCH",
-                x + 148, y + 34, 128, 22, StartOnlineMatch);
-
-            _onlineSelectVisuals = new GameObject("RoomVehicleVisuals") { layer = 5 };
-            _onlineSelectVisuals.transform.SetParent(vp, false);
-            Stretch(_onlineSelectVisuals.AddComponent<RectTransform>());
-            _onlineSelectHits = CreateHitGroup("RoomVehicleHits");
-            _onlineSelectHits.transform.SetParent(hp, false);
-            Stretch((RectTransform)_onlineSelectHits.transform);
-            CreatePixelButton(_onlineSelectVisuals.transform, _onlineSelectHits.transform, "SELECT TANK",
-                x + 12, y + 34, 128, 22, BtnBg, LightCyan, LightCyan, 8, BeginOnlineVehicleSelection);
-
-            _onlineBack = CreatePixelButton(vp, hp, "BACK", x + 12, y + 8, w - 24, 20,
-                BtnBg, PanelBorder, TextLight, 8, CloseOnlineRoom);
-            SetOnlineRoomOpen(false);
-        }
-
-        private void BuildOnlineCodeInput(Transform parent, int x, int y, int w, int h)
-        {
-            var root = new GameObject("JoinCodeInput", typeof(RectTransform), typeof(Image), typeof(InputField));
-            root.transform.SetParent(parent, false);
-            var rect = (RectTransform)root.transform;
-            rect.anchorMin = new Vector2((float)x / renderWidth, (float)y / renderHeight);
-            rect.anchorMax = new Vector2((float)(x + w) / renderWidth, (float)(y + h) / renderHeight);
-            rect.offsetMin = rect.offsetMax = Vector2.zero;
-            var image = root.GetComponent<Image>();
-            image.color = Color.clear;
-
-            var value = CreateOnlineInputText(root.transform, "Code", "", TextLight);
-            var placeholder = CreateOnlineInputText(root.transform, "Placeholder", "ENTER JOIN CODE", TextMuted);
-            _onlineCode = root.GetComponent<InputField>();
-            _onlineCode.targetGraphic = image;
-            _onlineCode.transition = Selectable.Transition.None;
-            _onlineCode.textComponent = value;
-            _onlineCode.placeholder = placeholder;
-            _onlineCode.characterLimit = 12;
-            _onlineCode.lineType = InputField.LineType.SingleLine;
-            _onlineCode.onValidateInput = (_, _, c) =>
-                c is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' ? char.ToUpperInvariant(c) : '\0';
-        }
-
-        private Text CreateOnlineInputText(Transform parent, string name, string content, Color color)
-        {
-            var go = new GameObject(name, typeof(RectTransform), typeof(Text));
-            go.transform.SetParent(parent, false);
-            Stretch((RectTransform)go.transform);
-            var text = go.GetComponent<Text>();
-            text.text = content;
-            text.font = _font;
-            text.fontSize = 22;
-            text.resizeTextForBestFit = true;
-            text.resizeTextMinSize = 9;
-            text.resizeTextMaxSize = 22;
-            text.alignment = TextAnchor.MiddleCenter;
-            text.color = color;
-            text.raycastTarget = false;
-            return text;
-        }
 
         private void SetOnlineRoomOpen(bool open)
         {

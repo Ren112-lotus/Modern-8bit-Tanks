@@ -23,21 +23,21 @@ namespace Modern8bitTanks
         private bool _deployFromTree = false;
 
         // UI Groups
-        private GameObject _titleVisualGroup;
-        private GameObject _titleHitsGroup;
-        private GameObject _deployVisualGroup;
-        private GameObject _deployHitsGroup;
+        [SerializeField] private GameObject _titleVisualGroup;
+        [SerializeField] private GameObject _titleHitsGroup;
+        [SerializeField] private GameObject _deployVisualGroup;
+        [SerializeField] private GameObject _deployHitsGroup;
 
         // Deploy Modal UI refs
-        private Text _deployVehicleLabel;
-        private Image _deployMode1v1Bg;
-        private Image _deployMode2v2Bg;
-        private Image _deployMode5v5Bg;
-        private Image _deployModeWaveBg;
-        private Image _deployModeRangeBg;
-        private Image _deployMapDesertBg;
-        private Image _deployMapCityBg;
-        private Image _deployMapForestBg;
+        [SerializeField] private Text _deployVehicleLabel;
+        [SerializeField] private Image _deployMode1v1Bg;
+        [SerializeField] private Image _deployMode2v2Bg;
+        [SerializeField] private Image _deployMode5v5Bg;
+        [SerializeField] private Image _deployModeWaveBg;
+        [SerializeField] private Image _deployModeRangeBg;
+        [SerializeField] private Image _deployMapDesertBg;
+        [SerializeField] private Image _deployMapCityBg;
+        [SerializeField] private Image _deployMapForestBg;
 
         // 3D Sprite-Stacked Title Stage Objects
         private Transform _titleStageRoot;
@@ -73,111 +73,6 @@ namespace Modern8bitTanks
         // Convoy drives briskly toward East-Northeast (slice angle 72 deg) across the sunlit desert!
         private const float TitleConvoyAngleDeg = 72f;
         private const float TitleScrollSpeed = 3.2f;
-
-        // ============================================================
-        // 1. Build Title Screen UI & Battle Mode Selection Modal UI
-        // ============================================================
-        private void BuildTitleAndDeployGroups()
-        {
-            _titleVisualGroup = new GameObject("TitleVisuals") { layer = 5 };
-            _titleVisualGroup.transform.SetParent(_hudRoot, false);
-            Stretch(_titleVisualGroup.AddComponent<RectTransform>());
-
-            _deployVisualGroup = new GameObject("DeployVisuals") { layer = 5 };
-            _deployVisualGroup.transform.SetParent(_hudRoot, false);
-            Stretch(_deployVisualGroup.AddComponent<RectTransform>());
-
-            // Always keep Settings overlay on top of Title, Garage, TechTree, and Deploy modal!
-            if (_settingsVisualGroup != null)
-                _settingsVisualGroup.transform.SetAsLastSibling();
-
-            _titleHitsGroup = CreateHitGroup("TitleHits");
-            _deployHitsGroup = CreateHitGroup("DeployHits");
-            if (_settingsHitsGroup != null)
-                _settingsHitsGroup.transform.SetAsLastSibling();
-        }
-
-        private void BuildTitleUI()
-        {
-            Transform vp = _titleVisualGroup.transform;
-            Transform hp = _titleHitsGroup.transform;
-            int W = renderWidth;
-
-            // Riveted brushed-steel armored title dock with diagonal military hazard caution tape!
-            MilitaryUiSprites.CreateTiledSprite(vp, "TitleBotSteel", MilitaryUiSprites.ArmorHeaderBar, 0, 0, W, 50, PanelGlassDeep);
-            MilitaryUiSprites.CreateTiledSprite(vp, "TitleBotHazard", MilitaryUiSprites.HazardTape, 0, 50, W, 4, new Color(1f, 1f, 1f, 0.92f));
-            CreatePixelSolid(vp, "TitleBotRuleTop", 0, 54, W, 1, new Color(0.06f, 0.07f, 0.05f, 1f));
-            CreatePixelSolid(vp, "TitleBotRuleSub", 0, 49, W, 1, new Color(0.06f, 0.07f, 0.05f, 1f));
-
-            CreatePixelText(vp, "ARMORED WARFARE  •  121 HISTORICAL & MODERN VEHICLES", 8, TextMuted, TextAnchor.MiddleCenter, 0, 34, W, 14);
-
-            CreatePrimaryCtaButton(vp, hp, "START GAME (ENTER)", 68, 7, 164, 24, BeginEnterGarageFromTitle);
-            CreatePixelButton(vp, hp, "ONLINE", 240, 7, 88, 24, BtnBg, LightCyan, LightCyan, 8, () => SetOnlineRoomOpen(true));
-            CreatePixelButton(vp, hp, "SETTINGS", 336, 7, 76, 24, BtnBg, PanelBorder, TextLight, 8, () => SetSettingsOpen(true));
-        }
-
-        private void BuildDeployModalUI()
-        {
-            Transform vp = _deployVisualGroup.transform;
-            Transform hp = _deployHitsGroup.transform;
-            int W = renderWidth;
-            int H = renderHeight;
-
-            CreatePixelSolid(vp, "DeployDim", 0, 0, W, H, new Color(0.02f, 0.03f, 0.02f, 0.80f));
-
-            int cw = 296;
-            int ch = 218;
-            int cx = (W - cw) / 2;
-            int cy = (H - ch) / 2;
-            var card = CreateTacticalCard(vp, "DeployCard", cx, cy, cw, ch, PanelGlassModal, BrassDim, GoldColor, withHazardTape: false);
-            // Red/black war-room alert hazard strip across top of Deployment Briefing!
-            MilitaryUiSprites.CreateTiledSprite(card, "DeployRedHazard", MilitaryUiSprites.HazardTapeRed, 6, ch - 8, cw - 12, 3, new Color(1f, 1f, 1f, 0.92f));
-            MilitaryUiSprites.CreateIcon(card, "DeployCrosshair", MilitaryUiSprites.IconCrosshair, 14, ch - 23, GoldColor);
-            CreatePixelText(vp, "DEPLOYMENT BRIEFING", 8, GoldColor, TextAnchor.MiddleCenter, cx, cy + 193, cw, 14, useTitleFont: true);
-            _deployVehicleLabel = CreatePixelText(vp, "", 8, LightCyan, TextAnchor.MiddleCenter, cx + 8, cy + 177, cw - 16, 12);
-            CreateWeldSeam(card, 12, 174, cw - 24);
-
-            // 5 Battle Mode rows (all EVEN coordinates & dimensions!)
-            CreatePixelButton(vp, hp, "1v1 DUEL   - SAME-TIER RIVAL", cx + 14, cy + 150, cw - 28, 18, BtnSelected, PanelBorder, TextLight, 8, () =>
-            {
-                _sessionState.SelectedBattleMode = BattleMode.Duel1v1;
-                RefreshAllUI();
-            }, out _deployMode1v1Bg);
-
-            CreatePixelButton(vp, hp, "2v2 SQUAD  - WINGMAN CLASH", cx + 14, cy + 130, cw - 28, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _sessionState.SelectedBattleMode = BattleMode.Squad2v2;
-                RefreshAllUI();
-            }, out _deployMode2v2Bg);
-
-            CreatePixelButton(vp, hp, "5v5 BATTLE - COMPANY WAR", cx + 14, cy + 110, cw - 28, 18, BtnBg, GoldColor, GoldColor, 8, () =>
-            {
-                _sessionState.SelectedBattleMode = BattleMode.Battle5v5;
-                RefreshAllUI();
-            }, out _deployMode5v5Bg);
-
-            CreatePixelButton(vp, hp, "SURVIVAL   - ENDLESS WAVES", cx + 14, cy + 90, cw - 28, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _sessionState.SelectedBattleMode = BattleMode.SurvivalWave;
-                RefreshAllUI();
-            }, out _deployModeWaveBg);
-
-            CreatePixelButton(vp, hp, "RANGE      - FIRING PRACTICE", cx + 14, cy + 70, cw - 28, 18, BtnBg, LightCyan, LightCyan, 8, () =>
-            {
-                _sessionState.SelectedBattleMode = BattleMode.FiringRange;
-                RefreshAllUI();
-            }, out _deployModeRangeBg);
-
-            // Map selector row inside Deploy Modal (live updates backdrop behind modal!)
-            CreatePixelText(vp, "THEATER OF OPERATIONS", 8, TextMuted, TextAnchor.MiddleCenter, cx, cy + 57, cw, 10);
-            CreatePixelButton(vp, hp, "DESERT", cx + 14, cy + 37, 86, 18, BtnSelected, GoldColor, TextLight, 8, () => SelectBattleMap(BattleMap.Desert), out _deployMapDesertBg);
-            CreatePixelButton(vp, hp, "CITY", cx + 105, cy + 37, 86, 18, BtnBg, PanelBorder, TextLight, 8, () => SelectBattleMap(BattleMap.City), out _deployMapCityBg);
-            CreatePixelButton(vp, hp, "FOREST", cx + 196, cy + 37, 86, 18, BtnBg, MbtGreen, TextLight, 8, () => SelectBattleMap(BattleMap.Forest), out _deployMapForestBg);
-
-            // Bottom Action Buttons: BACK + DEPLOY!
-            CreatePixelButton(vp, hp, "BACK [ESC]", cx + 14, cy + 10, 96, 22, BtnBg, PanelBorder, TextLight, 8, () => SetDeployModalOpen(false));
-            CreatePrimaryCtaButton(vp, hp, "DEPLOY! (ENTER)", cx + 116, cy + 10, cw - 130, 22, LaunchBattleScene);
-        }
 
         // ============================================================
         // 2. Build 3D Sprite-Stacked Title Stage (Logo + Wingmen + Props)

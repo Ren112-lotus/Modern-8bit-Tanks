@@ -1,0 +1,43 @@
+
+using System;
+using R3;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+
+namespace Modern8bitTanks
+{
+    [RequireComponent(typeof(Button))]
+    public sealed class PixelMenuButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+    {
+        [SerializeField] private Image background;
+        [SerializeField] private Color restingColor;
+        [SerializeField] private Color hoverColor;
+        [SerializeField] private bool preserveSelection;
+        [SerializeField] private Color selectedColor;
+
+        public void SetAppearance(Image image, Color resting, Color hovering, bool preserve = false, Color selected = default)
+        {
+            background = image;
+            restingColor = resting;
+            hoverColor = hovering;
+            preserveSelection = preserve;
+            selectedColor = selected;
+        }
+
+        public void Bind(Action action)
+        {
+            GetComponent<Button>().OnClickAsObservable().Subscribe(_ => action());
+        }
+
+        public void OnPointerEnter(PointerEventData eventData) => SetHighlight(hoverColor);
+
+        public void OnPointerExit(PointerEventData eventData) => SetHighlight(restingColor);
+
+        private void SetHighlight(Color color)
+        {
+            if (background != null && (!preserveSelection || background.color != selectedColor))
+                background.color = color;
+        }
+    }
+}

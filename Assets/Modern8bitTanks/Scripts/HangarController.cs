@@ -88,10 +88,10 @@ namespace Modern8bitTanks
         private bool _draggingTank;
         private float _lastDragX;
         private float _manualAngleOffset;
-        private GameObject _hangarXrayWrap;
-        private TankCutawayGraphic _hangarXrayGraphic;
-        private Image _btnXrayBg;
-        private Text _hangarXrayBadge;
+        [SerializeField] private GameObject _hangarXrayWrap;
+        [SerializeField] private TankCutawayGraphic _hangarXrayGraphic;
+        [SerializeField] private Image _btnXrayBg;
+        [SerializeField] private Text _hangarXrayBadge;
 
         // Horizontal Tree Scroll state
         private float _treeScrollX = 0f;
@@ -106,26 +106,28 @@ namespace Modern8bitTanks
         private const int ScrollTrackW = 416;
 
         // UI Roots
-        private Canvas _pixelCanvas;
-        private RectTransform _hudRoot;
-        private GameObject _garageVisualGroup;
-        private GameObject _garageHitsGroup;
-        private GameObject _treeVisualGroup;
-        private GameObject _treeHitsGroup;
-        private GameObject _settingsVisualGroup;
-        private GameObject _settingsHitsGroup;
+        [SerializeField] private Canvas _pixelCanvas;
+        [SerializeField] private RectTransform _menuHitRoot;
+        [SerializeField] private RawImage _hangarXrayBackdrop;
+        [SerializeField] private GameObject _garageVisualGroup;
+        [SerializeField] private GameObject _garageHitsGroup;
+        [SerializeField] private GameObject _treeVisualGroup;
+        [SerializeField] private GameObject _treeHitsGroup;
+        [SerializeField] private GameObject _settingsVisualGroup;
+        [SerializeField] private GameObject _settingsHitsGroup;
 
         // Settings UI Labels & Preview Audio
-        private Text _setSfxLabel;
-        private Text _setBgmLabel;
-        private Text _setDriveLabel;
-        private Text _setAiLabel;
-        private Text _setGfxLabel;
-        private Text _setViewLabel;
+        [SerializeField] private Text _setSfxLabel;
+        [SerializeField] private Text _setBgmLabel;
+        [SerializeField] private Text _setDriveLabel;
+        [SerializeField] private Text _setAiLabel;
+        [SerializeField] private Text _setGfxLabel;
+        [SerializeField] private Text _setViewLabel;
         [SerializeField] private AudioSource _previewAudio;
         private AudioClip _previewSfxClip;
 
         // Garage Tactical Command UI References
+        [Serializable]
         private class StatBarSlot
         {
             public Image[] pips;
@@ -133,30 +135,30 @@ namespace Modern8bitTanks
             public Color fillColor;
         }
 
-        private Text _garageTopBadge;
-        private Text _garageIndexBadge;
-        private Image _garageNationStripe;
-        private Image _garageSpecAccent;
-        private Text _garageYearBadge;
-        private Text _garageTankName;
-        private Image _garageNameUnderline;
-        private Text _garageCrewLine;
-        private Text _garageEngineLine;
-        private Text _garageLayoutLine;
-        private Text _garageRoleLine;
-        private Text _garageWeaponLine;
-        private Text _garageAmmoLine;
-        private Text _garageSpecialLine;
-        private Text _garageModeLine;
-        private Text _garageMapLine;
-        private Text _garageMatchLine;
-        private Text _garageNationBtnLabel;
-        private StatBarSlot _statArm;
-        private StatBarSlot _statPen;
-        private StatBarSlot _statRld;
-        private StatBarSlot _statSpd;
-        private StatBarSlot _statTrn;
-        private StatBarSlot _statTur;
+        [SerializeField] private Text _garageTopBadge;
+        [SerializeField] private Text _garageIndexBadge;
+        [SerializeField] private Image _garageNationStripe;
+        [SerializeField] private Image _garageSpecAccent;
+        [SerializeField] private Text _garageYearBadge;
+        [SerializeField] private Text _garageTankName;
+        [SerializeField] private Image _garageNameUnderline;
+        [SerializeField] private Text _garageCrewLine;
+        [SerializeField] private Text _garageEngineLine;
+        [SerializeField] private Text _garageLayoutLine;
+        [SerializeField] private Text _garageRoleLine;
+        [SerializeField] private Text _garageWeaponLine;
+        [SerializeField] private Text _garageAmmoLine;
+        [SerializeField] private Text _garageSpecialLine;
+        [SerializeField] private Text _garageModeLine;
+        [SerializeField] private Text _garageMapLine;
+        [SerializeField] private Text _garageMatchLine;
+        [SerializeField] private Text _garageNationBtnLabel;
+        [SerializeField] private StatBarSlot _statArm;
+        [SerializeField] private StatBarSlot _statPen;
+        [SerializeField] private StatBarSlot _statRld;
+        [SerializeField] private StatBarSlot _statSpd;
+        [SerializeField] private StatBarSlot _statTrn;
+        [SerializeField] private StatBarSlot _statTur;
 
         // Tech Tree UI
         private static readonly (string Code, string Label)[] TreeNations =
@@ -186,18 +188,13 @@ namespace Modern8bitTanks
         private readonly Dictionary<string, TreeNodeSlot> _treeNodes = new();
 
         // Gritty Military Olive-Drab Steel & Brass Warfare Palette
-        private static readonly Color PanelGlass = new Color(0.92f, 0.94f, 0.88f, 0.90f);
-        private static readonly Color PanelGlassDeep = new Color(0.86f, 0.89f, 0.82f, 0.96f);
-        private static readonly Color PanelGlassModal = new Color(0.95f, 0.97f, 0.92f, 0.98f);
         private static readonly Color TreeBackdrop = new Color(0.05f, 0.06f, 0.05f, 0.96f);
         private static readonly Color BrassDim = new Color(0.48f, 0.41f, 0.25f, 1f);
         private static readonly Color PanelBorder = new Color(0.42f, 0.38f, 0.26f, 1f);
-        private static readonly Color Hairline = new Color(0.14f, 0.16f, 0.13f, 0.92f);
         private static readonly Color GridLine = new Color(0.24f, 0.23f, 0.18f, 0.55f);
         private static readonly Color PipEmpty = new Color(0.09f, 0.11f, 0.09f, 0.96f);
         private static readonly Color GoldColor = new Color(0.96f, 0.78f, 0.34f, 1f);
         private static readonly Color GoldHi = new Color(1.00f, 0.93f, 0.66f, 1f);
-        private static readonly Color GoldShadow = new Color(0.56f, 0.40f, 0.11f, 1f);
         private static readonly Color SpecialBorder = new Color(0.96f, 0.76f, 0.28f, 1f);
         private static readonly Color BtnBg = new Color(0.26f, 0.29f, 0.23f, 0.98f);
         private static readonly Color BtnHover = new Color(0.40f, 0.42f, 0.32f, 1f);
@@ -253,14 +250,8 @@ namespace Modern8bitTanks
             _atmosphere.Initialize(WorldW, WorldH, _whitePxSprite, _emissiveFxMat);
             _sessionState.SelectedBattleMapChanged.Subscribe(RefreshMapBackdropTheme).AddTo(this);
 
-            BuildPixelCanvas();
-            BuildTitleAndDeployGroups();
-            BuildGarageUI();
+            InitializeMenus();
             BuildTechTreeUI();
-            BuildSettingsUI();
-            BuildTitleUI();
-            BuildDeployModalUI();
-            BuildOnlineRoomUI();
             BuildTitleStage();
 
             VehicleDef cur = GetSelectedVehicle();
@@ -707,194 +698,6 @@ namespace Modern8bitTanks
         // ============================================================
         // 100% Pixel-Perfect UI (Strictly 8px / 16px Fonts & EVEN Rects!)
         // ============================================================
-        private void BuildPixelCanvas()
-        {
-            var canvasGo = new GameObject("HangarPixelCanvas") { layer = 5 };
-            canvasGo.transform.SetParent(transform, false);
-
-            _pixelCanvas = canvasGo.AddComponent<Canvas>();
-            _pixelCanvas.renderMode = RenderMode.ScreenSpaceCamera;
-            _pixelCanvas.worldCamera = _windowbox.HudCamera;
-            _pixelCanvas.planeDistance = 10f;
-            _pixelCanvas.pixelPerfect = true;
-
-            var scaler = canvasGo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
-            scaler.scaleFactor = 1f;
-
-            _hudRoot = canvasGo.GetComponent<RectTransform>();
-
-            _garageVisualGroup = new GameObject("GarageVisuals") { layer = 5 };
-            _garageVisualGroup.transform.SetParent(_hudRoot, false);
-            Stretch(_garageVisualGroup.AddComponent<RectTransform>());
-
-            _treeVisualGroup = new GameObject("TechTreeVisuals") { layer = 5 };
-            _treeVisualGroup.transform.SetParent(_hudRoot, false);
-            Stretch(_treeVisualGroup.AddComponent<RectTransform>());
-
-            _settingsVisualGroup = new GameObject("SettingsVisuals") { layer = 5 };
-            _settingsVisualGroup.transform.SetParent(_hudRoot, false);
-            Stretch(_settingsVisualGroup.AddComponent<RectTransform>());
-
-            _garageHitsGroup = CreateHitGroup("GarageHits");
-            _treeHitsGroup = CreateHitGroup("TreeHits");
-            _settingsHitsGroup = CreateHitGroup("SettingsHits");
-        }
-
-        private GameObject CreateHitGroup(string name)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(_windowbox.HitOverlayRect, false);
-            Stretch(go.AddComponent<RectTransform>());
-            return go;
-        }
-
-        private void BuildGarageUI()
-        {
-            Transform vp = _garageVisualGroup.transform;
-            Transform hp = _garageHitsGroup.transform;
-            int W = renderWidth;
-            int H = renderHeight;
-
-            // =================================================================
-            // 1. TOP ARMORED COMMAND RAIL (y = 246..270, h = 24)
-            // =================================================================
-            MilitaryUiSprites.CreateTiledSprite(vp, "TopSteelRail", MilitaryUiSprites.ArmorHeaderBar, 0, H - 24, W, 24, PanelGlassDeep);
-            CreatePixelSolid(vp, "TopRailHighlight", 0, H - 1, W, 1, new Color(0.44f, 0.48f, 0.38f, 0.85f));
-            CreatePixelSolid(vp, "TopRule", 0, H - 25, W, 1, new Color(0.06f, 0.07f, 0.05f, 1f));
-            CreatePixelSolid(vp, "TopRuleBevel", 0, H - 24, W, 1, new Color(0.36f, 0.40f, 0.30f, 0.90f));
-
-            _garageTitleButton = CreatePixelButton(vp, hp, "TITLE", 6, H - 21, 46, 18, BtnBg, PanelBorder, TextMuted, 8, () =>
-            {
-                if (_choosingOnlineVehicle) ConfirmOnlineVehicle();
-                else SetTitleOpen(true);
-            });
-            CreatePixelButton(vp, hp, "SETTINGS", 56, H - 21, 66, 18, BtnBg, LightCyan, TextLight, 8, () => SetSettingsOpen(true));
-
-            // Dead-Centered Riveted Nation + Tier Armored Plaque (x = 132..348, centered at 240!)
-            var pill = MilitaryUiSprites.CreateSlicedSprite(vp, "NationPlaque", MilitaryUiSprites.ArmorPanel, 132, H - 22, 216, 20, new Color(0.92f, 0.95f, 0.88f, 0.96f), out _);
-            _garageNationStripe = CreatePixelSolid(pill, "NationStripe", 4, 3, 3, 14, GoldColor).GetComponent<Image>();
-            MilitaryUiSprites.CreateIcon(pill, "PlaqueStar", MilitaryUiSprites.IconStar, 10, 5, GoldColor);
-            _garageTopBadge = CreatePixelText(pill, "USA • TIER X • MBT", 8, GoldColor, TextAnchor.MiddleCenter, 18, 1, 190, 18);
-
-            // Military stencil fleet serial readout on the top-right (e.g. UNIT 04/31)
-            _garageIndexBadge = CreatePixelText(vp, "UNIT 01/31", 8, TextMuted, TextAnchor.MiddleRight, 376, H - 21, 96, 18);
-
-            // =================================================================
-            // 2. LEFT RIVETED ARMOR TELEMETRY PLATE (x = 6..138, y = 50..238)
-            // =================================================================
-            var leftCard = CreateTacticalCard(vp, "SpecCard", 6, 50, 132, 188, PanelGlass, BrassDim, GoldColor, out _garageSpecAccent, withHazardTape: true);
-            MilitaryUiSprites.CreateIcon(leftCard, "ArmorIcon", MilitaryUiSprites.IconArmor, 7, 165, GoldColor);
-            CreatePixelText(leftCard, "SPECS", 8, GoldColor, TextAnchor.MiddleLeft, 19, 162, 68, 14);
-            _garageYearBadge = CreatePixelText(leftCard, "1999", 8, TextMuted, TextAnchor.MiddleRight, 86, 162, 38, 14);
-            CreateWeldSeam(leftCard, 6, 160, 120);
-
-            // 6 Crisp 10-Pip Recessed Tank-Dashboard LED Stat Gauges!
-            _statArm = CreateStatBarRow(leftCard, "ARM", 140, LightCyan);
-            _statPen = CreateStatBarRow(leftCard, "PEN", 122, GoldColor);
-            _statRld = CreateStatBarRow(leftCard, "RLD", 104, SupportAmber);
-            _statSpd = CreateStatBarRow(leftCard, "SPD", 86, MbtGreen);
-            _statTrn = CreateStatBarRow(leftCard, "TRN", 68, new Color(0.76f, 0.90f, 0.44f, 1f));
-            _statTur = CreateStatBarRow(leftCard, "TUR", 50, new Color(0.56f, 0.80f, 0.96f, 1f));
-
-            CreateWeldSeam(leftCard, 6, 45, 120);
-            _garageCrewLine = CreatePixelText(leftCard, "CREW 4 • TRACKED", 8, TextLight, TextAnchor.MiddleLeft, 8, 30, 116, 12);
-            _garageEngineLine = CreatePixelText(leftCard, "ENG: TURBINE", 8, TextMuted, TextAnchor.MiddleLeft, 8, 18, 116, 12);
-            _garageLayoutLine = CreatePixelText(leftCard, "REAR ENG • MANNED", 8, LightCyan, TextAnchor.MiddleLeft, 8, 6, 116, 12);
-
-            // =================================================================
-            // 3. CENTER ARMORED DEPOT BAY (x = 138..342, dead-centered at x = 240!)
-            // =================================================================
-            // Riveted Steel Vehicle Designation Plaque at top of bay
-            var namePlate = MilitaryUiSprites.CreateSlicedSprite(vp, "NamePlate", MilitaryUiSprites.ArmorPanel, 146, 214, 188, 24, new Color(0.92f, 0.94f, 0.88f, 0.92f), out _);
-            _garageNameUnderline = CreatePixelSolid(namePlate, "NameUnderline", 12, 2, 164, 2, GoldColor).GetComponent<Image>();
-            _garageTankName = CreatePixelText(namePlate, "M1A2 SEP v2", 16, GoldColor, TextAnchor.MiddleCenter, 4, 3, 180, 18, useTitleFont: false);
-
-            // Tank Gunner-Optics Rangefinder Reticle framing the rotating tank!
-            Color opticsCol = new Color(0.92f, 0.78f, 0.36f, 0.42f);
-            Color opticsTick = new Color(0.92f, 0.78f, 0.36f, 0.28f);
-            CreateCornerBracket(vp, 150, 200, true, true, opticsCol, 10);
-            CreateCornerBracket(vp, 330, 200, false, true, opticsCol, 10);
-            CreateCornerBracket(vp, 150, 62, true, false, opticsCol, 10);
-            CreateCornerBracket(vp, 330, 62, false, false, opticsCol, 10);
-            // Subtle horizontal & vertical gunner rangefinder mil-dot ticks
-            CreatePixelSolid(vp, "OptTickL", 148, 131, 6, 1, opticsTick);
-            CreatePixelSolid(vp, "OptTickR", 326, 131, 6, 1, opticsTick);
-            CreatePixelSolid(vp, "OptTickT", 240, 198, 1, 5, opticsTick);
-            CreatePixelSolid(vp, "OptTickB", 240, 60, 1, 5, opticsTick);
-
-            // Centered Live 360 X-Ray CRT Cutaway Monitor (164 x 138 EVEN!)
-            const int xw = 164, xh = 138;
-            _hangarXrayWrap = new GameObject("HangarXRayOverlay") { layer = 5 };
-            _hangarXrayWrap.transform.SetParent(vp, false);
-            var xRt = _hangarXrayWrap.AddComponent<RectTransform>();
-            SetPixelRect(xRt, (W - xw) / 2, 64, xw, xh);
-
-            var xPanel = CreateTacticalCard(xRt, "XRayFrame", 0, 0, xw, xh, new Color(0.55f, 0.85f, 0.90f, 0.94f), LightCyan, LightCyan, out _, withHazardTape: false);
-            _hangarXrayBadge = CreatePixelText(xPanel, "FCS X-RAY  •  DRAG 360", 8, LightCyan, TextAnchor.MiddleCenter, 2, xh - 17, xw - 4, 12);
-
-            var bgGo = new GameObject("XRayHologram") { layer = 5 };
-            bgGo.transform.SetParent(xPanel, false);
-            var bgImg = bgGo.AddComponent<RawImage>();
-            SetPixelRect(bgImg.rectTransform, 5, 5, xw - 10, xh - 24);
-            bgImg.raycastTarget = false;
-
-            var fgGo = new GameObject("XRayCutaway") { layer = 5 };
-            fgGo.transform.SetParent(xPanel, false);
-            _hangarXrayGraphic = fgGo.AddComponent<TankCutawayGraphic>();
-            SetPixelRect(_hangarXrayGraphic.rectTransform, 5, 5, xw - 10, xh - 24);
-            _hangarXrayGraphic.raycastTarget = false;
-            _hangarXrayGraphic.AttachBackdrop(bgImg, xw - 10, xh - 24);
-            MilitaryUiSprites.CreateTiledSprite(xPanel, "XRayScanlines", MilitaryUiSprites.Scanlines, 5, 5, xw - 10, xh - 24, Color.white);
-            _hangarXrayWrap.SetActive(false);
-
-            // =================================================================
-            // 4. RIGHT RIVETED ARMAMENT & OPERATION PLATE (x = 342..474, y = 50..238)
-            // =================================================================
-            var rightCard = CreateTacticalCard(vp, "MissionCard", 342, 50, 132, 188, PanelGlass, BrassDim, GoldColor, out _, withHazardTape: true);
-            MilitaryUiSprites.CreateIcon(rightCard, "ShellIcon", MilitaryUiSprites.IconShell, 8, 165, SupportAmber);
-            CreatePixelText(rightCard, "ARMAMENT", 8, GoldColor, TextAnchor.MiddleLeft, 18, 162, 104, 14);
-            CreateWeldSeam(rightCard, 6, 160, 120);
-
-            _garageRoleLine = CreatePixelText(rightCard, "MAIN BATTLE TANK", 8, TextLight, TextAnchor.MiddleLeft, 8, 145, 116, 12);
-            _garageWeaponLine = CreatePixelText(rightCard, "WPN: CANNON", 8, SupportAmber, TextAnchor.MiddleLeft, 8, 131, 116, 12);
-            _garageAmmoLine = CreatePixelText(rightCard, "APFS / HEAT / HE", 8, TextMuted, TextAnchor.MiddleLeft, 8, 117, 116, 12);
-            _garageSpecialLine = CreatePixelText(rightCard, "SMOKE [Q] • COAX", 8, MbtGreen, TextAnchor.MiddleLeft, 8, 103, 116, 12);
-
-            CreateWeldSeam(rightCard, 6, 97, 120);
-            MilitaryUiSprites.CreateIcon(rightCard, "OpIcon", MilitaryUiSprites.IconCrosshair, 7, 82, GoldColor);
-            CreatePixelText(rightCard, "OPERATION", 8, GoldColor, TextAnchor.MiddleLeft, 19, 80, 104, 12);
-            _garageModeLine = CreatePixelText(rightCard, "MODE: 1v1 DUEL", 8, TextLight, TextAnchor.MiddleLeft, 8, 66, 116, 12);
-            _garageMapLine = CreatePixelText(rightCard, "MAP: DESERT", 8, GoldColor, TextAnchor.MiddleLeft, 8, 52, 116, 12);
-            _garageMatchLine = CreatePixelText(rightCard, "TIER X MATCH", 8, TextMuted, TextAnchor.MiddleLeft, 8, 38, 116, 12);
-
-            // Stamped-steel X-Ray Inspection Toggle right inside the Mission Card
-            CreatePixelButton(vp, hp, "X-RAY VIEW [X]", 350, 58, 116, 20, BtnBg, LightCyan, LightCyan, 8, () => SetXRayMode(!_xrayMode), out _btnXrayBg);
-
-            // =================================================================
-            // 5. BOTTOM ARMORED COMMAND DECK (y = 0..46, h = 46)
-            // =================================================================
-            MilitaryUiSprites.CreateTiledSprite(vp, "BotSteelDeck", MilitaryUiSprites.ArmorHeaderBar, 0, 0, W, 42, PanelGlassDeep);
-            MilitaryUiSprites.CreateTiledSprite(vp, "BotHazardRail", MilitaryUiSprites.HazardTape, 0, 42, W, 4, new Color(1f, 1f, 1f, 0.90f));
-            CreatePixelSolid(vp, "BotRuleTop", 0, 46, W, 1, new Color(0.06f, 0.07f, 0.05f, 1f));
-            CreatePixelSolid(vp, "BotRuleSub", 0, 41, W, 1, new Color(0.06f, 0.07f, 0.05f, 1f));
-
-            CreatePixelButton(vp, hp, "TECH TREE [T]", 8, 7, 106, 28, BtnBg, GoldColor, GoldColor, 8, () => SetTechTreeOpen(true));
-
-            // Center Fleet Quick-Switch Cluster: [<] [USA (31)] [>]
-            CreatePixelButton(vp, hp, "<", 122, 7, 24, 28, BtnBg, PanelBorder, TextLight, 8, () => CycleSelectedInCurrentNation(-1));
-            _garageNationBtnLabel = CreatePixelButton(vp, hp, "USA (31)", 150, 7, 94, 28, BtnBg, BrassDim, TextLight, 8, CycleNationInGarage);
-            CreatePixelButton(vp, hp, ">", 248, 7, 24, 28, BtnBg, PanelBorder, TextLight, 8, () => CycleSelectedInCurrentNation(1));
-
-            // Heavy Brass Ordnance Launch Switch (with Hazard Caution End-Caps!)
-            CreatePixelButton(vp, hp, "ONLINE", 280, 7, 76, 28, BtnBg, LightCyan, LightCyan, 8, () =>
-            {
-                if (_choosingOnlineVehicle) ConfirmOnlineVehicle();
-                else SetOnlineRoomOpen(true);
-            });
-            _garageDeployButton = CreatePrimaryCtaButton(vp, hp, "BATTLE!", 364, 7, 108, 28, () => SetDeployModalOpen(true, fromTree: false));
-        }
-
         private void BuildTechTreeUI()
         {
             Transform vp = _treeVisualGroup.transform;
@@ -1137,104 +940,6 @@ namespace Modern8bitTanks
             if (_btnXrayBg != null) _btnXrayBg.color = on ? new Color(0.22f, 0.54f, 0.62f, 1f) : BtnBg;
             if (showcaseTank != null) showcaseTank.gameObject.SetActive(!on || _treeOpen);
             RefreshAllUI();
-        }
-
-        private void BuildSettingsUI()
-        {
-            Transform vp = _settingsVisualGroup.transform;
-            Transform hp = _settingsHitsGroup.transform;
-            int W = renderWidth;
-            int H = renderHeight;
-
-            CreatePixelSolid(vp, "SettingsDim", 0, 0, W, H, new Color(0.02f, 0.03f, 0.03f, 0.78f));
-
-            int cw = 248;
-            int ch = 198;
-            int cx = (W - cw) / 2;
-            int cy = (H - ch) / 2;
-            CreateTacticalCard(vp, "SettingsCard", cx, cy, cw, ch, PanelGlassModal, LightCyan, LightCyan, out _);
-            CreatePixelText(vp, "SYSTEM SETTINGS", 8, GoldColor, TextAnchor.MiddleCenter, cx, cy + ch - 22, cw, 16, useTitleFont: true);
-            CreatePixelSolid(vp, "SetHdrRule", cx + 12, cy + ch - 24, cw - 24, 1, Hairline);
-
-            // Row 1: SE (SFX) Volume [-] [SE: 100%] [+]
-            CreatePixelButton(vp, hp, "-", cx + 12, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _sessionState.StepSfxVolume(-0.1f);
-                PlayHangarPreviewSfx();
-                RefreshSettingsLabels();
-            });
-            _setSfxLabel = CreatePixelButton(vp, hp, "SE: 100%", cx + 40, cy + 148, cw - 80, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _sessionState.ToggleSfxEnabled();
-                PlayHangarPreviewSfx();
-                RefreshSettingsLabels();
-            });
-            CreatePixelButton(vp, hp, "+", cx + cw - 36, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _sessionState.StepSfxVolume(+0.1f);
-                PlayHangarPreviewSfx();
-                RefreshSettingsLabels();
-            });
-
-            // Row 2: BGM Volume [-] [BGM: 60%] [+]
-            CreatePixelButton(vp, hp, "-", cx + 12, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _sessionState.StepBgmVolume(-0.1f);
-                RefreshSettingsLabels();
-            });
-            _setBgmLabel = CreatePixelButton(vp, hp, "BGM: 60%", cx + 40, cy + 126, cw - 80, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _sessionState.ToggleBgmEnabled();
-                RefreshSettingsLabels();
-            });
-            CreatePixelButton(vp, hp, "+", cx + cw - 36, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _sessionState.StepBgmVolume(+0.1f);
-                RefreshSettingsLabels();
-            });
-
-            // Row 3: Drive Controls
-            _setDriveLabel = CreatePixelButton(vp, hp, "", cx + 12, cy + 104, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _sessionState.ArcadeWASD = !_sessionState.ArcadeWASD;
-                _sessionState.SaveSettings();
-                RefreshSettingsLabels();
-            });
-
-            // Row 4: Enemy AI
-            _setAiLabel = CreatePixelButton(vp, hp, "", cx + 12, cy + 82, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _sessionState.AiEnabled = !_sessionState.AiEnabled;
-                _sessionState.SaveSettings();
-                RefreshSettingsLabels();
-            });
-
-            // Row 5: Graphics Mode (applies live in Hangar too!)
-            _setGfxLabel = CreatePixelButton(vp, hp, "", cx + 12, cy + 60, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _sessionState.PostProcessEnabled = !_sessionState.PostProcessEnabled;
-                _sessionState.SaveSettings();
-                _postProcess?.SetEnabled(_sessionState.PostProcessEnabled);
-                _windowbox?.SetHd2dMode(_sessionState.PostProcessEnabled);
-                RefreshSettingsLabels();
-            });
-
-            // Row 6: Display Scaling (applies live in Hangar too!)
-            _setViewLabel = CreatePixelButton(vp, hp, "", cx + 12, cy + 38, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _sessionState.IntegerWindowbox = !_sessionState.IntegerWindowbox;
-                _sessionState.SaveSettings();
-                if (_windowbox != null) _windowbox.integerScale = _sessionState.IntegerWindowbox;
-                RefreshSettingsLabels();
-            });
-
-            // Bottom: Close
-            CreatePrimaryCtaButton(vp, hp, "CLOSE [ESC]", cx + 12, cy + 10, cw - 24, 20, () =>
-            {
-                SetSettingsOpen(false);
-            });
-
-            RefreshSettingsLabels();
         }
 
         private void PlayHangarPreviewSfx()
@@ -1482,65 +1187,12 @@ namespace Modern8bitTanks
             return rt;
         }
 
-        private static RectTransform CreatePixelBox(Transform parent, string name, int x, int y, int w, int h, Color bg, Color border)
-        {
-            return CreatePixelBox(parent, name, x, y, w, h, bg, border, out _);
-        }
-
         private static RectTransform CreatePixelBox(Transform parent, string name, int x, int y, int w, int h, Color bg, Color border, out Image fillImg)
         {
             var outer = CreatePixelSolid(parent, name, x, y, w, h, border);
             var inner = CreatePixelSolid(outer, "Inner", 1, 1, Mathf.Max(1, w - 2), Mathf.Max(1, h - 2), bg);
             fillImg = inner.GetComponent<Image>();
             return outer;
-        }
-
-        private static RectTransform CreateTacticalCard(Transform parent, string name, int x, int y, int w, int h, Color bg, Color border, Color topAccent, bool withHazardTape = true)
-            => CreateTacticalCard(parent, name, x, y, w, h, bg, border, topAccent, out _, withHazardTape);
-
-        private static RectTransform CreateTacticalCard(Transform parent, string name, int x, int y, int w, int h, Color bg, Color border, Color topAccent, out Image accentImg, bool withHazardTape = true)
-        {
-            // 9-sliced Riveted Rolled-Steel Armor Plate with forged corner bolts & beveled edges!
-            var box = MilitaryUiSprites.CreateSlicedSprite(parent, name, MilitaryUiSprites.ArmorPanel, x, y, w, h, bg, out _);
-            accentImg = CreatePixelSolid(box, "TopAccent", 4, h - 4, Mathf.Max(1, w - 8), 2, topAccent).GetComponent<Image>();
-            if (withHazardTape && w >= 48)
-            {
-                MilitaryUiSprites.CreateTiledSprite(box, "HazardStrip", MilitaryUiSprites.HazardTape, 6, h - 8, Mathf.Max(8, w - 12), 3, new Color(1f, 1f, 1f, 0.88f));
-            }
-            return box;
-        }
-
-        private static void CreateWeldSeam(Transform parent, int x, int y, int w)
-        {
-            CreatePixelSolid(parent, "WeldDk", x, y, w, 1, new Color(0.06f, 0.08f, 0.06f, 0.95f));
-            CreatePixelSolid(parent, "WeldHi", x, y - 1, w, 1, new Color(0.36f, 0.40f, 0.30f, 0.65f));
-        }
-
-        private static void CreateCornerBracket(Transform parent, int x, int y, bool left, bool top, Color col, int arm)
-        {
-            int hx = left ? x : x - arm + 1;
-            int hy = y;
-            int vx = x;
-            int vy = top ? y - arm + 1 : y;
-            CreatePixelSolid(parent, "BrH", hx, hy, arm, 1, col);
-            CreatePixelSolid(parent, "BrV", vx, vy, 1, arm, col);
-        }
-
-        private StatBarSlot CreateStatBarRow(Transform parent, string label, int y, Color fillColor)
-        {
-            CreatePixelText(parent, label, 8, TextMuted, TextAnchor.MiddleLeft, 8, y, 26, 14);
-            // Recessed dark armored gauge channel housing the 10 LED pips
-            CreatePixelSolid(parent, $"GaugeTrack_{label}", 34, y + 3, 53, 8, new Color(0.05f, 0.06f, 0.05f, 0.96f));
-            CreatePixelSolid(parent, $"GaugeLip_{label}", 34, y + 2, 53, 1, new Color(0.36f, 0.40f, 0.31f, 0.55f));
-            const int pipCount = 10;
-            var pips = new Image[pipCount];
-            for (int i = 0; i < pipCount; i++)
-            {
-                var p = CreatePixelSolid(parent, $"Pip_{label}_{i}", 36 + i * 5, y + 4, 4, 6, PipEmpty);
-                pips[i] = p.GetComponent<Image>();
-            }
-            var valTxt = CreatePixelText(parent, "0", 8, TextLight, TextAnchor.MiddleRight, 88, y, 36, 14);
-            return new StatBarSlot { pips = pips, valueText = valTxt, fillColor = fillColor };
         }
 
         private static void UpdateStatBar(StatBarSlot slot, float norm01, string formatted)
@@ -1605,16 +1257,9 @@ namespace Modern8bitTanks
 
             var btn = hitGo.AddComponent<Button>();
             btn.transition = Selectable.Transition.None;
-            btn.OnClickAsObservable().Subscribe(_ => onClick?.Invoke()).AddTo(btn);
-
-            var trigger = hitGo.AddComponent<EventTrigger>();
-            var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-            enter.callback.AddListener(_ => { if (fillImg != null) fillImg.color = Color.white; });
-            trigger.triggers.Add(enter);
-
-            var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
-            exit.callback.AddListener(_ => { if (fillImg != null) fillImg.color = idleTint; });
-            trigger.triggers.Add(exit);
+            var presenter = hitGo.AddComponent<PixelMenuButton>();
+            presenter.SetAppearance(fillImg, idleTint, Color.white);
+            presenter.Bind(onClick);
 
             return txt;
         }
@@ -1684,25 +1329,11 @@ namespace Modern8bitTanks
 
             var btn = hitGo.AddComponent<Button>();
             btn.transition = Selectable.Transition.None;
-            btn.OnClickAsObservable().Subscribe(_ => onClick?.Invoke()).AddTo(btn);
-
-            Color idleBg = (bg == BtnSelected) ? BtnBg : bg;
-            var trigger = hitGo.AddComponent<EventTrigger>();
-            var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-            enter.callback.AddListener(_ =>
-            {
-                if (fillImg != null && fillImg.color != BtnSelected)
-                    fillImg.color = idleBg == GoldColor ? Color.Lerp(idleBg, Color.white, 0.2f) : BtnHover;
-            });
-            trigger.triggers.Add(enter);
-
-            var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
-            exit.callback.AddListener(_ =>
-            {
-                if (fillImg != null && fillImg.color != BtnSelected)
-                    fillImg.color = idleBg;
-            });
-            trigger.triggers.Add(exit);
+            Color idleBg = bg == BtnSelected ? BtnBg : bg;
+            var presenter = hitGo.AddComponent<PixelMenuButton>();
+            presenter.SetAppearance(fillImg, idleBg, idleBg == GoldColor ? Color.Lerp(idleBg, Color.white, 0.2f) : BtnHover,
+                preserve: true, selected: BtnSelected);
+            presenter.Bind(onClick);
 
             return txt;
         }
