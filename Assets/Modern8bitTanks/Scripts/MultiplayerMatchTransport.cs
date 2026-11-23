@@ -222,7 +222,8 @@ namespace Modern8bitTanks
             writer.WriteValueSafe(focus);
             writer.WriteValueSafe(controlScores);
             writer.WriteValueSafe(wonByControl);
-            writer.WriteValueSafe(controlPoint.Progress);
+            // Keep the snapshot layout compatible with clients that still read capture progress.
+            writer.WriteValueSafe((float)controlPoint.Owner);
             writer.WriteValueSafe(controlPoint.Owner);
             writer.WriteValueSafe(controlPoint.Contested);
             writer.WriteValueSafe(presentMask);
@@ -296,10 +297,10 @@ namespace Modern8bitTanks
             reader.ReadValueSafe(out Vector2 focus);
             reader.ReadValueSafe(out Vector2 controlScores);
             reader.ReadValueSafe(out bool wonByControl);
-            reader.ReadValueSafe(out float progress);
+            reader.ReadValueSafe(out float _);
             reader.ReadValueSafe(out sbyte owner);
             reader.ReadValueSafe(out bool contested);
-            var controlPoint = new ControlPointState { Progress = progress, Owner = owner, Contested = contested };
+            var controlPoint = new ControlPointState { Owner = owner, Contested = contested };
             reader.ReadValueSafe(out byte presentMask);
             var tanks = _receivedTanks;
             for (int i = 0; i < tanks.Length; i++)

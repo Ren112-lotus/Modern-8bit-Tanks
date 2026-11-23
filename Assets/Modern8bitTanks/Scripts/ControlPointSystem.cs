@@ -5,7 +5,6 @@ namespace Modern8bitTanks
 {
     internal struct ControlPointState
     {
-        public float Progress;
         public sbyte Owner;
         public bool Contested;
     }
@@ -14,7 +13,6 @@ namespace Modern8bitTanks
     {
         internal const int ScoreToWin = 25;
         internal const int RadiusPixels = 60;
-        private const float CaptureSeconds = 6f;
         private const float Radius = RadiusPixels / BattleSceneController.PPU;
 
         internal Vector2 Position { get; private set; }
@@ -33,52 +31,29 @@ namespace Modern8bitTanks
             Scores = scores;
         }
 
-        internal sbyte Advance(IReadOnlyList<TankEntity> tanks, float deltaTime)
+        internal sbyte Advance(IReadOnlyList<TankEntity> tanks, float deltaTime, float squash)
         {
             bool allyHere = false;
             bool enemyHere = false;
             foreach (var tank in tanks)
             {
                 if (tank == null || !tank.alive || !tank.gameObject.activeInHierarchy ||
-                    (tank.Position2D - Position).sqrMagnitude > Radius * Radius) continue;
+                    !tank.HullOverlapsCircle(Position, Radius, squash)) continue;
 
                 if (tank.factionTeam == "ally") allyHere = true;
                 else enemyHere = true;
                 if (allyHere && enemyHere) break;
             }
 
-            var state = State;
-            state.Contested = allyHere && enemyHere;
+            sbyte owner = allyHere == enemyHere ? (sbyte)0 : allyHere ? (sbyte)1 : (sbyte)-1;
+            State = new ControlPointState { Owner = owner, Contested = allyHere && enemyHere };
+            if (owner == 0) return 0;
 
-            if (!state.Contested)
-            {
-                int target = allyHere ? 1 : enemyHere ? -1 : state.Owner;
-                state.Progress = Mathf.MoveTowards(state.Progress, target, deltaTime / CaptureSeconds);
-
-                if (state.Owner != 0 && state.Progress * state.Owner <= 0f)
-                    state.Owner = 0;
-                if (Mathf.Abs(state.Progress) == 1f)
-                    state.Owner = (sbyte)state.Progress;
-            }
-
-            State = state;
-            if (state.Contested) return 0;
-
-            var scores = Scores;
-            if (state.Owner == 1 && !enemyHere)
-            {
-                scores.x = Mathf.Min(ScoreToWin, scores.x + deltaTime);
-                Scores = scores;
-                if (scores.x >= ScoreToWin) return 1;
-            }
-            else if (state.Owner == -1 && !allyHere)
-            {
-                scores.y = Mathf.Min(ScoreToWin, scores.y + deltaTime);
-                Scores = scores;
-                if (scores.y >= ScoreToWin) return -1;
-            }
-
-            return 0;
+            int index = owner == 1 ? 0 : 1;
+            Vector2 scores = Scores;
+            scores[index] = Mathf.Min(ScoreToWin, scores[index] + deltaTime);
+            Scores = scores;
+            return scores[index] >= ScoreToWin ? owner : (sbyte)0;
         }
     }
 }

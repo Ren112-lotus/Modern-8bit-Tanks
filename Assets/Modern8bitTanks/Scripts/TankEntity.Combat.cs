@@ -200,6 +200,34 @@ namespace Modern8bitTanks
             Mathf.Max(1f, meta != null ? meta.hullWidth * 0.5f : 11f),
             Mathf.Max(1f, meta != null ? meta.hullLength * 0.5f : 19f)) / Mathf.Max(1f, pixelsPerUnit);
 
+        internal bool HullOverlapsCircle(Vector2 center, float radius, float squash)
+        {
+            Vector2 offset = center - Position2D;
+            Vector2 halfSize = CombatHalfSize;
+            float reach = radius + halfSize.magnitude;
+            if (offset.sqrMagnitude > reach * reach) return false;
+
+            Vector2 forward = SliceAngleToDir(hullAngleDeg);
+            Vector2 right = new Vector2(-forward.y, forward.x);
+            Vector2 groundOffset = SpriteStackCamera.Unsquash(offset, squash);
+            if (Mathf.Abs(Vector2.Dot(groundOffset, right)) <= halfSize.x &&
+                Mathf.Abs(Vector2.Dot(groundOffset, forward)) <= halfSize.y) return true;
+
+            Vector2 width = SpriteStackCamera.Squash(right * halfSize.x, squash);
+            Vector2 length = SpriteStackCamera.Squash(forward * halfSize.y, squash);
+            float radiusSquared = radius * radius;
+            return EdgeDistanceSquared(offset - width, length) <= radiusSquared
+                || EdgeDistanceSquared(offset + width, length) <= radiusSquared
+                || EdgeDistanceSquared(offset - length, width) <= radiusSquared
+                || EdgeDistanceSquared(offset + length, width) <= radiusSquared;
+        }
+
+        private static float EdgeDistanceSquared(Vector2 offset, Vector2 halfEdge)
+        {
+            float along = Mathf.Clamp(Vector2.Dot(offset, halfEdge) / halfEdge.sqrMagnitude, -1f, 1f);
+            return (offset - halfEdge * along).sqrMagnitude;
+        }
+
         public bool HasDisabled(TankModule modules) => (DisabledModules & modules) != 0;
         private bool HasCrew(TankCrew crew) => (ActiveCrew & crew) != 0;
 

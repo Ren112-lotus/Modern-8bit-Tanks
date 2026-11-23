@@ -30,9 +30,7 @@ namespace Modern8bitTanks
             _allyScore.color = ally;
             _enemyScore.color = enemy;
             _status.text = state.Contested ? UiText.Get("CONTESTED")
-                : Mathf.Abs(state.Progress) == 1f ? UiText.Get("POINT HELD")
-                : state.Progress == 0f ? UiText.Get("POINT NEUTRAL")
-                : UiText.Format("CONTROL  {0}%", Mathf.FloorToInt(Mathf.Abs(state.Progress) * 100f));
+                : state.Owner == 0 ? UiText.Get("POINT NEUTRAL") : UiText.Get("POINT HELD");
             _status.color = status;
         }
     }

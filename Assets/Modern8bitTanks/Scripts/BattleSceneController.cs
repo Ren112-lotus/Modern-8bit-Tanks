@@ -1476,9 +1476,12 @@ namespace Modern8bitTanks
 
             Vector2 u = delta / Mathf.Max(0.01f, dist);
             Vector2 move = Vector2.zero;
-            bool pursuingControl = UsesControlPoints && (!targetVisible || dist > 20f)
-                && TryGetControlSteering(t, out move);
-            if (!pursuingControl)
+            bool pursuingControl = UsesControlPoints && (!targetVisible || dist > 20f);
+            if (pursuingControl)
+            {
+                move = GetControlSteering(t);
+            }
+            else
             {
                 if (dist > preferredDistance) move += u;
                 else if (dist < retreatDistance) move -= u;

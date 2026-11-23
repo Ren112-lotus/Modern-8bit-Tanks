@@ -17,7 +17,7 @@ namespace Modern8bitTanks
         internal Color ControlPointColor()
         {
             if (ControlPoint.Contested) return new Color(1f, 0.83f, 0.42f);
-            int team = ControlPoint.Owner != 0 ? ControlPoint.Owner : System.Math.Sign(ControlPoint.Progress);
+            int team = ControlPoint.Owner;
             if (team == 0) return new Color(0.87f, 0.87f, 0.79f);
             return ControlTeamColor(team);
         }
@@ -41,7 +41,7 @@ namespace Modern8bitTanks
 
         private void UpdateControlPoint(float dt)
         {
-            sbyte winner = _controlPoints.Advance(_tanks, dt);
+            sbyte winner = _controlPoints.Advance(_tanks, dt, squash);
             if (winner != 0)
             {
                 FinishRound(winner == 1 ? "ally" : "enemy", ControlVictorySubtitle, ControlPointPosition, wonByControl: true);
@@ -50,20 +50,14 @@ namespace Modern8bitTanks
             SyncControlPointVoice();
         }
 
-        private bool TryGetControlSteering(TankEntity tank, out Vector2 steering)
+        private Vector2 GetControlSteering(TankEntity tank)
         {
-            steering = Vector2.zero;
             Vector2 position = tank.Position2D;
-            int team = tank.factionTeam == "ally" ? 1 : -1;
-            if (ControlPoint.Owner == team && Mathf.Abs(ControlPoint.Progress) == 1f && !ControlPoint.Contested)
-                return false;
+            if ((ControlPointPosition - position).sqrMagnitude <= 1.5f * 1.5f) return Vector2.zero;
 
-            if ((ControlPointPosition - position).sqrMagnitude > 1.5f * 1.5f)
-            {
-                Vector2 heading = TankEntity.SliceAngleToDir(tank.hullAngleDeg);
-                _battlefieldNavigation.TryGetSteering(position * PPU, heading, out steering);
-            }
-            return true;
+            Vector2 heading = TankEntity.SliceAngleToDir(tank.hullAngleDeg);
+            _battlefieldNavigation.TryGetSteering(position * PPU, heading, out Vector2 steering);
+            return steering;
         }
     }
 }
