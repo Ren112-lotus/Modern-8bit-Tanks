@@ -20,13 +20,14 @@ namespace Modern8bitTanks
             _up = Vector2.Perpendicular(_right);
         }
 
-        internal static Vector2 HalfSizeFor(TankEntity tank, float aspect)
+        internal static Vector2 SizeInPixelsFor(VehicleDef vehicle, float aspect)
         {
-            VehicleDef vehicle = tank != null ? tank.vehicleDef : null;
-            int width = vehicle?.EffectiveCameraWidthPixels ?? VehicleDef.DefaultCameraWidthPixels;
-            float halfWidth = width / (2f * BattleSceneController.PPU);
-            return new Vector2(halfWidth, halfWidth / aspect);
+            float height = vehicle?.EffectiveCameraHeightPixels ?? VehicleDef.DefaultCameraHeightPixels;
+            return new Vector2(height * aspect, height);
         }
+
+        internal static Vector2 HalfSizeFor(TankEntity tank, float aspect) =>
+            SizeInPixelsFor(tank != null ? tank.vehicleDef : null, aspect) / (2f * BattleSceneController.PPU);
 
         internal bool Contains(Vector2 worldPosition)
         {

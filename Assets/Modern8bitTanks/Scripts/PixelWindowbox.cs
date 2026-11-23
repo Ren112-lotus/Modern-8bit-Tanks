@@ -19,6 +19,7 @@ namespace Modern8bitTanks
 
         public const int AspectWidth = 4;
         public const int AspectHeight = 3;
+        public const float AspectRatio = (float)AspectWidth / AspectHeight;
         private const int PixelsPerAspectUnit = 120;
         public const int RenderWidth = AspectWidth * PixelsPerAspectUnit;
         public const int RenderHeight = AspectHeight * PixelsPerAspectUnit;

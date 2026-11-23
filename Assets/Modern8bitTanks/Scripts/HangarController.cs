@@ -80,7 +80,7 @@ namespace Modern8bitTanks
 
         private VehicleDef[] _allVehicles = Array.Empty<VehicleDef>();
         private readonly Dictionary<string, VehicleDef> _vehicleMap = new();
-        private int _maxViewWidthPixels;
+        private float _maxViewHeightPixels;
         private readonly Dictionary<string, Texture2D> _hullTexCache = new();
         private readonly Dictionary<string, Texture2D> _turretTexCache = new();
 
@@ -286,12 +286,12 @@ namespace Modern8bitTanks
             VehicleCatalog cat = MetaLoader.LoadVehicleCatalog();
             _allVehicles = cat != null && cat.vehicles != null ? cat.vehicles : Array.Empty<VehicleDef>();
             _vehicleMap.Clear();
-            _maxViewWidthPixels = 1;
+            _maxViewHeightPixels = 1f;
             foreach (var v in _allVehicles)
             {
                 if (v == null || string.IsNullOrEmpty(v.id)) continue;
                 _vehicleMap[v.id] = v;
-                _maxViewWidthPixels = Mathf.Max(_maxViewWidthPixels, v.EffectiveCameraWidthPixels);
+                _maxViewHeightPixels = Mathf.Max(_maxViewHeightPixels, v.EffectiveCameraHeightPixels);
             }
             if (!_vehicleMap.ContainsKey(_sessionState.SelectedPlayerVehicleId) && _allVehicles.Length > 0)
                 _sessionState.SelectedPlayerVehicleId = _allVehicles[0].id;
@@ -787,9 +787,9 @@ namespace Modern8bitTanks
                 UpdateStatBar(_statSpd, sel.speed / 84f, $"{Mathf.RoundToInt(sel.speed)}");
                 UpdateStatBar(_statTrn, sel.EffectiveHullTurnSpeed / 210f, $"{Mathf.RoundToInt(sel.EffectiveHullTurnSpeed)}");
                 UpdateStatBar(_statTur, sel.EffectiveTurretTurnSpeed / 355f, $"{Mathf.RoundToInt(sel.EffectiveTurretTurnSpeed)}");
-                int viewWidth = sel.EffectiveCameraWidthPixels;
-                int viewHeight = Mathf.RoundToInt(viewWidth * (float)PixelWindowbox.AspectHeight / PixelWindowbox.AspectWidth);
-                UpdateStatBar(_statView, viewWidth / (float)_maxViewWidthPixels, $"{viewWidth}×{viewHeight}");
+                Vector2 viewSize = BattleViewport.SizeInPixelsFor(sel, PixelWindowbox.AspectRatio);
+                UpdateStatBar(_statView, viewSize.y / _maxViewHeightPixels,
+                    $"{Mathf.RoundToInt(viewSize.x)}×{Mathf.RoundToInt(viewSize.y)}");
 
                 // Hull & Drivetrain mini telemetry
                 string gearStr = sel.IsWheeled ? UiText.Format("{0}x{0} WHEEL", sel.WheelAxleCount * 2) : UiText.Get("TRACKED");
