@@ -114,8 +114,10 @@ namespace Modern8bitTanks
             if (vehicleChanged && _xray != null)
             {
                 float maxDim = Mathf.Max(tank.meta.hullLength * 1.04f, tank.meta.hullWidth * 1.25f);
-                float fitScale = Mathf.Clamp((_xray.Height - 6f) / Mathf.Max(20f, maxDim), 0.66f, 1.15f);
-                Vector2 c = new Vector2(_xray.Width * 0.39f, _xray.Height * 0.43f);
+                const float serviceLineHeight = 12f;
+                float diagramHeight = _xray.Height - serviceLineHeight;
+                float fitScale = Mathf.Clamp((diagramHeight - 6f) / Mathf.Max(20f, maxDim), 0.66f, 1.15f);
+                Vector2 c = new Vector2(_xray.Width * 0.39f, serviceLineHeight + diagramHeight * 0.43f);
                 _xray.Render(
                     tank.hullStack != null ? tank.hullStack.sourceSheet : null,
                     tank.turretStack != null ? tank.turretStack.sourceSheet : null,

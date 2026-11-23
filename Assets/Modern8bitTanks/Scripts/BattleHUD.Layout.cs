@@ -68,8 +68,8 @@ namespace Modern8bitTanks
 
         private static void AttachCutaway(TankCutawayGraphic graphic, RawImage backdrop)
         {
-            var size = ((RectTransform)backdrop.transform.parent).sizeDelta;
-            graphic.AttachBackdrop(backdrop, (int)size.x, (int)size.y);
+            var size = backdrop.rectTransform.rect.size;
+            graphic.AttachBackdrop(backdrop, Mathf.RoundToInt(size.x), Mathf.RoundToInt(size.y));
         }
 
         private void BindBattleMenu()
