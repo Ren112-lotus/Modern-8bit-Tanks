@@ -633,6 +633,7 @@ namespace Modern8bitTanks
 
             ClearDynamicFXAndExtraTanks();
             battleMap = _multiplayer.IsInBattle ? BattleMap.Desert : _sessionState.SelectedBattleMap;
+            PrepareBattlefieldLayout();
             PrepareRuntimeGround();
             _cleanGroundPixels = UsesControlPoints
                 ? CurrentLayout.GroundPixels()

@@ -87,7 +87,7 @@ namespace Modern8bitTanks
         private int _radarWidth;
         private int _radarHeight;
         private bool[] _laneRadarMask;
-        private BattleMap _laneRadarMap;
+        private BattlefieldLayout _laneRadarLayout;
 
         // Result Overlay (smooth fade-in after kill aftermath)
         private GameObject _resultOverlay;
@@ -573,14 +573,17 @@ namespace Modern8bitTanks
                 BattleMap.Forest => new Color32(32, 48, 30, 255),
                 _ => new Color32(50, 43, 30, 255)
             };
-            bool hasControlPoints = _mgr.UsesControlPoints;
-            if (hasControlPoints && (_laneRadarMask == null || _laneRadarMap != curMap))
+            var layout = _mgr.CurrentLayout;
+            bool hasControlPoints = layout != null;
+            if (hasControlPoints && _laneRadarLayout != layout)
             {
-                _laneRadarMap = curMap;
+                _laneRadarLayout = layout;
                 _laneRadarMask ??= new bool[_radarWidth * _radarHeight];
                 for (int y = 0; y < _radarHeight; y++)
                 for (int x = 0; x < _radarWidth; x++)
-                    _laneRadarMask[y * _radarWidth + x] = _mgr.IsLaneRoute(x / (float)(_radarWidth - 1), y / (float)(_radarHeight - 1));
+                    _laneRadarMask[y * _radarWidth + x] = layout.IsRoad(new Vector2(
+                        x * BattlefieldLayout.Width / (float)(_radarWidth - 1),
+                        y * BattlefieldLayout.Height / (float)(_radarHeight - 1)));
             }
             for (int y = 0; y < _radarHeight; y++)
             {

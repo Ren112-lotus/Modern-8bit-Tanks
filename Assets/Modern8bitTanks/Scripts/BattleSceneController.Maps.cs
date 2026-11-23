@@ -321,7 +321,7 @@ namespace Modern8bitTanks
 
             if (UsesControlPoints)
             {
-                BuildLaneLayout(map);
+                SpawnProceduralCover();
                 return;
             }
 

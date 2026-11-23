@@ -33,11 +33,13 @@ namespace Modern8bitTanks
         }
 
         private NetworkList<Member> _members;
+        private readonly NetworkVariable<int> _battlefieldSeed = new();
         private readonly NetworkVariable<byte> _expectedMask = new();
         private readonly NetworkVariable<ushort> _round = new();
         private HashSet<FixedString64Bytes> _vehicleIds;
 
         public int ExpectedMask => _expectedMask.Value;
+        internal int BattlefieldSeed => _battlefieldSeed.Value;
         public ushort Round => _round.Value;
         public int PlayerCount => _members.Count;
         public int LocalSlot => GetSlot(NetworkManager.LocalClientId);
@@ -181,6 +183,7 @@ namespace Modern8bitTanks
                 member.InLobby = false;
                 _members[i] = member;
             }
+            _battlefieldSeed.Value = UnityEngine.Random.Range(1, int.MaxValue);
             _round.Value++;
             _expectedMask.Value = OccupiedMask();
             return true;
