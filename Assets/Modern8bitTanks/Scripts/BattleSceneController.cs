@@ -640,6 +640,7 @@ namespace Modern8bitTanks
                 ? CurrentLayout.GroundPixels()
                 : GenerateMapPixels(battleMap, MapWidthPx, MapHeightPx);
             RestoreCleanGround();
+            RefreshExteriorTerrain();
             _postProcess?.ApplyMapTheme(battleMap);
             _atmosphere?.ApplyMapTheme(battleMap);
             ClearAndSpawnMapProps(battleMap);
@@ -656,7 +657,7 @@ namespace Modern8bitTanks
             {
                 Vector2 halfSize = BattleViewport.HalfSizeFor(player, _cam.aspect);
                 _cam.orthographicSize = halfSize.y;
-                Vector2 center = ClampCameraCenter(_camPos, halfSize);
+                Vector2 center = ConstrainCameraCenter(_camPos, halfSize);
                 _cam.transform.SetPositionAndRotation(new Vector3(center.x, center.y, -20f), Quaternion.identity);
             }
             if (_phase == GamePhase.Playing) StartPlayerEngineAudio(player);
@@ -2880,8 +2881,10 @@ namespace Modern8bitTanks
                 _cam.transform.rotation = Quaternion.Euler(0f, 0f, _camRollDeg);
         }
 
-        private Vector2 ClampCameraCenter(Vector2 center, Vector2 halfSize)
+        private Vector2 ConstrainCameraCenter(Vector2 center, Vector2 halfSize)
         {
+            if (UsesControlPoints) return center;
+
             return new Vector2(
                 Mathf.Clamp(center.x, halfSize.x, Mathf.Max(halfSize.x, WorldW - halfSize.x)),
                 Mathf.Clamp(center.y, halfSize.y, Mathf.Max(halfSize.y, WorldH - halfSize.y)));
@@ -2914,7 +2917,7 @@ namespace Modern8bitTanks
                 if (observer != null) targetCam = observer.Position2D;
                 camSmooth = dt * 3.8f;
             }
-            _camPos = ClampCameraCenter(Vector2.Lerp(_camPos, targetCam, Mathf.Clamp01(camSmooth)), halfSize);
+            _camPos = ConstrainCameraCenter(Vector2.Lerp(_camPos, targetCam, Mathf.Clamp01(camSmooth)), halfSize);
 
             Vector2 springAcc = -_camKickPos * 260f - _camKickVel * 28f;
             _camKickVel += springAcc * dt;
@@ -2938,7 +2941,8 @@ namespace Modern8bitTanks
                 Vector2 dir = SpriteStackCamera.Squash(td, squash).normalized;
                 Vector2 zLiftVec = visMuz - gndMuz;
 
-                float mapDistance = AimDistanceToBoundary(gndMuz, dir, 0f);
+                float mapEdge = UsesControlPoints ? BorderPad : 0f;
+                float mapDistance = AimDistanceToBoundary(gndMuz, dir, mapEdge);
                 Vector2 mapEnd = gndMuz + dir * mapDistance;
                 Vector2 pivot = player.GetTurretPivotWorld(squash);
                 if (UsesControlPoints && FindPropHit(pivot, gndMuz, out _) != null)
@@ -3014,6 +3018,7 @@ namespace Modern8bitTanks
         private void OnDestroy()
         {
             CleanupMultiplayerBattle();
+            ReleaseExteriorTerrain();
             ReleaseRuntimeGround();
             Time.timeScale = 1f;
         }

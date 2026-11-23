@@ -70,6 +70,10 @@ namespace Modern8bitTanks
                 Color32 color = Color32.Lerp(terrain, background, 0.42f);
                 if (x % 32 == 0 || y % 32 == 0)
                     color = Color32.Lerp(color, background, 0.21f);
+                int edge = Mathf.Min(Mathf.Min(groundX, BattlefieldLayout.Width - groundX),
+                    Mathf.Min(groundY, BattlefieldLayout.Height - groundY));
+                if (edge >= BorderPadPx && edge < BorderPadPx + scale)
+                    color = BattlefieldLayout.BoundaryColor;
 
                 foreach (var prop in _props)
                 {

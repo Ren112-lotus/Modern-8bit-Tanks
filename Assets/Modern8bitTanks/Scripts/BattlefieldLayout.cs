@@ -8,6 +8,7 @@ namespace Modern8bitTanks
     {
         public const int Width = 1920;
         public const int Height = 1248;
+        internal static readonly Color32 BoundaryColor = new(226, 218, 178, 255);
         private const float PlanScale = 1.5f;
         private static readonly Vector2 MapSize = new(Width, Height);
         private static readonly Vector2[] DeploymentOffsets =
@@ -133,27 +134,13 @@ namespace Modern8bitTanks
         public Color32[] GroundPixels()
         {
             if (_ground != null) return _ground;
-            var (earth, dark, verge, concrete) = _map switch
-            {
-                BattleMap.City => ((Color32)new Color(0.54f, 0.49f, 0.43f), (Color32)new Color(0.31f, 0.31f, 0.29f),
-                    (Color32)new Color(0.69f, 0.64f, 0.54f), (Color32)new Color(0.52f, 0.54f, 0.52f)),
-                BattleMap.Forest => ((Color32)new Color(0.36f, 0.47f, 0.27f), (Color32)new Color(0.15f, 0.23f, 0.15f),
-                    (Color32)new Color(0.51f, 0.46f, 0.29f), (Color32)new Color(0.48f, 0.49f, 0.40f)),
-                _ => ((Color32)new Color(0.69f, 0.51f, 0.31f), (Color32)new Color(0.44f, 0.30f, 0.19f),
-                    (Color32)new Color(0.73f, 0.61f, 0.40f), (Color32)new Color(0.59f, 0.55f, 0.46f))
-            };
-
+            var (earth, dark, verge, concrete) = TerrainPalette();
             var pixels = new Color32[Width * Height];
             for (int y = 0; y < Height; y++)
             for (int x = 0; x < Width / 2; x++)
             {
                 int i = y * Width + x;
-                int frame = Mathf.Min(Mathf.Min(x, Width - 1 - x), Mathf.Min(y, Height - 1 - y));
-                float patch = Mathf.PerlinNoise(x * 0.011f + (_seed & 255) * 0.17f, y * 0.014f);
-                float grain = Grain(x, y);
-                Color32 color = Color32.Lerp(dark, earth, Mathf.Clamp01(patch * 0.88f + grain * 0.18f + 0.08f));
-
-                color = PaintTerrain(x, y, color, dark, verge, patch, grain);
+                Color32 color = SampleTerrain(x, y, earth, dark, verge, out float patch, out float grain);
 
                 Vector2 point = new(x + 0.5f, y + 0.5f);
                 color = PaintDistrict(point, color, concrete, dark, verge, patch, grain);
@@ -168,14 +155,70 @@ namespace Modern8bitTanks
                     color = Color32.Lerp(concrete, dark, 0.12f * grain + 0.17f * patch + (joint ? 0.19f : 0f));
                     if (rim) color = Color32.Lerp(color, verge, 0.66f);
                 }
-                if (frame < BattleSceneController.BorderPadPx)
-                    color = Color32.Lerp(dark, color, frame < 9 ? 0.10f : 0.20f + grain * 0.18f);
+                int edgeX = Mathf.Min(x, Width - 1 - x);
+                int edgeY = Mathf.Min(y, Height - 1 - y);
+                int edge = Mathf.Min(edgeX, edgeY);
+                int distanceToBoundary = edge - BattleSceneController.BorderPadPx;
+                if (distanceToBoundary < 0) color = ShadeExterior(color, dark);
+                if (distanceToBoundary is >= -1 and <= 2)
+                {
+                    int along = edgeX < edgeY ? y : x;
+                    color = distanceToBoundary >= 0 && distanceToBoundary <= 1 && along % 25 < 16
+                        ? BoundaryColor
+                        : Color32.Lerp(color, dark, 0.47f);
+                }
+
                 pixels[i] = color;
                 pixels[pixels.Length - 1 - i] = color;
             }
             _ground = pixels;
             return _ground;
         }
+
+        internal Color32[] ExteriorPixels(int padding, int scale)
+        {
+            int width = (Width + padding * 2) / scale;
+            int height = (Height + padding * 2) / scale;
+            var pixels = new Color32[width * height];
+            var (earth, dark, verge, _) = TerrainPalette();
+
+            for (int y = 0; y < height; y++)
+            for (int x = 0; x < width / 2; x++)
+            {
+                int worldX = x * scale + scale / 2 - padding;
+                int worldY = y * scale + scale / 2 - padding;
+                if (worldX >= 0 && worldY >= 0 && worldY < Height) continue;
+
+                Color32 color = ShadeExterior(SampleTerrain(worldX, worldY, earth, dark, verge, out _, out _), dark);
+                int i = y * width + x;
+                pixels[i] = color;
+                pixels[pixels.Length - 1 - i] = color;
+            }
+
+            return pixels;
+        }
+
+        private static Color32 ShadeExterior(Color32 color, Color32 dark) => Color32.Lerp(color, dark, 0.48f);
+
+        private Color32 SampleTerrain(int x, int y, Color32 earth, Color32 dark, Color32 verge,
+            out float patch, out float grain)
+        {
+            patch = Mathf.PerlinNoise(x * 0.011f + (_seed & 255) * 0.17f, y * 0.014f);
+            grain = Grain(x, y);
+            Color32 color = Color32.Lerp(dark, earth, Mathf.Clamp01(patch * 0.88f + grain * 0.18f + 0.08f));
+            return PaintTerrain(x, y, color, dark, verge, patch, grain);
+        }
+
+        private (Color32 Earth, Color32 Dark, Color32 Verge, Color32 Concrete) TerrainPalette() =>
+            _map switch
+            {
+                BattleMap.City => ((Color32)new Color(0.54f, 0.49f, 0.43f), (Color32)new Color(0.31f, 0.31f, 0.29f),
+                    (Color32)new Color(0.69f, 0.64f, 0.54f), (Color32)new Color(0.52f, 0.54f, 0.52f)),
+                BattleMap.Forest => ((Color32)new Color(0.36f, 0.47f, 0.27f), (Color32)new Color(0.15f, 0.23f, 0.15f),
+                    (Color32)new Color(0.51f, 0.46f, 0.29f), (Color32)new Color(0.48f, 0.49f, 0.40f)),
+                _ => ((Color32)new Color(0.69f, 0.51f, 0.31f), (Color32)new Color(0.44f, 0.30f, 0.19f),
+                    (Color32)new Color(0.73f, 0.61f, 0.40f), (Color32)new Color(0.59f, 0.55f, 0.46f))
+            };
 
         private Color32 PaintDistrict(Vector2 point, Color32 terrain, Color32 concrete, Color32 dark,
             Color32 border, float patch, float grain)

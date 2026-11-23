@@ -4,6 +4,13 @@ namespace Modern8bitTanks
 {
     public partial class BattleSceneController
     {
+        // Covers the diagonal of the largest vehicle viewport and the camera's look-ahead.
+        private const int ExteriorPaddingPx = 352;
+        private const int ExteriorSampleScale = 2;
+        [SerializeField] private SpriteRenderer _exteriorTerrainRenderer;
+        private Texture2D _exteriorTexture;
+        private Sprite _exteriorSprite;
+
         internal BattlefieldLayout CurrentLayout { get; private set; }
         private BattlefieldNavigation _battlefieldNavigation;
 
@@ -46,6 +53,44 @@ namespace Modern8bitTanks
         }
 
         private Vector2 BattlefieldSpawn(bool west, int index) => CurrentLayout.Spawn(west, index) / PPU;
+
+        private void RefreshExteriorTerrain()
+        {
+            ReleaseExteriorTerrain();
+            if (_exteriorTerrainRenderer == null || CurrentLayout == null) return;
+
+            int width = (BattlefieldLayout.Width + ExteriorPaddingPx * 2) / ExteriorSampleScale;
+            int height = (BattlefieldLayout.Height + ExteriorPaddingPx * 2) / ExteriorSampleScale;
+            _exteriorTexture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                name = "Battlefield Exterior",
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            _exteriorTexture.SetPixels32(CurrentLayout.ExteriorPixels(ExteriorPaddingPx, ExteriorSampleScale));
+            _exteriorTexture.Apply(false, true);
+            _exteriorSprite = Sprite.Create(_exteriorTexture, new Rect(0, 0, width, height),
+                new Vector2(0.5f, 0.5f), PPU / ExteriorSampleScale, 0, SpriteMeshType.FullRect);
+
+            _exteriorTerrainRenderer.sharedMaterial = terrainRenderer.sharedMaterial;
+            _exteriorTerrainRenderer.sortingLayerID = terrainRenderer.sortingLayerID;
+            _exteriorTerrainRenderer.sortingOrder = terrainRenderer.sortingOrder - 1;
+            _exteriorTerrainRenderer.sprite = _exteriorSprite;
+            _exteriorTerrainRenderer.enabled = true;
+        }
+
+        private void ReleaseExteriorTerrain()
+        {
+            if (_exteriorTerrainRenderer != null)
+            {
+                _exteriorTerrainRenderer.enabled = false;
+                _exteriorTerrainRenderer.sprite = null;
+            }
+            if (_exteriorSprite != null) Destroy(_exteriorSprite);
+            if (_exteriorTexture != null) Destroy(_exteriorTexture);
+            _exteriorSprite = null;
+            _exteriorTexture = null;
+        }
 
         private void SpawnProceduralCover()
         {

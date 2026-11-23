@@ -598,6 +598,7 @@ namespace Modern8bitTanks
                     _radarPixels[i] = layout != null && _wallRadarMask[i] ? bldgCol : line ? grid : bg;
                 }
             }
+            if (layout != null) PlotRadarBoundary(mapScale, Color32.Lerp(grid, BattlefieldLayout.BoundaryColor, 0.55f));
 
             Color32 propCol = new Color32(148, 126, 90, 255);
             Color32 rockCol = new Color32(126, 114, 96, 255);
@@ -674,6 +675,23 @@ namespace Modern8bitTanks
 
             _radarTex.SetPixels32(_radarPixels);
             _radarTex.Apply(false, false);
+        }
+
+        private void PlotRadarBoundary(Vector2 mapScale, Color32 color)
+        {
+            var min = Vector2Int.RoundToInt(mapScale * (BattleSceneController.BorderPadPx / BattleSceneController.PPU));
+            int right = _radarWidth - 1 - min.x;
+            int top = _radarHeight - 1 - min.y;
+            for (int x = min.x; x <= right; x++)
+            {
+                PlotRadarPixel(x, min.y, color);
+                PlotRadarPixel(x, top, color);
+            }
+            for (int y = min.y + 1; y < top; y++)
+            {
+                PlotRadarPixel(min.x, y, color);
+                PlotRadarPixel(right, y, color);
+            }
         }
 
         private void PlotRadarAim(Vector2 start, Vector2 end)

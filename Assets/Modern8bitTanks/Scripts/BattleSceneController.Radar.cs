@@ -38,7 +38,7 @@ namespace Modern8bitTanks
             if (!_multiplayer.Transport.TryGetControl(slot, out var control)) return null;
 
             Vector2 halfSize = BattleViewport.HalfSizeFor(observer, _cam.aspect);
-            Vector2 center = ClampCameraCenter(observer.Position2D, halfSize);
+            Vector2 center = ConstrainCameraCenter(observer.Position2D, halfSize);
 
             // Allow camera follow, smoothing and recoil offsets from the host's tank position.
             const float followAllowance = CameraLookAhead + 2.6f;
