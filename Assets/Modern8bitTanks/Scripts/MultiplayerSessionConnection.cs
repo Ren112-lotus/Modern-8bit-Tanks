@@ -1,5 +1,5 @@
 using System;
-using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using Unity.Services.Authentication;
@@ -17,6 +17,7 @@ namespace Modern8bitTanks
         private const float RoomSyncTimeout = 15f;
 
         private NetworkManager _network;
+        private BattleSessionState _sessionState;
         private ISession _session;
         private bool _connecting = true;
         private bool _connectionLost;
@@ -39,7 +40,7 @@ namespace Modern8bitTanks
         public bool IsReturningToLobby => !_loadingBattle && _returnToHangar && !_leaving;
         public string JoinCode => _session?.Code;
 
-        public static async Task ConnectAsync(string code = null)
+        public static async UniTask ConnectAsync(BattleSessionState sessionState, string code = null)
         {
             if (Active != null || NetworkManager.Singleton != null)
                 throw new InvalidOperationException("A room is already open.");
@@ -52,6 +53,7 @@ namespace Modern8bitTanks
             var root = new GameObject("Multiplayer Session");
             DontDestroyOnLoad(root);
             var connection = root.AddComponent<MultiplayerSessionConnection>();
+            connection._sessionState = sessionState;
             Active = connection;
             try
             {
@@ -92,13 +94,13 @@ namespace Modern8bitTanks
                 }
 
                 var deadline = Time.realtimeSinceStartup + RoomSyncTimeout;
-                while (connection != null && !connection._connectionLost && connection._network.IsListening &&
-                       (connection.Room == null || connection.Room.LocalSlot < 0) && Time.realtimeSinceStartup < deadline)
-                    await Task.Yield();
+                await UniTask.WaitUntil(() => connection == null || connection._connectionLost ||
+                    !connection._network.IsListening || (connection.Room != null && connection.Room.LocalSlot >= 0) ||
+                    Time.realtimeSinceStartup >= deadline);
 
                 if (connection == null || connection._connectionLost || connection.Room == null || connection.Room.LocalSlot < 0)
                     throw new InvalidOperationException("Could not synchronize the room. Check the code and try again.");
-                connection.Room.SetVehicleSelection(BattleSessionState.SelectedPlayerVehicleId, choosing: false);
+                connection.Room.SetVehicleSelection(sessionState.SelectedPlayerVehicleId, choosing: false);
                 connection._connecting = false;
             }
             catch
@@ -121,7 +123,7 @@ namespace Modern8bitTanks
             gameObject.AddComponent<MultiplayerMatchTransport>().Initialize(_network, room);
         }
 
-        public async Task StartMatchAsync()
+        public async UniTask StartMatchAsync()
         {
             if (!IsHost || IsStarting || Room == null || !Room.CanDeploy || _leaving) return;
             _starting = true;
@@ -165,7 +167,7 @@ namespace Modern8bitTanks
             {
                 _loadingBattle = false;
                 Time.timeScale = 1f;
-                BattleSessionState.HasEnteredGarage = true;
+                _sessionState.HasEnteredGarage = true;
                 _sceneLoad = SceneManager.LoadSceneAsync(BattleSessionState.HangarSceneName);
                 return;
             }
@@ -181,10 +183,10 @@ namespace Modern8bitTanks
             if (!IsReturningToLobby || Room == null || Room.ExpectedMask != 0) return;
             _returnToHangar = false;
             _localSlot = -1;
-            Room.SetVehicleSelection(BattleSessionState.SelectedPlayerVehicleId, choosing: false);
+            Room.SetVehicleSelection(_sessionState.SelectedPlayerVehicleId, choosing: false);
         }
 
-        public async Task ReturnToRoomAsync()
+        public async UniTask ReturnToRoomAsync()
         {
             if (!IsHost || _leaving || !_loadingBattle || _unlockingLobby || Room == null) return;
             var host = _session.AsHost();
@@ -203,7 +205,7 @@ namespace Modern8bitTanks
             finally { _unlockingLobby = false; }
         }
 
-        public async Task LeaveAsync(string notice = null)
+        public async UniTask LeaveAsync(string notice = null)
         {
             if (_leaving) return;
             _leaving = true;
@@ -215,7 +217,7 @@ namespace Modern8bitTanks
             if (_returnToHangar)
             {
                 Time.timeScale = 1f;
-                BattleSessionState.HasEnteredGarage = true;
+                _sessionState.HasEnteredGarage = true;
                 if (_loadingBattle) _ = SceneManager.LoadSceneAsync(BattleSessionState.HangarSceneName);
             }
 
@@ -238,18 +240,18 @@ namespace Modern8bitTanks
             }
         }
 
-        private async void OnDisconnected(ulong clientId)
+        private void OnDisconnected(ulong clientId)
         {
             if (!IsHost && (clientId == NetworkManager.ServerClientId || clientId == _network.LocalClientId))
-                await HandleConnectionLossAsync("Connection to the host was lost.");
+                HandleConnectionLossAsync("Connection to the host was lost.").Forget();
         }
 
-        private async void OnTransportFailure()
+        private void OnTransportFailure()
         {
-            await HandleConnectionLossAsync("The network connection was lost.");
+            HandleConnectionLossAsync("The network connection was lost.").Forget();
         }
 
-        private async Task HandleConnectionLossAsync(string message)
+        private async UniTask HandleConnectionLossAsync(string message)
         {
             if (_connecting) _connectionLost = true;
             else await LeaveAsync(message);

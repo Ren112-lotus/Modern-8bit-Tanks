@@ -1,3 +1,4 @@
+using R3;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -14,37 +15,47 @@ namespace Modern8bitTanks
     /// Cross-scene session state bridging Hangar.unity (Garage & WoT Tech Tree) and DesertBattle.unity (Combat).
     /// Also provides fair random same-Tier matchmaking based on vehicle Tier & performance class.
     /// </summary>
-    public static class BattleSessionState
+    public sealed class BattleSessionState : System.IDisposable
     {
         public const string HangarSceneName = "Hangar";
         public const string BattleSceneName = "DesertBattle";
 
-        public static string SelectedPlayerVehicleId = "us_m1a2_sep2";
-        public static BattleMode SelectedBattleMode = BattleMode.Duel1v1;
-        public static BattleMap SelectedBattleMap = BattleMap.Desert;
-        public static BattleCameraMode SelectedCameraMode = BattleCameraMode.FixedTop;
+        public string SelectedPlayerVehicleId = "us_m1a2_sep2";
+        public BattleMode SelectedBattleMode = BattleMode.Duel1v1;
+        private readonly ReactiveProperty<BattleMap> _selectedBattleMap = new(BattleMap.Desert);
 
-        public static bool ArcadeWASD = false;
-        public static bool AiEnabled = true;
-        public static bool SfxEnabled = true;
-        public static float SfxVolume = 1.0f;
-        public static bool BgmEnabled = true;
-        public static float BgmVolume = 0.60f;
-        public static bool PostProcessEnabled = true;
-        public static bool IntegerWindowbox = false;
+        public BattleMap SelectedBattleMap
+        {
+            get => _selectedBattleMap.Value;
+            set => _selectedBattleMap.Value = value;
+        }
 
-        public static int WinsAlly = 0;
-        public static int WinsEnemy = 0;
-        public static bool HasEnteredGarage = false;
+        public Observable<BattleMap> SelectedBattleMapChanged => _selectedBattleMap;
+        public BattleCameraMode SelectedCameraMode = BattleCameraMode.FixedTop;
+
+        public bool ArcadeWASD = false;
+        public bool AiEnabled = true;
+        public bool SfxEnabled = true;
+        public float SfxVolume = 1.0f;
+        public bool BgmEnabled = true;
+        public float BgmVolume = 0.60f;
+        public bool PostProcessEnabled = true;
+        public bool IntegerWindowbox = false;
+
+        public int WinsAlly = 0;
+        public int WinsEnemy = 0;
+        public bool HasEnteredGarage = false;
 
         private const string PrefPrefix = "M8T_Setting_";
 
-        static BattleSessionState()
+        public BattleSessionState()
         {
             LoadSettings();
         }
 
-        public static void LoadSettings()
+        public void Dispose() => _selectedBattleMap.Dispose();
+
+        public void LoadSettings()
         {
             ArcadeWASD = PlayerPrefs.GetInt(PrefPrefix + "ArcadeWASD", 0) != 0;
             AiEnabled = PlayerPrefs.GetInt(PrefPrefix + "AiEnabled", 1) != 0;
@@ -56,7 +67,7 @@ namespace Modern8bitTanks
             IntegerWindowbox = PlayerPrefs.GetInt(PrefPrefix + "IntWindowbox", 0) != 0;
         }
 
-        public static void SaveSettings()
+        public void SaveSettings()
         {
             PlayerPrefs.SetInt(PrefPrefix + "ArcadeWASD", ArcadeWASD ? 1 : 0);
             PlayerPrefs.SetInt(PrefPrefix + "AiEnabled", AiEnabled ? 1 : 0);
@@ -69,7 +80,7 @@ namespace Modern8bitTanks
             PlayerPrefs.Save();
         }
 
-        public static void StepSfxVolume(float delta)
+        public void StepSfxVolume(float delta)
         {
             float baseVol = SfxEnabled ? SfxVolume : 0f;
             float next = Mathf.Round(Mathf.Clamp01(baseVol + delta) * 10f) * 0.1f;
@@ -78,14 +89,14 @@ namespace Modern8bitTanks
             SaveSettings();
         }
 
-        public static void ToggleSfxEnabled()
+        public void ToggleSfxEnabled()
         {
             SfxEnabled = !SfxEnabled;
             if (SfxEnabled && SfxVolume <= 0.001f) SfxVolume = 0.6f;
             SaveSettings();
         }
 
-        public static void StepBgmVolume(float delta)
+        public void StepBgmVolume(float delta)
         {
             float baseVol = BgmEnabled ? BgmVolume : 0f;
             float next = Mathf.Round(Mathf.Clamp01(baseVol + delta) * 10f) * 0.1f;
@@ -94,7 +105,7 @@ namespace Modern8bitTanks
             SaveSettings();
         }
 
-        public static void ToggleBgmEnabled()
+        public void ToggleBgmEnabled()
         {
             BgmEnabled = !BgmEnabled;
             if (BgmEnabled && BgmVolume <= 0.001f) BgmVolume = 0.6f;

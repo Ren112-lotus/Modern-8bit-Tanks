@@ -142,31 +142,31 @@ namespace Modern8bitTanks
             // 5 Battle Mode rows (all EVEN coordinates & dimensions!)
             CreatePixelButton(vp, hp, "1v1 DUEL   - SAME-TIER RIVAL", cx + 14, cy + 150, cw - 28, 18, BtnSelected, PanelBorder, TextLight, 8, () =>
             {
-                BattleSessionState.SelectedBattleMode = BattleMode.Duel1v1;
+                _sessionState.SelectedBattleMode = BattleMode.Duel1v1;
                 RefreshAllUI();
             }, out _deployMode1v1Bg);
 
             CreatePixelButton(vp, hp, "2v2 SQUAD  - WINGMAN CLASH", cx + 14, cy + 130, cw - 28, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
-                BattleSessionState.SelectedBattleMode = BattleMode.Squad2v2;
+                _sessionState.SelectedBattleMode = BattleMode.Squad2v2;
                 RefreshAllUI();
             }, out _deployMode2v2Bg);
 
             CreatePixelButton(vp, hp, "5v5 BATTLE - COMPANY WAR", cx + 14, cy + 110, cw - 28, 18, BtnBg, GoldColor, GoldColor, 8, () =>
             {
-                BattleSessionState.SelectedBattleMode = BattleMode.Battle5v5;
+                _sessionState.SelectedBattleMode = BattleMode.Battle5v5;
                 RefreshAllUI();
             }, out _deployMode5v5Bg);
 
             CreatePixelButton(vp, hp, "SURVIVAL   - ENDLESS WAVES", cx + 14, cy + 90, cw - 28, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
-                BattleSessionState.SelectedBattleMode = BattleMode.SurvivalWave;
+                _sessionState.SelectedBattleMode = BattleMode.SurvivalWave;
                 RefreshAllUI();
             }, out _deployModeWaveBg);
 
             CreatePixelButton(vp, hp, "RANGE      - FIRING PRACTICE", cx + 14, cy + 70, cw - 28, 18, BtnBg, LightCyan, LightCyan, 8, () =>
             {
-                BattleSessionState.SelectedBattleMode = BattleMode.FiringRange;
+                _sessionState.SelectedBattleMode = BattleMode.FiringRange;
                 RefreshAllUI();
             }, out _deployModeRangeBg);
 
@@ -320,7 +320,7 @@ namespace Modern8bitTanks
             }
             else
             {
-                BattleSessionState.HasEnteredGarage = true;
+                _sessionState.HasEnteredGarage = true;
             }
 
             if (_titleStageRoot != null) _titleStageRoot.gameObject.SetActive(open);
@@ -391,15 +391,15 @@ namespace Modern8bitTanks
             if (_deployVehicleLabel != null && sel != null)
                 _deployVehicleLabel.text = $"{sel.name.ToUpper()}  •  TIER {sel.TierRoman} {sel.role}";
 
-            if (_deployMode1v1Bg != null) _deployMode1v1Bg.color = BattleSessionState.SelectedBattleMode == BattleMode.Duel1v1 ? BtnSelected : BtnBg;
-            if (_deployMode2v2Bg != null) _deployMode2v2Bg.color = BattleSessionState.SelectedBattleMode == BattleMode.Squad2v2 ? BtnSelected : BtnBg;
-            if (_deployMode5v5Bg != null) _deployMode5v5Bg.color = BattleSessionState.SelectedBattleMode == BattleMode.Battle5v5 ? BtnSelected : BtnBg;
-            if (_deployModeWaveBg != null) _deployModeWaveBg.color = BattleSessionState.SelectedBattleMode == BattleMode.SurvivalWave ? BtnSelected : BtnBg;
-            if (_deployModeRangeBg != null) _deployModeRangeBg.color = BattleSessionState.SelectedBattleMode == BattleMode.FiringRange ? BtnSelected : BtnBg;
+            if (_deployMode1v1Bg != null) _deployMode1v1Bg.color = _sessionState.SelectedBattleMode == BattleMode.Duel1v1 ? BtnSelected : BtnBg;
+            if (_deployMode2v2Bg != null) _deployMode2v2Bg.color = _sessionState.SelectedBattleMode == BattleMode.Squad2v2 ? BtnSelected : BtnBg;
+            if (_deployMode5v5Bg != null) _deployMode5v5Bg.color = _sessionState.SelectedBattleMode == BattleMode.Battle5v5 ? BtnSelected : BtnBg;
+            if (_deployModeWaveBg != null) _deployModeWaveBg.color = _sessionState.SelectedBattleMode == BattleMode.SurvivalWave ? BtnSelected : BtnBg;
+            if (_deployModeRangeBg != null) _deployModeRangeBg.color = _sessionState.SelectedBattleMode == BattleMode.FiringRange ? BtnSelected : BtnBg;
 
-            if (_deployMapDesertBg != null) _deployMapDesertBg.color = BattleSessionState.SelectedBattleMap == BattleMap.Desert ? BtnSelected : BtnBg;
-            if (_deployMapCityBg != null) _deployMapCityBg.color = BattleSessionState.SelectedBattleMap == BattleMap.City ? BtnSelected : BtnBg;
-            if (_deployMapForestBg != null) _deployMapForestBg.color = BattleSessionState.SelectedBattleMap == BattleMap.Forest ? BtnSelected : BtnBg;
+            if (_deployMapDesertBg != null) _deployMapDesertBg.color = _sessionState.SelectedBattleMap == BattleMap.Desert ? BtnSelected : BtnBg;
+            if (_deployMapCityBg != null) _deployMapCityBg.color = _sessionState.SelectedBattleMap == BattleMap.City ? BtnSelected : BtnBg;
+            if (_deployMapForestBg != null) _deployMapForestBg.color = _sessionState.SelectedBattleMap == BattleMap.Forest ? BtnSelected : BtnBg;
         }
 
         // ============================================================
@@ -571,7 +571,7 @@ namespace Modern8bitTanks
             float trackW = ((t.meta != null && t.meta.hullWidth > 0 ? t.meta.hullWidth : 22) * 0.40f) / PPU;
             float trackL = ((t.meta != null && t.meta.hullLength > 0 ? t.meta.hullLength : 38) * 0.38f) / PPU;
 
-            Color baseCol = BattleSessionState.SelectedBattleMap switch
+            Color baseCol = _sessionState.SelectedBattleMap switch
             {
                 BattleMap.City => new Color(0.62f, 0.61f, 0.58f, 0.34f),
                 BattleMap.Forest => new Color(0.46f, 0.39f, 0.28f, 0.42f),
@@ -588,7 +588,7 @@ namespace Modern8bitTanks
 
         private void SpawnTitleDustBurst(Vector2 center, int count)
         {
-            Color col = BattleSessionState.SelectedBattleMap switch
+            Color col = _sessionState.SelectedBattleMap switch
             {
                 BattleMap.City => new Color(0.66f, 0.65f, 0.62f, 0.42f),
                 BattleMap.Forest => new Color(0.50f, 0.42f, 0.30f, 0.50f),

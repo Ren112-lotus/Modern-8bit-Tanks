@@ -1,8 +1,9 @@
+using Cysharp.Threading.Tasks;
+using VContainer;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 
 namespace Modern8bitTanks
 {
@@ -122,6 +123,16 @@ namespace Modern8bitTanks
 
         private Transform _fxRoot;
         private Camera _cam;
+        private BattleSessionState _sessionState;
+        private GameSceneLoader _sceneLoader;
+
+        [Inject]
+        private void Construct(Camera worldCamera, BattleSessionState sessionState, GameSceneLoader sceneLoader)
+        {
+            _cam = worldCamera;
+            _sessionState = sessionState;
+            _sceneLoader = sceneLoader;
+        }
         private Vector2 _camPos;
         private float _camRollDeg;
         private Vector2 _camKickPos;
@@ -217,14 +228,6 @@ namespace Modern8bitTanks
 
         private void Awake()
         {
-            _cam = Camera.main;
-            if (_cam == null)
-            {
-                var cGo = new GameObject("Main Camera");
-                cGo.tag = "MainCamera";
-                _cam = cGo.AddComponent<Camera>();
-                cGo.AddComponent<AudioListener>();
-            }
             _cam.orthographic = true;
             _cam.clearFlags = CameraClearFlags.SolidColor;
             _cam.backgroundColor = new Color(0.11f, 0.09f, 0.06f, 1f);
@@ -235,19 +238,19 @@ namespace Modern8bitTanks
             cameraZoom = Mathf.Clamp(cameraZoom < 1.05f ? 1.10f : cameraZoom, 0.80f, 1.45f);
 
             // Pull player's Hangar selection & persistent settings from BattleSessionState!
-            selectedPlayerVehicleId = BattleSessionState.SelectedPlayerVehicleId;
-            battleMode = BattleSessionState.SelectedBattleMode;
-            battleMap = BattleSessionState.SelectedBattleMap;
+            selectedPlayerVehicleId = _sessionState.SelectedPlayerVehicleId;
+            battleMode = _sessionState.SelectedBattleMode;
+            battleMap = _sessionState.SelectedBattleMap;
             cameraMode = BattleCameraMode.FixedTop;
-            BattleSessionState.SelectedCameraMode = BattleCameraMode.FixedTop;
-            arcadeWASD = BattleSessionState.ArcadeWASD;
-            aiEnabled = BattleSessionState.AiEnabled;
-            sfxEnabled = BattleSessionState.SfxEnabled;
-            sfxVolume = BattleSessionState.SfxVolume;
-            bgmEnabled = BattleSessionState.BgmEnabled;
-            bgmVolume = BattleSessionState.BgmVolume;
-            postProcessEnabled = BattleSessionState.PostProcessEnabled;
-            integerWindowbox = BattleSessionState.IntegerWindowbox;
+            _sessionState.SelectedCameraMode = BattleCameraMode.FixedTop;
+            arcadeWASD = _sessionState.ArcadeWASD;
+            aiEnabled = _sessionState.AiEnabled;
+            sfxEnabled = _sessionState.SfxEnabled;
+            sfxVolume = _sessionState.SfxVolume;
+            bgmEnabled = _sessionState.BgmEnabled;
+            bgmVolume = _sessionState.BgmVolume;
+            postProcessEnabled = _sessionState.PostProcessEnabled;
+            integerWindowbox = _sessionState.IntegerWindowbox;
             if (MultiplayerSessionConnection.Online)
             {
                 var room = MultiplayerSessionConnection.Active.Room;
@@ -266,8 +269,8 @@ namespace Modern8bitTanks
                 battleMap = BattleMap.Desert;
                 aiEnabled = false;
             }
-            _winsAlly = BattleSessionState.WinsAlly;
-            _winsEnemy = BattleSessionState.WinsEnemy;
+            _winsAlly = _sessionState.WinsAlly;
+            _winsEnemy = _sessionState.WinsEnemy;
 
             _windowbox = GetComponent<PixelWindowbox>();
             if (_windowbox == null) _windowbox = gameObject.AddComponent<PixelWindowbox>();
@@ -346,7 +349,7 @@ namespace Modern8bitTanks
         {
             if (!_vehicleMap.ContainsKey(id)) return;
             selectedPlayerVehicleId = id;
-            BattleSessionState.SelectedPlayerVehicleId = id;
+            _sessionState.SelectedPlayerVehicleId = id;
         }
 
         public void SelectEnemyVehicle(string id)
@@ -594,7 +597,7 @@ namespace Modern8bitTanks
                 BattleCameraMode.HullLock => BattleCameraMode.FixedTop,
                 _ => BattleCameraMode.TurretLock
             };
-            BattleSessionState.SelectedCameraMode = cameraMode;
+            _sessionState.SelectedCameraMode = cameraMode;
             string msg = cameraMode switch
             {
                 BattleCameraMode.TurretLock => "CAM: TURRET LOCK [C]",
@@ -608,59 +611,59 @@ namespace Modern8bitTanks
         {
             if (!MultiplayerSessionConnection.Online)
             {
-                BattleSessionState.SelectedPlayerVehicleId = selectedPlayerVehicleId;
-                BattleSessionState.SelectedBattleMode = battleMode;
-                BattleSessionState.AiEnabled = aiEnabled;
+                _sessionState.SelectedPlayerVehicleId = selectedPlayerVehicleId;
+                _sessionState.SelectedBattleMode = battleMode;
+                _sessionState.AiEnabled = aiEnabled;
             }
-            BattleSessionState.SelectedCameraMode = cameraMode;
-            BattleSessionState.ArcadeWASD = arcadeWASD;
-            BattleSessionState.SfxEnabled = sfxEnabled;
-            BattleSessionState.SfxVolume = sfxVolume;
-            BattleSessionState.BgmEnabled = bgmEnabled;
-            BattleSessionState.BgmVolume = bgmVolume;
-            BattleSessionState.PostProcessEnabled = postProcessEnabled;
-            BattleSessionState.IntegerWindowbox = integerWindowbox;
-            BattleSessionState.WinsAlly = _winsAlly;
-            BattleSessionState.WinsEnemy = _winsEnemy;
-            BattleSessionState.SaveSettings();
+            _sessionState.SelectedCameraMode = cameraMode;
+            _sessionState.ArcadeWASD = arcadeWASD;
+            _sessionState.SfxEnabled = sfxEnabled;
+            _sessionState.SfxVolume = sfxVolume;
+            _sessionState.BgmEnabled = bgmEnabled;
+            _sessionState.BgmVolume = bgmVolume;
+            _sessionState.PostProcessEnabled = postProcessEnabled;
+            _sessionState.IntegerWindowbox = integerWindowbox;
+            _sessionState.WinsAlly = _winsAlly;
+            _sessionState.WinsEnemy = _winsEnemy;
+            _sessionState.SaveSettings();
         }
 
         public void ToggleSfxEnabled()
         {
-            BattleSessionState.SfxEnabled = sfxEnabled;
-            BattleSessionState.SfxVolume = sfxVolume;
-            BattleSessionState.ToggleSfxEnabled();
-            sfxEnabled = BattleSessionState.SfxEnabled;
-            sfxVolume = BattleSessionState.SfxVolume;
+            _sessionState.SfxEnabled = sfxEnabled;
+            _sessionState.SfxVolume = sfxVolume;
+            _sessionState.ToggleSfxEnabled();
+            sfxEnabled = _sessionState.SfxEnabled;
+            sfxVolume = _sessionState.SfxVolume;
             PlayUiPreviewSfx();
         }
 
         public void StepSfxVolume(float delta)
         {
-            BattleSessionState.SfxEnabled = sfxEnabled;
-            BattleSessionState.SfxVolume = sfxVolume;
-            BattleSessionState.StepSfxVolume(delta);
-            sfxEnabled = BattleSessionState.SfxEnabled;
-            sfxVolume = BattleSessionState.SfxVolume;
+            _sessionState.SfxEnabled = sfxEnabled;
+            _sessionState.SfxVolume = sfxVolume;
+            _sessionState.StepSfxVolume(delta);
+            sfxEnabled = _sessionState.SfxEnabled;
+            sfxVolume = _sessionState.SfxVolume;
             PlayUiPreviewSfx();
         }
 
         public void ToggleBgmEnabled()
         {
-            BattleSessionState.BgmEnabled = bgmEnabled;
-            BattleSessionState.BgmVolume = bgmVolume;
-            BattleSessionState.ToggleBgmEnabled();
-            bgmEnabled = BattleSessionState.BgmEnabled;
-            bgmVolume = BattleSessionState.BgmVolume;
+            _sessionState.BgmEnabled = bgmEnabled;
+            _sessionState.BgmVolume = bgmVolume;
+            _sessionState.ToggleBgmEnabled();
+            bgmEnabled = _sessionState.BgmEnabled;
+            bgmVolume = _sessionState.BgmVolume;
         }
 
         public void StepBgmVolume(float delta)
         {
-            BattleSessionState.BgmEnabled = bgmEnabled;
-            BattleSessionState.BgmVolume = bgmVolume;
-            BattleSessionState.StepBgmVolume(delta);
-            bgmEnabled = BattleSessionState.BgmEnabled;
-            bgmVolume = BattleSessionState.BgmVolume;
+            _sessionState.BgmEnabled = bgmEnabled;
+            _sessionState.BgmVolume = bgmVolume;
+            _sessionState.StepBgmVolume(delta);
+            bgmEnabled = _sessionState.BgmEnabled;
+            bgmVolume = _sessionState.BgmVolume;
         }
 
         public void PlayUiPreviewSfx()
@@ -678,7 +681,7 @@ namespace Modern8bitTanks
         {
             if (!MultiplayerSessionConnection.Online) return;
             SyncSettingsToSession();
-            _ = MultiplayerSessionConnection.Active.ReturnToRoomAsync();
+            MultiplayerSessionConnection.Active.ReturnToRoomAsync().Forget();
         }
 
         public void ReturnToHangar()
@@ -686,21 +689,14 @@ namespace Modern8bitTanks
             if (MultiplayerSessionConnection.Online)
             {
                 SyncSettingsToSession();
-                _ = MultiplayerSessionConnection.Active.LeaveAsync();
+                MultiplayerSessionConnection.Active.LeaveAsync().Forget();
                 return;
             }
             Time.timeScale = 1f;
             StopLoopingAudio();
             _audio?.StopBattleBgm();
             SyncSettingsToSession();
-            if (Application.CanStreamedLevelBeLoaded(BattleSessionState.HangarSceneName))
-            {
-                SceneManager.LoadScene(BattleSessionState.HangarSceneName);
-            }
-            else
-            {
-                Debug.LogWarning("[Modern 8bit Tanks] Hangar scene is not in Build Settings yet. Run Tools > Modern 8bit Tanks > Build Prefabs & Setup Hangar + Battle Scenes.");
-            }
+            _sceneLoader.LoadAsync(BattleSessionState.HangarSceneName).Forget();
         }
 
         public void ResetRound()
@@ -727,7 +723,7 @@ namespace Modern8bitTanks
                 selectedEnemyVehicleId = randRival.id;
 
             ClearDynamicFXAndExtraTanks();
-            battleMap = MultiplayerSessionConnection.Online ? BattleMap.Desert : BattleSessionState.SelectedBattleMap;
+            battleMap = MultiplayerSessionConnection.Online ? BattleMap.Desert : _sessionState.SelectedBattleMap;
             _cleanGroundPixels = GenerateMapPixels(battleMap, WorldWidthPx, WorldHeightPx);
             RestoreCleanGround();
             _postProcess?.ApplyMapTheme(battleMap);

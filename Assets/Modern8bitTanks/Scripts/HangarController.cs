@@ -1,10 +1,12 @@
+using Cysharp.Threading.Tasks;
+using VContainer;
+using R3;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace Modern8bitTanks
@@ -50,6 +52,16 @@ namespace Modern8bitTanks
         private const float MaxScrollX = ContentW - ViewW;
 
         private Camera _cam;
+        private BattleSessionState _sessionState;
+        private GameSceneLoader _sceneLoader;
+
+        [Inject]
+        private void Construct(Camera worldCamera, BattleSessionState sessionState, GameSceneLoader sceneLoader)
+        {
+            _cam = worldCamera;
+            _sessionState = sessionState;
+            _sceneLoader = sceneLoader;
+        }
         private PixelWindowbox _windowbox;
         private BattlePostProcess _postProcess;
         private DesertAtmosphere _atmosphere;
@@ -221,14 +233,6 @@ namespace Modern8bitTanks
             Time.timeScale = 1f;
             SpriteStackCamera.SetRoll(0f);
 
-            _cam = Camera.main;
-            if (_cam == null)
-            {
-                var cGo = new GameObject("Main Camera");
-                cGo.tag = "MainCamera";
-                _cam = cGo.AddComponent<Camera>();
-                cGo.AddComponent<AudioListener>();
-            }
             _cam.orthographic = true;
             _cam.clearFlags = CameraClearFlags.SolidColor;
             _cam.backgroundColor = new Color(0.11f, 0.09f, 0.06f, 1f);
@@ -237,12 +241,12 @@ namespace Modern8bitTanks
 
             _windowbox = GetComponent<PixelWindowbox>();
             if (_windowbox == null) _windowbox = gameObject.AddComponent<PixelWindowbox>();
-            _windowbox.Initialize(_cam, renderWidth, renderHeight, BattleSessionState.IntegerWindowbox, useHd2d: BattleSessionState.PostProcessEnabled);
+            _windowbox.Initialize(_cam, renderWidth, renderHeight, _sessionState.IntegerWindowbox, useHd2d: _sessionState.PostProcessEnabled);
             _windowbox.SetTiltShiftParams(1.15f, 0.52f, 0.24f);
 
             _postProcess = GetComponent<BattlePostProcess>();
             if (_postProcess == null) _postProcess = gameObject.AddComponent<BattlePostProcess>();
-            _postProcess.postProcessEnabled = BattleSessionState.PostProcessEnabled;
+            _postProcess.postProcessEnabled = _sessionState.PostProcessEnabled;
             // Attach URP Post-Processing to PresentCamera so Bloom/Vignette/ACES run AFTER the 480x270 RT at full screen res!
             _postProcess.Initialize(_windowbox.PresentCamera != null ? _windowbox.PresentCamera : _cam);
 
@@ -253,7 +257,7 @@ namespace Modern8bitTanks
             _atmosphere = GetComponent<DesertAtmosphere>();
             if (_atmosphere == null) _atmosphere = gameObject.AddComponent<DesertAtmosphere>();
             _atmosphere.Initialize(_cam, WorldW, WorldH, _whitePxSprite, _emissiveFxMat);
-            _atmosphere.ApplyMapTheme(BattleSessionState.SelectedBattleMap);
+            _sessionState.SelectedBattleMapChanged.Subscribe(RefreshMapBackdropTheme).AddTo(this);
 
             EnsureEventSystem();
             BuildPixelCanvas();
@@ -274,7 +278,7 @@ namespace Modern8bitTanks
             SetDeployModalOpen(false);
             SetTechTreeOpen(false);
             // Show the Sprite-Stacking Title Screen on initial launch; return straight to Garage after battles!
-            SetTitleOpen(!BattleSessionState.HasEnteredGarage);
+            SetTitleOpen(!_sessionState.HasEnteredGarage);
             var connection = MultiplayerSessionConnection.Active;
             if (connection != null && connection.IsReturningToLobby) connection.ReadyInLobby();
             _onlineError = MultiplayerSessionConnection.TakeNotice();
@@ -317,8 +321,8 @@ namespace Modern8bitTanks
                 if (v != null && !string.IsNullOrEmpty(v.id))
                     _vehicleMap[v.id] = v;
             }
-            if (!_vehicleMap.ContainsKey(BattleSessionState.SelectedPlayerVehicleId) && _allVehicles.Length > 0)
-                BattleSessionState.SelectedPlayerVehicleId = _allVehicles[0].id;
+            if (!_vehicleMap.ContainsKey(_sessionState.SelectedPlayerVehicleId) && _allVehicles.Length > 0)
+                _sessionState.SelectedPlayerVehicleId = _allVehicles[0].id;
 
             _previewSfxClip = Resources.Load<AudioClip>("SFX/reload_clank") ?? TankAudioSynthesizer.CreateReloadClank();
             var prevGo = new GameObject("HangarUiPreviewAudio");
@@ -367,12 +371,10 @@ namespace Modern8bitTanks
                 new Vector2(0.5f, 0.5f),
                 PPU
             );
-            RefreshMapBackdropTheme();
         }
 
-        private void RefreshMapBackdropTheme()
+        private void RefreshMapBackdropTheme(BattleMap map)
         {
-            BattleMap map = BattleSessionState.SelectedBattleMap;
             if (_hangarBackdropTex != null)
             {
                 _hangarBackdropTex.SetPixels32(DesertBattleManager.GenerateMapPixels(map, HangarGroundW, HangarGroundH));
@@ -384,8 +386,7 @@ namespace Modern8bitTanks
 
         private void SelectBattleMap(BattleMap map)
         {
-            BattleSessionState.SelectedBattleMap = map;
-            RefreshMapBackdropTheme();
+            _sessionState.SelectedBattleMap = map;
             RefreshAllUI();
         }
 
@@ -411,7 +412,7 @@ namespace Modern8bitTanks
 
         private VehicleDef GetSelectedVehicle()
         {
-            if (_vehicleMap.TryGetValue(BattleSessionState.SelectedPlayerVehicleId, out var def))
+            if (_vehicleMap.TryGetValue(_sessionState.SelectedPlayerVehicleId, out var def))
                 return def;
             return _allVehicles.Length > 0 ? _allVehicles[0] : null;
         }
@@ -442,8 +443,8 @@ namespace Modern8bitTanks
         private void SelectVehicle(string id, bool closeTreeIfSame = false)
         {
             if (!_vehicleMap.ContainsKey(id)) return;
-            bool wasSame = BattleSessionState.SelectedPlayerVehicleId == id;
-            BattleSessionState.SelectedPlayerVehicleId = id;
+            bool wasSame = _sessionState.SelectedPlayerVehicleId == id;
+            _sessionState.SelectedPlayerVehicleId = id;
             ApplySelectedTankToTurntable();
             if (closeTreeIfSame && wasSame)
                 SetTechTreeOpen(false);
@@ -488,7 +489,7 @@ namespace Modern8bitTanks
         public void LaunchBattleScene()
         {
             if (MultiplayerSessionConnection.Active != null) return;
-            SceneManager.LoadScene(BattleSessionState.BattleSceneName);
+            _sceneLoader.LoadAsync(BattleSessionState.BattleSceneName).Forget();
         }
 
         private void ScrollTreeToSelected(bool instant = false)
@@ -518,7 +519,7 @@ namespace Modern8bitTanks
             var mouse = Mouse.current;
 
             if (_windowbox != null)
-                _windowbox.integerScale = BattleSessionState.IntegerWindowbox;
+                _windowbox.integerScale = _sessionState.IntegerWindowbox;
 
             if (_choosingOnlineVehicle && (MultiplayerSessionConnection.Active == null || MultiplayerSessionConnection.Active.IsLeaving))
                 SetOnlineVehicleSelection(false);
@@ -1167,7 +1168,7 @@ namespace Modern8bitTanks
             var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
             enter.callback.AddListener(_ =>
             {
-                if (slot.fillImg != null && slot.vehicleId != BattleSessionState.SelectedPlayerVehicleId)
+                if (slot.fillImg != null && slot.vehicleId != _sessionState.SelectedPlayerVehicleId)
                     slot.fillImg.color = BtnHover;
             });
             trigger.triggers.Add(enter);
@@ -1175,7 +1176,7 @@ namespace Modern8bitTanks
             var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
             exit.callback.AddListener(_ =>
             {
-                if (slot.fillImg != null && slot.vehicleId != BattleSessionState.SelectedPlayerVehicleId)
+                if (slot.fillImg != null && slot.vehicleId != _sessionState.SelectedPlayerVehicleId)
                     slot.fillImg.color = BtnBg;
             });
             trigger.triggers.Add(exit);
@@ -1212,19 +1213,19 @@ namespace Modern8bitTanks
             // Row 1: SE (SFX) Volume [-] [SE: 100%] [+]
             CreatePixelButton(vp, hp, "-", cx + 12, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
-                BattleSessionState.StepSfxVolume(-0.1f);
+                _sessionState.StepSfxVolume(-0.1f);
                 PlayHangarPreviewSfx();
                 RefreshSettingsLabels();
             });
             _setSfxLabel = CreatePixelButton(vp, hp, "SE: 100%", cx + 40, cy + 148, cw - 80, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
-                BattleSessionState.ToggleSfxEnabled();
+                _sessionState.ToggleSfxEnabled();
                 PlayHangarPreviewSfx();
                 RefreshSettingsLabels();
             });
             CreatePixelButton(vp, hp, "+", cx + cw - 36, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
-                BattleSessionState.StepSfxVolume(+0.1f);
+                _sessionState.StepSfxVolume(+0.1f);
                 PlayHangarPreviewSfx();
                 RefreshSettingsLabels();
             });
@@ -1232,52 +1233,52 @@ namespace Modern8bitTanks
             // Row 2: BGM Volume [-] [BGM: 60%] [+]
             CreatePixelButton(vp, hp, "-", cx + 12, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
-                BattleSessionState.StepBgmVolume(-0.1f);
+                _sessionState.StepBgmVolume(-0.1f);
                 RefreshSettingsLabels();
             });
             _setBgmLabel = CreatePixelButton(vp, hp, "BGM: 60%", cx + 40, cy + 126, cw - 80, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
-                BattleSessionState.ToggleBgmEnabled();
+                _sessionState.ToggleBgmEnabled();
                 RefreshSettingsLabels();
             });
             CreatePixelButton(vp, hp, "+", cx + cw - 36, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
-                BattleSessionState.StepBgmVolume(+0.1f);
+                _sessionState.StepBgmVolume(+0.1f);
                 RefreshSettingsLabels();
             });
 
             // Row 3: Drive Controls
             _setDriveLabel = CreatePixelButton(vp, hp, "", cx + 12, cy + 104, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
-                BattleSessionState.ArcadeWASD = !BattleSessionState.ArcadeWASD;
-                BattleSessionState.SaveSettings();
+                _sessionState.ArcadeWASD = !_sessionState.ArcadeWASD;
+                _sessionState.SaveSettings();
                 RefreshSettingsLabels();
             });
 
             // Row 4: Enemy AI
             _setAiLabel = CreatePixelButton(vp, hp, "", cx + 12, cy + 82, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
-                BattleSessionState.AiEnabled = !BattleSessionState.AiEnabled;
-                BattleSessionState.SaveSettings();
+                _sessionState.AiEnabled = !_sessionState.AiEnabled;
+                _sessionState.SaveSettings();
                 RefreshSettingsLabels();
             });
 
             // Row 5: Graphics Mode (applies live in Hangar too!)
             _setGfxLabel = CreatePixelButton(vp, hp, "", cx + 12, cy + 60, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
-                BattleSessionState.PostProcessEnabled = !BattleSessionState.PostProcessEnabled;
-                BattleSessionState.SaveSettings();
-                _postProcess?.SetEnabled(BattleSessionState.PostProcessEnabled);
-                _windowbox?.SetHd2dMode(BattleSessionState.PostProcessEnabled);
+                _sessionState.PostProcessEnabled = !_sessionState.PostProcessEnabled;
+                _sessionState.SaveSettings();
+                _postProcess?.SetEnabled(_sessionState.PostProcessEnabled);
+                _windowbox?.SetHd2dMode(_sessionState.PostProcessEnabled);
                 RefreshSettingsLabels();
             });
 
             // Row 6: Display Scaling (applies live in Hangar too!)
             _setViewLabel = CreatePixelButton(vp, hp, "", cx + 12, cy + 38, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
-                BattleSessionState.IntegerWindowbox = !BattleSessionState.IntegerWindowbox;
-                BattleSessionState.SaveSettings();
-                if (_windowbox != null) _windowbox.integerScale = BattleSessionState.IntegerWindowbox;
+                _sessionState.IntegerWindowbox = !_sessionState.IntegerWindowbox;
+                _sessionState.SaveSettings();
+                if (_windowbox != null) _windowbox.integerScale = _sessionState.IntegerWindowbox;
                 RefreshSettingsLabels();
             });
 
@@ -1293,10 +1294,10 @@ namespace Modern8bitTanks
         private void PlayHangarPreviewSfx()
         {
             if (_previewAudio == null || _previewSfxClip == null) return;
-            if (!BattleSessionState.SfxEnabled || BattleSessionState.SfxVolume <= 0.001f) return;
+            if (!_sessionState.SfxEnabled || _sessionState.SfxVolume <= 0.001f) return;
             _previewAudio.Stop();
             _previewAudio.clip = _previewSfxClip;
-            _previewAudio.volume = Mathf.Clamp01(0.62f * BattleSessionState.SfxVolume);
+            _previewAudio.volume = Mathf.Clamp01(0.62f * _sessionState.SfxVolume);
             _previewAudio.pitch = 1.0f;
             _previewAudio.Play();
         }
@@ -1305,22 +1306,22 @@ namespace Modern8bitTanks
         {
             if (_setSfxLabel != null)
             {
-                _setSfxLabel.text = BattleSessionState.FormatVolumeLabel("SE", BattleSessionState.SfxEnabled, BattleSessionState.SfxVolume);
-                _setSfxLabel.color = (BattleSessionState.SfxEnabled && BattleSessionState.SfxVolume > 0.001f) ? MbtGreen : TextMuted;
+                _setSfxLabel.text = BattleSessionState.FormatVolumeLabel("SE", _sessionState.SfxEnabled, _sessionState.SfxVolume);
+                _setSfxLabel.color = (_sessionState.SfxEnabled && _sessionState.SfxVolume > 0.001f) ? MbtGreen : TextMuted;
             }
             if (_setBgmLabel != null)
             {
-                _setBgmLabel.text = BattleSessionState.FormatVolumeLabel("BGM", BattleSessionState.BgmEnabled, BattleSessionState.BgmVolume);
-                _setBgmLabel.color = (BattleSessionState.BgmEnabled && BattleSessionState.BgmVolume > 0.001f) ? LightCyan : TextMuted;
+                _setBgmLabel.text = BattleSessionState.FormatVolumeLabel("BGM", _sessionState.BgmEnabled, _sessionState.BgmVolume);
+                _setBgmLabel.color = (_sessionState.BgmEnabled && _sessionState.BgmVolume > 0.001f) ? LightCyan : TextMuted;
             }
             if (_setDriveLabel != null)
-                _setDriveLabel.text = BattleSessionState.ArcadeWASD ? "DRIVE: ARCADE WASD" : "DRIVE: TANK STEER";
+                _setDriveLabel.text = _sessionState.ArcadeWASD ? "DRIVE: ARCADE WASD" : "DRIVE: TANK STEER";
             if (_setAiLabel != null)
-                _setAiLabel.text = BattleSessionState.AiEnabled ? "ENEMY AI: ON" : "ENEMY AI: OFF";
+                _setAiLabel.text = _sessionState.AiEnabled ? "ENEMY AI: ON" : "ENEMY AI: OFF";
             if (_setGfxLabel != null)
-                _setGfxLabel.text = BattleSessionState.PostProcessEnabled ? "GFX: HD-2D" : "GFX: RETRO";
+                _setGfxLabel.text = _sessionState.PostProcessEnabled ? "GFX: HD-2D" : "GFX: RETRO";
             if (_setViewLabel != null)
-                _setViewLabel.text = BattleSessionState.IntegerWindowbox ? "VIEW: INT WINDOWBOX" : "VIEW: 16:9 LETTERBOX";
+                _setViewLabel.text = _sessionState.IntegerWindowbox ? "VIEW: INT WINDOWBOX" : "VIEW: 16:9 LETTERBOX";
         }
 
         private void SetSettingsOpen(bool open)
@@ -1412,8 +1413,8 @@ namespace Modern8bitTanks
                     else _garageSpecialLine.text = "SMOKE [Q] • COAX MG";
                 }
 
-                string mapTag = DesertBattleManager.GetMapDisplayName(BattleSessionState.SelectedBattleMap);
-                string modeShort = BattleSessionState.SelectedBattleMode switch
+                string mapTag = DesertBattleManager.GetMapDisplayName(_sessionState.SelectedBattleMap);
+                string modeShort = _sessionState.SelectedBattleMode switch
                 {
                     BattleMode.FiringRange => "FIRING RANGE",
                     BattleMode.Battle5v5 => "5v5 COMPANY",
@@ -1425,7 +1426,7 @@ namespace Modern8bitTanks
                 if (_garageMapLine != null)
                 {
                     _garageMapLine.text = $"MAP: {mapTag}";
-                    _garageMapLine.color = BattleSessionState.SelectedBattleMap switch
+                    _garageMapLine.color = _sessionState.SelectedBattleMap switch
                     {
                         BattleMap.Forest => MbtGreen,
                         BattleMap.City => LightCyan,
@@ -1434,10 +1435,10 @@ namespace Modern8bitTanks
                 }
                 if (_garageMatchLine != null)
                 {
-                    _garageMatchLine.text = BattleSessionState.SelectedBattleMode == BattleMode.FiringRange
+                    _garageMatchLine.text = _sessionState.SelectedBattleMode == BattleMode.FiringRange
                         ? "6 TARGETS • TEST"
                         : $"TIER {sel.TierRoman} BRACKET";
-                    _garageMatchLine.color = BattleSessionState.SelectedBattleMode == BattleMode.FiringRange ? LightCyan : TextMuted;
+                    _garageMatchLine.color = _sessionState.SelectedBattleMode == BattleMode.FiringRange ? LightCyan : TextMuted;
                 }
 
                 if (_garageNationBtnLabel != null)
@@ -1467,7 +1468,7 @@ namespace Modern8bitTanks
                 slot.visualGo.SetActive(visible);
                 if (!visible) continue;
 
-                bool selected = vehicle.id == BattleSessionState.SelectedPlayerVehicleId;
+                bool selected = vehicle.id == _sessionState.SelectedPlayerVehicleId;
                 string tag = vehicle.year > 0 ? vehicle.year.ToString() : vehicle.TierRoman;
                 slot.topText.text = $"{tag}  {vehicle.role}";
                 slot.topText.color = selected || vehicle.IsSpecial ? GoldColor : TextMuted;
@@ -1658,7 +1659,7 @@ namespace Modern8bitTanks
 
             var btn = hitGo.AddComponent<Button>();
             btn.transition = Selectable.Transition.None;
-            btn.onClick.AddListener(() => onClick?.Invoke());
+            btn.OnClickAsObservable().Subscribe(_ => onClick?.Invoke()).AddTo(btn);
 
             var trigger = hitGo.AddComponent<EventTrigger>();
             var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
@@ -1737,7 +1738,7 @@ namespace Modern8bitTanks
 
             var btn = hitGo.AddComponent<Button>();
             btn.transition = Selectable.Transition.None;
-            btn.onClick.AddListener(() => onClick?.Invoke());
+            btn.OnClickAsObservable().Subscribe(_ => onClick?.Invoke()).AddTo(btn);
 
             Color idleBg = (bg == BtnSelected) ? BtnBg : bg;
             var trigger = hitGo.AddComponent<EventTrigger>();

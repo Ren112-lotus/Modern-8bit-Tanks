@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using System;
 using UnityEngine;
 using UnityEngine.UI;
@@ -200,7 +201,7 @@ namespace Modern8bitTanks
             if (room == null || connection.IsStarting || connection.IsLeaving || _onlineBusy) return;
             _waitingForVehicleSelection = true;
             _onlineError = null;
-            room.SetVehicleSelection(BattleSessionState.SelectedPlayerVehicleId, choosing: true);
+            room.SetVehicleSelection(_sessionState.SelectedPlayerVehicleId, choosing: true);
         }
 
         private void SetOnlineVehicleSelection(bool choosing)
@@ -218,11 +219,13 @@ namespace Modern8bitTanks
         {
             var connection = MultiplayerSessionConnection.Active;
             if (connection != null && connection.Room != null && !connection.IsLeaving)
-                connection.Room.SetVehicleSelection(BattleSessionState.SelectedPlayerVehicleId, choosing: false);
+                connection.Room.SetVehicleSelection(_sessionState.SelectedPlayerVehicleId, choosing: false);
             SetOnlineVehicleSelection(false);
         }
 
-        private async void ConnectOnlineRoom(bool host)
+        private void ConnectOnlineRoom(bool host) => ConnectOnlineRoomAsync(host).Forget();
+
+        private async UniTask ConnectOnlineRoomAsync(bool host)
         {
             if (_onlineBusy || MultiplayerSessionConnection.Active != null) return;
             var code = host ? null : _onlineCode.text.Trim().ToUpperInvariant();
@@ -234,7 +237,7 @@ namespace Modern8bitTanks
 
             _onlineBusy = true;
             _onlineError = null;
-            try { await MultiplayerSessionConnection.ConnectAsync(code); }
+            try { await MultiplayerSessionConnection.ConnectAsync(_sessionState, code); }
             catch (Exception exception)
             {
                 _onlineError = host ? "COULD NOT CREATE ROOM. TRY AGAIN." : "COULD NOT JOIN. CHECK THE CODE AND TRY AGAIN.";
@@ -243,7 +246,9 @@ namespace Modern8bitTanks
             finally { _onlineBusy = false; }
         }
 
-        private async void StartOnlineMatch()
+        private void StartOnlineMatch() => StartOnlineMatchAsync().Forget();
+
+        private async UniTask StartOnlineMatchAsync()
         {
             var connection = MultiplayerSessionConnection.Active;
             if (_onlineBusy || connection == null) return;
@@ -258,7 +263,9 @@ namespace Modern8bitTanks
             finally { _onlineBusy = false; }
         }
 
-        private async void CloseOnlineRoom()
+        private void CloseOnlineRoom() => CloseOnlineRoomAsync().Forget();
+
+        private async UniTask CloseOnlineRoomAsync()
         {
             if (_onlineBusy) return;
             _waitingForVehicleSelection = false;
