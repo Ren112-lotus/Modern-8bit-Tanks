@@ -10,15 +10,9 @@ namespace Modern8bitTanks
         private const float DecisiveReplayDuration = 4.10f;
         private const int HitCamW = 138;
         private const int HitCamH = 94;
-        private const int StatusCardW = 68;
-        private const int StatusCardH = 58;
 
         // War Thunder Dark Obsidian-Glass X-Ray Palette
-        private static readonly Color WtBg = new Color32(12, 15, 18, 198);
-        private static readonly Color WtViewportBg = new Color32(9, 12, 15, 214);
-        private static readonly Color WtBorder = new Color32(72, 84, 92, 210);
         private static readonly Color WtAccent = new Color32(236, 188, 92, 255);
-        private static readonly Color WtInfo = new Color32(174, 194, 206, 255);
 
         private static readonly (TankModule Module, string Label)[] HitParts =
         {
@@ -30,21 +24,23 @@ namespace Modern8bitTanks
             (TankModule.Ammo, "AMMO")
         };
 
-        private RectTransform _vehicleStatusCard;
-        private CanvasGroup _vehicleStatusCg;
-        private TankCutawayGraphic _vehicleStatusGraphic;
-        private GameObject _fireIcon;
-        private GameObject _repairIcon;
-        private Text _serviceKeyText;
+        [SerializeField] private RectTransform _vehicleStatusCard;
+        [SerializeField] private CanvasGroup _vehicleStatusCg;
+        [SerializeField] private TankCutawayGraphic _vehicleStatusGraphic;
+        [SerializeField] private RawImage _vehicleStatusBackdrop;
+        [SerializeField] private GameObject _fireIcon;
+        [SerializeField] private GameObject _repairIcon;
+        [SerializeField] private Text _serviceKeyText;
 
-        private RectTransform _hitCameraCard;
-        private CanvasGroup _hitCameraCanvasGroup;
-        private TankCutawayGraphic _hitCameraGraphic;
-        private Text _hitCameraTarget;
-        private Text _hitCameraRound;
-        private Text _hitCameraResult;
-        private Text _hitCameraBallistics;
-        private Text _hitCameraParts;
+        [SerializeField] private RectTransform _hitCameraCard;
+        [SerializeField] private CanvasGroup _hitCameraCanvasGroup;
+        [SerializeField] private TankCutawayGraphic _hitCameraGraphic;
+        [SerializeField] private RawImage _hitCameraBackdrop;
+        [SerializeField] private Text _hitCameraTarget;
+        [SerializeField] private Text _hitCameraRound;
+        [SerializeField] private Text _hitCameraResult;
+        [SerializeField] private Text _hitCameraBallistics;
+        [SerializeField] private Text _hitCameraParts;
         private float _hitCameraAge;
         private float _hitCameraDuration = ReplayDuration;
         private int _hitCameraPriority;
@@ -54,107 +50,6 @@ namespace Modern8bitTanks
         private TankCrew _burstKnockedOut;
         private int _burstHitCount;
         private int _radarPanelHeight;
-
-        private void BuildDamageHud(Transform parent, int radarHeight)
-        {
-            _radarPanelHeight = radarHeight;
-
-            // Bottom-Left Riveted Armored Damage Doll Monitor (68 x 58 EVEN)
-            _vehicleStatusCard = MilitaryUiSprites.CreateSlicedSprite(parent, "VehicleStatus", MilitaryUiSprites.ArmorPanel, 4, 4, StatusCardW, StatusCardH, ArmorTint, out _);
-            _vehicleStatusCg = _vehicleStatusCard.gameObject.AddComponent<CanvasGroup>();
-            _vehicleStatusCg.blocksRaycasts = false;
-            _vehicleStatusCg.interactable = false;
-
-            CreatePixelSolid(_vehicleStatusCard, "StatusCrtBg", 3, 13, StatusCardW - 6, StatusCardH - 16, WtViewportBg);
-            _vehicleStatusGraphic = AddCutaway(_vehicleStatusCard, "VehicleDiagram", 3, 13, StatusCardW - 6, StatusCardH - 16, StatusCardW - 6, StatusCardH - 16);
-            MilitaryUiSprites.CreateTiledSprite(_vehicleStatusCard, "StatusScan", MilitaryUiSprites.Scanlines, 3, 13, StatusCardW - 6, StatusCardH - 16, Color.white);
-            CreatePixelSolid(_vehicleStatusCard, "ServiceDivider", 3, 12, StatusCardW - 6, 1, new Color32(18, 22, 16, 220));
-
-            _fireIcon = BuildServiceIcon(_vehicleStatusCard, "Fire", DangerRed, new[]
-            {
-                "...#....", "...##...", "..###.#.", ".######.", ".##.###.", ".#...##.", "..####..", "...##..."
-            });
-            _repairIcon = BuildServiceIcon(_vehicleStatusCard, "Repair", AbramsGold, new[]
-            {
-                ".....#.#", ".....###", "....###.", "...###..", "..##....", ".##.....", "##......", ".#......"
-            });
-            _serviceKeyText = CreatePixelText(_vehicleStatusCard, "", 8, AbramsGold, TextAnchor.MiddleLeft, 13, 1, StatusCardW - 15, 10);
-        }
-
-        /// <summary>
-        /// Dedicated top HUD layer built AFTER ResultOverlay (and before PauseMenu)
-        /// so the War Thunder X-Ray Hit Camera stays 100% crisp, bright, & animating even on Match End!
-        /// </summary>
-        private void BuildHitCameraLayer()
-        {
-            var layerGo = new GameObject("HitCameraLayer") { layer = 5 };
-            layerGo.transform.SetParent(_hudRoot, false);
-            _hitCamLayer = layerGo.AddComponent<RectTransform>();
-            Stretch(_hitCamLayer);
-
-            // Riveted Armored Live Hit Camera Monitor (138 x 94 EVEN, auto-docks opposite from hit enemy!)
-            _hitCameraCard = MilitaryUiSprites.CreateSlicedSprite(_hitCamLayer, "HitCamera", MilitaryUiSprites.ArmorPanel, 4, _H - 4 - HitCamH,
-                HitCamW, HitCamH, ArmorModalTint, out _);
-            _hitCameraCanvasGroup = _hitCameraCard.gameObject.AddComponent<CanvasGroup>();
-            _hitCameraCanvasGroup.blocksRaycasts = false;
-            _hitCameraCanvasGroup.interactable = false;
-
-            // Clean top telemetry header
-            CreatePixelSolid(_hitCameraCard, "LiveDot", 5, HitCamH - 9, 3, 3, DangerRed);
-            _hitCameraTarget = CreatePixelText(_hitCameraCard, "", 8, TextLight, TextAnchor.MiddleLeft, 11, HitCamH - 12, 84, 10);
-            _hitCameraRound = CreatePixelText(_hitCameraCard, "", 8, WtInfo, TextAnchor.MiddleRight, 94, HitCamH - 12, HitCamW - 99, 10);
-
-            int vpW = HitCamW - 8;
-            int vpH = 52;
-            var viewport = CreatePixelSolid(_hitCameraCard, "Viewport", 4, 28, vpW, vpH, WtViewportBg);
-            viewport.gameObject.AddComponent<RectMask2D>();
-            _hitCameraGraphic = AddCutaway(viewport, "ImpactDiagram", 0, 0, vpW, vpH, vpW, vpH);
-            MilitaryUiSprites.CreateTiledSprite(viewport, "HitCamScan", MilitaryUiSprites.Scanlines, 0, 0, vpW, vpH, Color.white);
-
-            // Clean bottom War Thunder result + ballistic + struck modules readout
-            CreatePixelSolid(_hitCameraCard, "ResultDivider", 4, 27, HitCamW - 8, 1, new Color32(18, 22, 16, 220));
-            _hitCameraResult = CreatePixelText(_hitCameraCard, "", 8, WtAccent, TextAnchor.MiddleLeft, 5, 16, 74, 10);
-            _hitCameraBallistics = CreatePixelText(_hitCameraCard, "", 8, WtInfo, TextAnchor.MiddleRight, 76, 16, HitCamW - 81, 10);
-            _hitCameraParts = CreatePixelText(_hitCameraCard, "", 8, TextLight, TextAnchor.MiddleLeft, 5, 4, HitCamW - 10, 10);
-            ClearHitCamera();
-        }
-
-        private static TankCutawayGraphic AddCutaway(Transform parent, string name, int x, int y, int width, int height, int texW, int texH)
-        {
-            var container = new GameObject(name + "_Wrap") { layer = 5 };
-            container.transform.SetParent(parent, false);
-            var cRt = container.AddComponent<RectTransform>();
-            SetPixelRect(cRt, x, y, width, height);
-
-            var bgGo = new GameObject(name + "_Hologram") { layer = 5 };
-            bgGo.transform.SetParent(cRt, false);
-            var bgImg = bgGo.AddComponent<RawImage>();
-            Stretch(bgImg.rectTransform);
-            bgImg.raycastTarget = false;
-
-            var fgGo = new GameObject(name) { layer = 5 };
-            fgGo.transform.SetParent(cRt, false);
-            var graphic = fgGo.AddComponent<TankCutawayGraphic>();
-            Stretch(graphic.rectTransform);
-            graphic.raycastTarget = false;
-            graphic.AttachBackdrop(bgImg, texW, texH);
-            return graphic;
-        }
-
-        private static GameObject BuildServiceIcon(Transform parent, string name, Color tint, string[] pixels)
-        {
-            var icon = new GameObject(name) { layer = 5 };
-            icon.transform.SetParent(parent, false);
-            var rect = icon.AddComponent<RectTransform>();
-            SetPixelRect(rect, 3, 2, 8, 8);
-            for (int row = 0; row < pixels.Length; row++)
-            {
-                for (int x = 0; x < pixels[row].Length; x++)
-                    if (pixels[row][x] == '#') CreatePixelSolid(rect, "Pixel", x, 7 - row, 1, 1, tint);
-            }
-            icon.SetActive(false);
-            return icon;
-        }
 
         private void UpdateVehicleStatus(TankEntity player)
         {

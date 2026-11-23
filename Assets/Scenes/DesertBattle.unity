@@ -2328,6 +2328,79 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7461143946387478104, guid: ec72e8bc73785eb418d63575a322af2d, type: 3}
   m_PrefabInstance: {fileID: 1366197695}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &1430315596
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1918088798}
+    m_Modifications:
+    - target: {fileID: 760265846184122405, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+      propertyPath: m_Name
+      value: CombatHud
+      objectReference: {fileID: 0}
+    - target: {fileID: 4512926847252664026, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4512926847252664026, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4512926847252664026, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4512926847252664026, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4512926847252664026, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4512926847252664026, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4512926847252664026, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4512926847252664026, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4512926847252664026, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4512926847252664026, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+--- !u!114 &1430315597 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8768525463197834192, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+  m_PrefabInstance: {fileID: 1430315596}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d774cd8cae602d4e9762f1b634d1730, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.BattleHUD
+--- !u!4 &1430315598 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4512926847252664026, guid: 9f5fcc217cf72974ea098b7fb310a06b, type: 3}
+  m_PrefabInstance: {fileID: 1430315596}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1435076439
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3635,7 +3708,6 @@ GameObject:
   - component: {fileID: 1918088798}
   - component: {fileID: 1918088797}
   - component: {fileID: 1918088799}
-  - component: {fileID: 1918088800}
   m_Layer: 0
   m_Name: DesertBattleManager
   m_TagString: Untagged
@@ -3677,7 +3749,7 @@ MonoBehaviour:
   renderHeight: 270
   integerWindowbox: 0
   postProcessEnabled: 1
-  _hud: {fileID: 1918088800}
+  _hud: {fileID: 1430315597}
   _audio: {fileID: 1837662239}
   _aimLine: {fileID: 888631233}
   _reticleSr: {fileID: 888631231}
@@ -3697,6 +3769,7 @@ Transform:
   - {fileID: 1228549189}
   - {fileID: 1837662240}
   - {fileID: 888631232}
+  - {fileID: 1430315598}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1918088799
@@ -3719,18 +3792,6 @@ MonoBehaviour:
   presentation: {fileID: 1228549188}
   hangar: {fileID: 0}
   battle: {fileID: 1918088797}
---- !u!114 &1918088800
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1918088796}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3d774cd8cae602d4e9762f1b634d1730, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.BattleHUD
 --- !u!1001 &1954468380
 PrefabInstance:
   m_ObjectHideFlags: 0

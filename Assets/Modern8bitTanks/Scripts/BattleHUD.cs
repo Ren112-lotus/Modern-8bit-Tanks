@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Modern8bitTanks
@@ -38,48 +37,46 @@ namespace Modern8bitTanks
         private int _W;
         private int _H;
 
-        private Canvas _pixelCanvas;
-        private RectTransform _hudRoot;
-        private GameObject _combatHudGroup;
-        private RectTransform _hitCamLayer;
+        [SerializeField] private Canvas _pixelCanvas;
+        [SerializeField] private RectTransform _menuHitRoot;
+        [SerializeField] private RawImage _radarImage;
 
-        private GameObject _hudHitsGroup;
         private GameObject _resultHitsGroup;
         private GameObject _menuHitsGroup;
-        private GameObject _settingsHitsGroup;
+        [SerializeField] private GameObject _settingsHitsGroup;
 
         // Top Scoreboard
-        private Text _allyNameText;
-        private Text _enemyNameText;
-        private Text _allyWinsText;
-        private Text _enemyWinsText;
-        private Text _allyActiveText;
-        private Text _enemyActiveText;
-        private Text _centerBadgeText;
+        [SerializeField] private Text _allyNameText;
+        [SerializeField] private Text _enemyNameText;
+        [SerializeField] private Text _allyWinsText;
+        [SerializeField] private Text _enemyWinsText;
+        [SerializeField] private Text _allyActiveText;
+        [SerializeField] private Text _enemyActiveText;
+        [SerializeField] private Text _centerBadgeText;
 
         // Bottom-Center Sleek War Thunder Action Bar + [1][2][3] Ammo Selector
-        private Image[] _ammoSlotBgs;
-        private Text[] _ammoSlotTexts;
-        private Image _reloadFill;
-        private Text _reloadStatusText;
-        private Image _smokeFill;
-        private Text _smokeStatusText;
+        [SerializeField] private Image[] _ammoSlotBgs;
+        [SerializeField] private Text[] _ammoSlotTexts;
+        [SerializeField] private Image _reloadFill;
+        [SerializeField] private Text _reloadStatusText;
+        [SerializeField] private Image _smokeFill;
+        [SerializeField] private Text _smokeStatusText;
         private const int ReloadTrackWidth = 54;
         private const int SmokeTrackWidth = 42;
 
         // Anti-Occlusion Panel Groups & HUD Density Cycle ([H] key)
-        private RectTransform _topScoreRect;
-        private CanvasGroup _topScoreCg;
-        private RectTransform _radarRect;
-        private CanvasGroup _radarCg;
-        private RectTransform _weaponRect;
-        private CanvasGroup _weaponCg;
+        [SerializeField] private RectTransform _topScoreRect;
+        [SerializeField] private CanvasGroup _topScoreCg;
+        [SerializeField] private RectTransform _radarRect;
+        [SerializeField] private CanvasGroup _radarCg;
+        [SerializeField] private RectTransform _weaponRect;
+        [SerializeField] private CanvasGroup _weaponCg;
         private int _hudDensityMode; // 0 = FULL, 1 = SLIM, 2 = MINIMAL
         private readonly List<Vector2> _occluderPointsPx = new(16);
 
         // Wave / Matchup announcement toast
-        private GameObject _waveToastGo;
-        private Text _waveToastText;
+        [SerializeField] private GameObject _waveToastGo;
+        [SerializeField] private Text _waveToastText;
         private float _waveToastTimer;
 
         // Top-Right Minimalist Tactical Minimap (68x44, no header bar!)
@@ -100,19 +97,19 @@ namespace Modern8bitTanks
         // Pause Menu & Dedicated Settings Screen
         private GameObject _menuOverlay;
         private Text _btnNextRivalLabel;
-        private GameObject _settingsOverlay;
-        private Text _btnSfxLabel;
-        private Text _btnBgmLabel;
-        private Text _btnControlModeLabel;
-        private Text _btnAiLabel;
-        private Text _btnPostProcessLabel;
-        private Text _btnDisplayModeLabel;
+        [SerializeField] private GameObject _settingsOverlay;
+        [SerializeField] private Text _btnSfxLabel;
+        [SerializeField] private Text _btnBgmLabel;
+        [SerializeField] private Text _btnControlModeLabel;
+        [SerializeField] private Text _btnAiLabel;
+        [SerializeField] private Text _btnPostProcessLabel;
+        [SerializeField] private Text _btnDisplayModeLabel;
 
         public bool IsSettingsOpen => _settingsOverlay != null && _settingsOverlay.activeSelf;
         public bool IsMenuOpen => (_menuOverlay != null && _menuOverlay.activeSelf) || IsSettingsOpen;
 
         // Floating popups
-        private RectTransform _popupLayer;
+        [SerializeField] private RectTransform _popupLayer;
         private readonly List<HudPopup> _popups = new();
 
         private class HudPopup
@@ -128,19 +125,11 @@ namespace Modern8bitTanks
         // Gritty Military Armored Warfare FCS Palette
         private static readonly Color PanelBg = new Color(0.06f, 0.08f, 0.06f, 0.80f);
         private static readonly Color PanelBgActive = new Color(0.18f, 0.20f, 0.14f, 0.90f);
-        private static readonly Color ArmorTint = new Color(0.88f, 0.92f, 0.84f, 0.88f);
-        private static readonly Color ArmorModalTint = new Color(0.95f, 0.97f, 0.92f, 0.98f);
-        private static readonly Color PanelBorder = new Color(0.42f, 0.39f, 0.28f, 0.92f);
-        private static readonly Color BtnBg = new Color(0.26f, 0.29f, 0.23f, 0.98f);
-        private static readonly Color BtnHover = new Color(0.42f, 0.43f, 0.32f, 1f);
         private static readonly Color AbramsGold = new Color(0.96f, 0.78f, 0.38f, 1f);
-        private static readonly Color T90Green = new Color(0.54f, 0.86f, 0.38f, 1f);
         private static readonly Color SmokeCyan = new Color(0.56f, 0.86f, 0.96f, 1f);
         private static readonly Color DangerRed = new Color(0.96f, 0.30f, 0.22f, 1f);
         private static readonly Color ReadyGreen = new Color(0.56f, 0.94f, 0.42f, 1f);
-        private static readonly Color TextLight = new Color(0.96f, 0.95f, 0.89f, 1f);
         private static readonly Color TextMuted = new Color(0.70f, 0.70f, 0.60f, 1f);
-        private static readonly Color DarkInk = new Color(0.08f, 0.07f, 0.04f, 1f);
 
         public void Initialize(DesertBattleManager manager, PixelWindowbox windowbox)
         {
@@ -157,13 +146,7 @@ namespace Modern8bitTanks
             ForceFontPointFilter(_titleFont);
             Font.textureRebuilt += OnFontTextureRebuilt;
 
-            BuildPixelHudCanvas();
-            BuildHitGroups();
-            BuildCombatHud();
-            BuildResultOverlay();
-            BuildHitCameraLayer();
-            BuildPauseMenuOverlay();
-            BuildSettingsOverlay();
+            InitializeLayout();
         }
 
         private void OnFontTextureRebuilt(Font f)
@@ -175,145 +158,6 @@ namespace Modern8bitTanks
         {
             if (f != null && f.material != null && f.material.mainTexture != null)
                 f.material.mainTexture.filterMode = FilterMode.Point;
-        }
-
-        private void BuildPixelHudCanvas()
-        {
-            var canvasGo = new GameObject("PixelPerfectHudCanvas") { layer = 5 };
-            canvasGo.transform.SetParent(transform, false);
-
-            _pixelCanvas = canvasGo.AddComponent<Canvas>();
-            _pixelCanvas.renderMode = RenderMode.ScreenSpaceCamera;
-            _pixelCanvas.worldCamera = _windowbox.HudCamera;
-            _pixelCanvas.planeDistance = 10f;
-            _pixelCanvas.pixelPerfect = true;
-
-            var scaler = canvasGo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
-            scaler.scaleFactor = 1f;
-
-            _hudRoot = canvasGo.GetComponent<RectTransform>();
-
-            var popGo = new GameObject("PopupLayer") { layer = 5 };
-            popGo.transform.SetParent(_hudRoot, false);
-            _popupLayer = popGo.AddComponent<RectTransform>();
-            Stretch(_popupLayer);
-
-            _combatHudGroup = new GameObject("CombatHudGroup") { layer = 5 };
-            _combatHudGroup.transform.SetParent(_hudRoot, false);
-            Stretch(_combatHudGroup.AddComponent<RectTransform>());
-        }
-
-        private void BuildHitGroups()
-        {
-            _hudHitsGroup = CreateHitGroup("HudHits");
-            _resultHitsGroup = CreateHitGroup("ResultHits");
-            _menuHitsGroup = CreateHitGroup("MenuHits");
-            _settingsHitsGroup = CreateHitGroup("SettingsHits");
-            _resultHitsGroup.SetActive(false);
-            _menuHitsGroup.SetActive(false);
-            _settingsHitsGroup.SetActive(false);
-        }
-
-        private GameObject CreateHitGroup(string name)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(_windowbox.HitOverlayRect, false);
-            Stretch(go.AddComponent<RectTransform>());
-            return go;
-        }
-
-        private void BuildCombatHud()
-        {
-            Transform parent = _combatHudGroup.transform;
-
-            // 1. Riveted Armored Top-Center Battle Scoreboard (184 x 18 px EVEN!)
-            int bx = (_W - 184) / 2;
-            int by = _H - 20;
-            _topScoreRect = MilitaryUiSprites.CreateSlicedSprite(parent, "TopScoreboard", MilitaryUiSprites.ArmorPanel, bx, by, 184, 18, ArmorTint, out _);
-            _topScoreCg = _topScoreRect.gameObject.AddComponent<CanvasGroup>();
-            _topScoreCg.blocksRaycasts = false;
-
-            // Bold faction war stripes on left (Ally Gold) & right (Hostile Red)
-            CreatePixelSolid(_topScoreRect, "AllyAccent", 3, 3, 3, 12, AbramsGold);
-            CreatePixelSolid(_topScoreRect, "EnemyAccent", 178, 3, 3, 12, DangerRed);
-
-            _allyNameText = CreatePixelText(_topScoreRect, "ALLY", 8, AbramsGold, TextAnchor.MiddleLeft, 8, 4, 56, 10);
-            _allyActiveText = CreatePixelText(_topScoreRect, "", 8, TextMuted, TextAnchor.MiddleRight, 49, 4, 22, 10);
-            _allyWinsText = CreatePixelText(_topScoreRect, "0", 8, AbramsGold, TextAnchor.MiddleRight, 70, 4, 12, 10, useTitleFont: true);
-
-            _centerBadgeText = CreatePixelText(_topScoreRect, "VS", 8, TextMuted, TextAnchor.MiddleCenter, 82, 4, 20, 10);
-
-            _enemyWinsText = CreatePixelText(_topScoreRect, "0", 8, DangerRed, TextAnchor.MiddleLeft, 102, 4, 12, 10, useTitleFont: true);
-            _enemyActiveText = CreatePixelText(_topScoreRect, "", 8, TextMuted, TextAnchor.MiddleLeft, 112, 4, 22, 10);
-            _enemyNameText = CreatePixelText(_topScoreRect, "FOE", 8, DangerRed, TextAnchor.MiddleRight, 119, 4, 56, 10);
-
-            // 2. Riveted Armored Tactical Minimap Housing (76 x 52 EVEN with CRT scanlines!)
-            int rw = RadarW + 8;
-            int rh = RadarH + 8;
-            _radarRect = MilitaryUiSprites.CreateSlicedSprite(parent, "RadarPanel", MilitaryUiSprites.ArmorPanel, _W - rw - 4, _H - rh - 4, rw, rh, ArmorTint, out _);
-            _radarCg = _radarRect.gameObject.AddComponent<CanvasGroup>();
-            _radarCg.blocksRaycasts = false;
-
-            _radarTex = new Texture2D(RadarW, RadarH, TextureFormat.RGBA32, false)
-            {
-                filterMode = FilterMode.Point,
-                wrapMode = TextureWrapMode.Clamp
-            };
-            _radarPixels = new Color32[RadarW * RadarH];
-
-            var mapGo = new GameObject("RadarImg") { layer = 5 };
-            mapGo.transform.SetParent(_radarRect, false);
-            var raw = mapGo.AddComponent<RawImage>();
-            raw.texture = _radarTex;
-            raw.raycastTarget = false;
-            SetPixelRect(mapGo.GetComponent<RectTransform>(), 4, 4, RadarW, RadarH);
-            MilitaryUiSprites.CreateTiledSprite(_radarRect, "RadarScanlines", MilitaryUiSprites.Scanlines, 4, 4, RadarW, RadarH, Color.white);
-
-            // 3. Bottom-Left War Thunder X-Ray Damage Doll & Auto-Docking Live Hit Camera
-            BuildDamageHud(parent, rh);
-
-            // 4. Riveted Armored FCS Bottom-Center Weapon & Ammo Console (252 x 22 EVEN!)
-            const int pw = 252;
-            _weaponRect = MilitaryUiSprites.CreateSlicedSprite(parent, "WeaponPanel", MilitaryUiSprites.ArmorPanel, (_W - pw) / 2, 4, pw, 22, ArmorTint, out _);
-            _weaponCg = _weaponRect.gameObject.AddComponent<CanvasGroup>();
-            _weaponCg.blocksRaycasts = false;
-
-            // Left: Primary Reload Bar + Status
-            _reloadStatusText = CreatePixelText(_weaponRect, "READY", 8, ReadyGreen, TextAnchor.MiddleCenter, 6, 9, ReloadTrackWidth, 9);
-            var reloadTrack = CreatePixelSolid(_weaponRect, "ReloadTrack", 6, 4, ReloadTrackWidth, 4, new Color(0.04f, 0.05f, 0.04f, 0.96f));
-            _reloadFill = CreateFillBar(reloadTrack, ReadyGreen);
-
-            CreatePixelSolid(_weaponRect, "Sep1", 63, 4, 1, 14, new Color(0.08f, 0.09f, 0.07f, 0.95f));
-
-            // Middle: 3 Armored Ammo Rack Bays ([1] [2] [3] or [1] [2] + R:TOW!)
-            _ammoSlotBgs = new Image[3];
-            _ammoSlotTexts = new Text[3];
-            for (int i = 0; i < 3; i++)
-            {
-                int sx = 67 + i * 44;
-                var slotBox = CreatePixelBox(_weaponRect, $"AmmoSlot_{i + 1}", sx, 4, 42, 14, PanelBg, PanelBorder, out Image bgImg);
-                _ammoSlotBgs[i] = bgImg;
-                _ammoSlotTexts[i] = CreatePixelText(slotBox, $"{i + 1}---", 8, TextLight, TextAnchor.MiddleCenter, 0, 1, 42, 12);
-            }
-
-            CreatePixelSolid(_weaponRect, "Sep2", 200, 4, 1, 14, new Color(0.08f, 0.09f, 0.07f, 0.95f));
-
-            // Right: Smoke [Q] Bar
-            _smokeStatusText = CreatePixelText(_weaponRect, "SMK[Q]", 8, SmokeCyan, TextAnchor.MiddleCenter, 204, 9, SmokeTrackWidth, 9);
-            var smokeTrack = CreatePixelSolid(_weaponRect, "SmokeTrack", 204, 4, SmokeTrackWidth, 4, new Color(0.04f, 0.05f, 0.04f, 0.96f));
-            _smokeFill = CreateFillBar(smokeTrack, SmokeCyan);
-
-            // Wave / Matchup Alert Banner (riveted steel plate with hazard caution border!)
-            var toast = MilitaryUiSprites.CreateSlicedSprite(parent, "WaveToast", MilitaryUiSprites.ArmorPanel, (_W - 220) / 2, _H - 42, 220, 20, ArmorModalTint, out _);
-            MilitaryUiSprites.CreateTiledSprite(toast, "ToastHazL", MilitaryUiSprites.HazardTape, 4, 4, 12, 12, new Color(1f, 1f, 1f, 0.90f));
-            MilitaryUiSprites.CreateTiledSprite(toast, "ToastHazR", MilitaryUiSprites.HazardTape, 204, 4, 12, 12, new Color(1f, 1f, 1f, 0.90f));
-            _waveToastGo = toast.gameObject;
-            _waveToastText = CreatePixelText(toast, "ENGAGE!", 8, AbramsGold, TextAnchor.MiddleCenter, 18, 2, 184, 16, useTitleFont: true);
-            _waveToastGo.SetActive(false);
-
-            // No direct play-screen buttons (ESC opens Pause/Hangar Menu!)
-            if (_hudHitsGroup != null) _hudHitsGroup.SetActive(false);
         }
 
         public void CycleHudDensity()
@@ -334,190 +178,6 @@ namespace Modern8bitTanks
             _waveToastText.text = message;
             _waveToastTimer = duration;
             _waveToastGo.SetActive(true);
-        }
-
-        private void BuildResultOverlay()
-        {
-            var dim = CreatePixelSolid(_hudRoot, "ResultOverlay", 0, 0, _W, _H, new Color(0.03f, 0.03f, 0.03f, 0.56f));
-            _resultOverlay = dim.gameObject;
-            _resultCanvasGroup = _resultOverlay.AddComponent<CanvasGroup>();
-            _resultCanvasGroup.alpha = 0f;
-
-            int cw = 244;
-            int ch = 92;
-            int cx = (_W - cw) / 2;
-            int cy = 60; // Lowered slightly so Match-End X-Ray Hit Camera (top-left Y:172..266) NEVER overlaps!
-            var card = MilitaryUiSprites.CreateSlicedSprite(dim, "ResultCard", MilitaryUiSprites.ArmorPanel, cx, cy, cw, ch, ArmorModalTint, out _);
-            MilitaryUiSprites.CreateTiledSprite(card, "ResultHazard", MilitaryUiSprites.HazardTape, 6, ch - 8, cw - 12, 3, new Color(1f, 1f, 1f, 0.92f));
-
-            _resultTitle = CreatePixelText(card, "VICTORY", 16, AbramsGold, TextAnchor.MiddleCenter, 0, 54, cw, 24, useTitleFont: true);
-            _resultSubtitle = CreatePixelText(card, "VICTORY", 8, TextMuted, TextAnchor.MiddleCenter, 0, 36, cw, 14);
-
-            if (MultiplayerSessionConnection.Online)
-            {
-                if (MultiplayerSessionConnection.Active.IsHost)
-                    CreatePixelButton(card, _resultHitsGroup.transform, "RETURN TO ROOM", cx + 10, cy + 9, cw - 20, 22,
-                        AbramsGold, AbramsGold, DarkInk, 8, _mgr.ReturnToOnlineRoom, isParentOffset: true, parentX: cx, parentY: cy, useTitleFont: true);
-                else
-                {
-                    CreatePixelText(card, "WAITING FOR HOST", 8, SmokeCyan, TextAnchor.MiddleLeft, 12, 9, cw - 120, 22);
-                    CreatePixelButton(card, _resultHitsGroup.transform, "LEAVE ROOM", cx + cw - 100, cy + 9, 90, 22,
-                        BtnBg, PanelBorder, TextLight, 8, _mgr.ReturnToHangar, isParentOffset: true, parentX: cx, parentY: cy);
-                }
-            }
-            else
-            {
-                CreatePixelButton(card, _resultHitsGroup.transform, "NEXT BATTLE (R)", cx + 10, cy + 9, 132, 22,
-                    AbramsGold, AbramsGold, DarkInk, 8, _mgr.ResetRound, isParentOffset: true, parentX: cx, parentY: cy, useTitleFont: true);
-                CreatePixelButton(card, _resultHitsGroup.transform, "HANGAR", cx + 148, cy + 9, 86, 22,
-                    BtnBg, PanelBorder, TextLight, 8, _mgr.ReturnToHangar, isParentOffset: true, parentX: cx, parentY: cy);
-            }
-
-            _resultOverlay.SetActive(false);
-        }
-
-        private void BuildPauseMenuOverlay()
-        {
-            var dim = CreatePixelSolid(_hudRoot, "PauseMenuOverlay", 0, 0, _W, _H, new Color(0.02f, 0.03f, 0.02f, 0.68f));
-            _menuOverlay = dim.gameObject;
-
-            int cw = 204;
-            int ch = 134;
-            int cx = (_W - cw) / 2;
-            int cy = (_H - ch) / 2;
-            var card = MilitaryUiSprites.CreateSlicedSprite(dim, "MenuCard", MilitaryUiSprites.ArmorPanel, cx, cy, cw, ch, ArmorModalTint, out _);
-            MilitaryUiSprites.CreateTiledSprite(card, "MenuHazard", MilitaryUiSprites.HazardTape, 6, ch - 8, cw - 12, 3, new Color(1f, 1f, 1f, 0.90f));
-            CreatePixelText(card, "COMMAND MENU", 8, AbramsGold, TextAnchor.MiddleCenter, 0, ch - 25, cw, 16, useTitleFont: true);
-
-            bool online = MultiplayerSessionConnection.Online;
-            bool onlineHost = online && MultiplayerSessionConnection.Active.IsHost;
-            CreatePixelButton(card, _menuHitsGroup.transform, "RESUME", cx + 12, cy + (online ? 78 : 84), cw - 24, 20, AbramsGold, AbramsGold, DarkInk, 8, () =>
-            {
-                CloseAllMenus();
-            }, isParentOffset: true, parentX: cx, parentY: cy, useTitleFont: true);
-
-            CreatePixelButton(card, _menuHitsGroup.transform, "SETTINGS", cx + 12, cy + (online ? 50 : 60), cw - 24, 20, BtnBg, SmokeCyan, SmokeCyan, 8, () =>
-            {
-                SetSettingsOpen(true);
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            if (!online)
-            {
-                _btnNextRivalLabel = CreatePixelButton(card, _menuHitsGroup.transform, "NEXT RIVAL", cx + 12, cy + 36, cw - 24, 20, BtnBg, PanelBorder, TextLight, 8, () =>
-                {
-                    CloseAllMenus();
-                    _mgr.ResetRound();
-                }, isParentOffset: true, parentX: cx, parentY: cy);
-            }
-            else if (onlineHost)
-            {
-                CreatePixelButton(card, _menuHitsGroup.transform, "RETURN TO ROOM", cx + 12, cy + 29, cw - 24, 18,
-                    BtnBg, SmokeCyan, SmokeCyan, 8, _mgr.ReturnToOnlineRoom, isParentOffset: true, parentX: cx, parentY: cy);
-            }
-
-            string exitLabel = onlineHost ? "CLOSE ROOM" : online ? "LEAVE ROOM" : "BACK TO HANGAR";
-            CreatePixelButton(card, _menuHitsGroup.transform, exitLabel, cx + 12, cy + (onlineHost ? 7 : online ? 22 : 12), cw - 24, 20, BtnBg, AbramsGold, AbramsGold, 8, () =>
-            {
-                CloseAllMenus();
-                _mgr.ReturnToHangar();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            _menuOverlay.SetActive(false);
-        }
-
-        private void BuildSettingsOverlay()
-        {
-            var dim = CreatePixelSolid(_hudRoot, "SettingsOverlay", 0, 0, _W, _H, new Color(0.02f, 0.03f, 0.02f, 0.76f));
-            _settingsOverlay = dim.gameObject;
-
-            int cw = 246;
-            int ch = 198;
-            int cx = (_W - cw) / 2;
-            int cy = (_H - ch) / 2;
-            var card = MilitaryUiSprites.CreateSlicedSprite(dim, "SettingsCard", MilitaryUiSprites.ArmorPanel, cx, cy, cw, ch, ArmorModalTint, out _);
-            MilitaryUiSprites.CreateTiledSprite(card, "SetHazard", MilitaryUiSprites.HazardTape, 6, ch - 8, cw - 12, 3, new Color(1f, 1f, 1f, 0.88f));
-            CreatePixelText(card, "SYSTEM SETTINGS", 8, AbramsGold, TextAnchor.MiddleCenter, 0, ch - 25, cw, 16, useTitleFont: true);
-
-            Transform hits = _settingsHitsGroup.transform;
-
-            // Row 1: SE (SFX) Volume [-] [SE: 100%] [+]
-            CreatePixelButton(card, hits, "-", cx + 12, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _mgr.StepSfxVolume(-0.1f);
-                RefreshMenuLabels();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            _btnSfxLabel = CreatePixelButton(card, hits, "SE: 100%", cx + 40, cy + 148, cw - 80, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _mgr.ToggleSfxEnabled();
-                RefreshMenuLabels();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            CreatePixelButton(card, hits, "+", cx + cw - 36, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _mgr.StepSfxVolume(+0.1f);
-                RefreshMenuLabels();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            // Row 2: BGM Volume [-] [BGM: 60%] [+]
-            CreatePixelButton(card, hits, "-", cx + 12, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _mgr.StepBgmVolume(-0.1f);
-                RefreshMenuLabels();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            _btnBgmLabel = CreatePixelButton(card, hits, "BGM: 60%", cx + 40, cy + 126, cw - 80, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _mgr.ToggleBgmEnabled();
-                RefreshMenuLabels();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            CreatePixelButton(card, hits, "+", cx + cw - 36, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _mgr.StepBgmVolume(+0.1f);
-                RefreshMenuLabels();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            // Row 3: Drive Controls
-            _btnControlModeLabel = CreatePixelButton(card, hits, "", cx + 12, cy + 104, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _mgr.arcadeWASD = !_mgr.arcadeWASD;
-                _mgr.SyncSettingsToSession();
-                RefreshMenuLabels();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            // Row 4: Enemy AI
-            _btnAiLabel = CreatePixelButton(card, hits, "", cx + 12, cy + 82, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _mgr.aiEnabled = !_mgr.aiEnabled;
-                _mgr.SyncSettingsToSession();
-                RefreshMenuLabels();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            // Row 5: Graphics Mode
-            _btnPostProcessLabel = CreatePixelButton(card, hits, "", cx + 12, cy + 60, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _mgr.TogglePostProcess();
-                _mgr.SyncSettingsToSession();
-                RefreshMenuLabels();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            // Row 6: Display Scaling
-            _btnDisplayModeLabel = CreatePixelButton(card, hits, "", cx + 12, cy + 38, cw - 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _mgr.integerWindowbox = !_mgr.integerWindowbox;
-                _mgr.SyncSettingsToSession();
-                RefreshMenuLabels();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            // Bottom: Back to Pause Menu
-            CreatePixelButton(card, hits, "BACK [ESC]", cx + 12, cy + 10, cw - 24, 20, AbramsGold, AbramsGold, DarkInk, 8, () =>
-            {
-                SetSettingsOpen(false, reopenPauseMenu: true);
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            RefreshMenuLabels();
-            _settingsOverlay.SetActive(false);
         }
 
         public void HandleEscapeKey()
@@ -598,26 +258,10 @@ namespace Modern8bitTanks
         public void SpawnPopup(Vector2 worldPos, string label, Color color)
         {
             if (_popupLayer == null) return;
-            var go = new GameObject("Popup") { layer = 5 };
-            go.transform.SetParent(_popupLayer, false);
-            var rt = go.AddComponent<RectTransform>();
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.zero;
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(128f, 16f); // EVEN size!
-
-            var txt = go.AddComponent<Text>();
-            txt.font = _titleFont != null ? _titleFont : _font;
-            txt.fontSize = 8; // Native 8px crisp — NEVER 7!
-            txt.fontStyle = FontStyle.Normal;
-            txt.alignment = TextAnchor.MiddleCenter;
+            var txt = Instantiate(popupPrefab, _popupLayer, false);
             txt.text = label;
             txt.color = color;
-            txt.raycastTarget = false;
-
-            var shadow = go.AddComponent<Shadow>();
-            shadow.effectColor = new Color(0f, 0f, 0f, 0.95f);
-            shadow.effectDistance = new Vector2(1f, -1f);
+            var rt = txt.rectTransform;
 
             _popups.Add(new HudPopup
             {
@@ -1012,14 +656,6 @@ namespace Modern8bitTanks
         // ============================================================
         // Exact Integer-Pixel uGUI Helpers (Strictly 8px / 16px!)
         // ============================================================
-        private static void Stretch(RectTransform rt)
-        {
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.one;
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-        }
-
         private static void SetPixelRect(RectTransform rt, int x, int y, int w, int h)
         {
             rt.anchorMin = Vector2.zero;
@@ -1027,128 +663,6 @@ namespace Modern8bitTanks
             rt.pivot = Vector2.zero;
             rt.anchoredPosition = new Vector2(x, y);
             rt.sizeDelta = new Vector2(w, h);
-        }
-
-        private static RectTransform CreatePixelSolid(Transform parent, string name, int x, int y, int w, int h, Color col)
-        {
-            var go = new GameObject(name) { layer = 5 };
-            go.transform.SetParent(parent, false);
-            var rt = go.AddComponent<RectTransform>();
-            SetPixelRect(rt, x, y, w, h);
-            var img = go.AddComponent<Image>();
-            img.color = col;
-            img.raycastTarget = false;
-            return rt;
-        }
-
-        private static RectTransform CreatePixelBox(Transform parent, string name, int x, int y, int w, int h, Color bg, Color border)
-        {
-            return CreatePixelBox(parent, name, x, y, w, h, bg, border, out _);
-        }
-
-        private static RectTransform CreatePixelBox(Transform parent, string name, int x, int y, int w, int h, Color bg, Color border, out Image fillImg)
-        {
-            var outer = CreatePixelSolid(parent, name, x, y, w, h, border);
-            var inner = CreatePixelSolid(outer, "Inner", 1, 1, Mathf.Max(1, w - 2), Mathf.Max(1, h - 2), bg);
-            fillImg = inner.GetComponent<Image>();
-            return outer;
-        }
-
-        private static Image CreateFillBar(RectTransform track, Color color)
-        {
-            var go = new GameObject("Fill") { layer = 5 };
-            go.transform.SetParent(track, false);
-            Stretch(go.AddComponent<RectTransform>());
-            var img = go.AddComponent<Image>();
-            img.color = color;
-            img.raycastTarget = false;
-            return img;
-        }
-
-        private Text CreatePixelText(Transform parent, string content, int fontSize, Color col, TextAnchor align, int x, int y, int w, int h, bool useTitleFont = false)
-        {
-            // Enforce strict native multiple of 8px so pixel glyphs NEVER blur!
-            int crispSize = fontSize >= 16 ? 16 : 8;
-            var go = new GameObject("Txt_" + content) { layer = 5 };
-            go.transform.SetParent(parent, false);
-            var rt = go.AddComponent<RectTransform>();
-            SetPixelRect(rt, x, y, w, h);
-
-            var t = go.AddComponent<Text>();
-            t.font = (useTitleFont && _titleFont != null) ? _titleFont : _font;
-            t.fontSize = crispSize;
-            t.fontStyle = FontStyle.Normal;
-            t.color = col;
-            t.alignment = align;
-            t.text = content;
-            t.horizontalOverflow = HorizontalWrapMode.Overflow;
-            t.verticalOverflow = VerticalWrapMode.Overflow;
-            t.raycastTarget = false;
-
-            var sh = go.AddComponent<Shadow>();
-            sh.effectColor = new Color(0f, 0f, 0f, 0.88f);
-            sh.effectDistance = new Vector2(1f, -1f);
-            return t;
-        }
-
-        private Text CreatePixelButton(
-            Transform visualParent, Transform hitParent, string label,
-            int screenX, int screenY, int w, int h,
-            Color bg, Color border, Color textColor, int fontSize, Action onClick,
-            bool isParentOffset = false, int parentX = 0, int parentY = 0, bool useTitleFont = false)
-        {
-            int localX = isParentOffset ? screenX - parentX : screenX;
-            int localY = isParentOffset ? screenY - parentY : screenY;
-
-            bool isOrdnanceCta = bg == AbramsGold;
-            Color idleTint = isOrdnanceCta ? new Color(0.92f, 0.90f, 0.85f, 1f) : bg;
-            Sprite btnSprite = isOrdnanceCta ? MilitaryUiSprites.OrdnanceButton : MilitaryUiSprites.SteelButton;
-            var visualBox = MilitaryUiSprites.CreateSlicedSprite(visualParent, "Btn_" + label, btnSprite, localX, localY, w, h, idleTint, out Image fillImg);
-            bool hasAccent = !isOrdnanceCta && border.a > 0.5f && border != PanelBorder && w >= 40;
-            if (hasAccent)
-                CreatePixelSolid(visualBox, "StatusBar", 2, 3, 2, Mathf.Max(2, h - 6), border);
-
-            var txt = CreatePixelText(visualBox, label, fontSize, textColor, TextAnchor.MiddleCenter, hasAccent ? 2 : 0, 0, hasAccent ? w - 2 : w, h, useTitleFont);
-            if (isOrdnanceCta)
-            {
-                var sh = txt.GetComponent<Shadow>();
-                if (sh != null) sh.effectColor = new Color(1.0f, 0.94f, 0.68f, 0.55f);
-            }
-
-            var hitGo = new GameObject("Hit_" + label);
-            hitGo.transform.SetParent(hitParent, false);
-            var hitRt = hitGo.AddComponent<RectTransform>();
-            hitRt.anchorMin = new Vector2((float)screenX / _W, (float)screenY / _H);
-            hitRt.anchorMax = new Vector2((float)(screenX + w) / _W, (float)(screenY + h) / _H);
-            hitRt.offsetMin = Vector2.zero;
-            hitRt.offsetMax = Vector2.zero;
-
-            var hitImg = hitGo.AddComponent<Image>();
-            hitImg.color = new Color(0f, 0f, 0f, 0f);
-            hitImg.raycastTarget = true;
-
-            var btn = hitGo.AddComponent<Button>();
-            btn.transition = Selectable.Transition.None;
-            btn.onClick.AddListener(() => onClick?.Invoke());
-
-            var trigger = hitGo.AddComponent<EventTrigger>();
-            var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-            enter.callback.AddListener(_ =>
-            {
-                if (fillImg != null)
-                    fillImg.color = isOrdnanceCta ? Color.white : BtnHover;
-            });
-            trigger.triggers.Add(enter);
-
-            var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
-            exit.callback.AddListener(_ =>
-            {
-                if (fillImg != null)
-                    fillImg.color = idleTint;
-            });
-            trigger.triggers.Add(exit);
-
-            return txt;
         }
 
         private void OnDestroy()
