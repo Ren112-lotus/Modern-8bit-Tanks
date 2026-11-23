@@ -364,7 +364,7 @@ namespace Modern8bitTanks
             {
                 foreach (var t in tanks)
                 {
-                    if (t == null || !t.alive) continue;
+                    if (t == null || !t.alive || !_mgr.IsTankVisible(t)) continue;
                     Vector3 vp = cam.WorldToViewportPoint(new Vector3(t.Position2D.x, t.Position2D.y, 0f));
                     if (vp.z > 0f && vp.x >= -0.05f && vp.x <= 1.05f && vp.y >= -0.05f && vp.y <= 1.05f)
                         _occluderPointsPx.Add(new Vector2(vp.x * _W, vp.y * _H));
@@ -591,7 +591,7 @@ namespace Modern8bitTanks
 
             foreach (var t in tanks)
             {
-                if (t == null || !t.alive || !_mgr.IsRadarContactVisible(t, player)) continue;
+                if (t == null || !t.alive || !_mgr.IsTankVisible(t)) continue;
                 int tx = Mathf.Clamp(Mathf.RoundToInt((t.Position2D.x / worldW) * (RadarW - 1)), 1, RadarW - 2);
                 int ty = Mathf.Clamp(Mathf.RoundToInt((t.Position2D.y / worldH) * (RadarH - 1)), 1, RadarH - 2);
                 Color32 tc = t.isPlayer

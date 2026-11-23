@@ -1066,11 +1066,28 @@ namespace Modern8bitTanks
         {
             _shake = Mathf.Max(0f, _shake - Time.unscaledDeltaTime * 15f);
             UpdateCameraRoll(player, dt);
+            _visibleTanks.Clear();
+            TankEntity observer = FindLocalObserver(player);
             foreach (var tank in _tanks)
             {
-                if (tank == null || !tank.gameObject.activeSelf) continue;
-                tank.SyncVisuals(squash, spacingPx, onTurretBounce: OnTurretGroundBounce, onTurretTrail: OnTurretAirTrail);
-                UpdateTankMovementEffects(tank, dt);
+                if (tank == null || !tank.gameObject.activeInHierarchy) continue;
+
+                bool visible = IsVisibleToLocalTeam(tank, player, observer);
+                tank.hullStack.SetBattleVisibility(visible);
+                tank.turretStack.SetBattleVisibility(visible);
+                tank.SyncVisuals(squash, spacingPx,
+                    onTurretBounce: visible ? OnTurretGroundBounce : null,
+                    onTurretTrail: visible ? OnTurretAirTrail : null);
+
+                if (visible)
+                {
+                    _visibleTanks.Add(tank);
+                    UpdateTankMovementEffects(tank, dt);
+                }
+                else
+                {
+                    tank.treadAccum = 0f;
+                }
             }
             foreach (var prop in _props)
                 if (prop != null) prop.Tick(dt, squash, spacingPx);
@@ -2820,10 +2837,7 @@ namespace Modern8bitTanks
             }
             else
             {
-                // Spectate a surviving allied tank in 5v5 / 2v2 if player was knocked out!
-                TankEntity spec = null;
-                foreach (var t in _tanks)
-                    if (t != null && t.alive && t.factionTeam == "ally") { spec = t; break; }
+                TankEntity spec = FindLocalObserver(player);
                 if (spec != null) targetCam = spec.Position2D;
                 camSmooth = dt * 3.8f;
             }

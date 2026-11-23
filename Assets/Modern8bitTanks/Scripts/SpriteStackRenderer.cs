@@ -40,6 +40,7 @@ namespace Modern8bitTanks
         private const string VisualContainerName = "__StackVisuals";
         private static SpriteStackVisuals visualPrefab;
         private Transform _visualRoot;
+        private bool _visibleInBattle = true;
         private readonly List<Texture2D> _sliceTextures = new();
         private readonly List<Sprite> _sliceSprites = new();
         private readonly List<SpriteRenderer> _renderers = new();
@@ -65,6 +66,13 @@ namespace Modern8bitTanks
         public int SliceWidth => _sliceW;
         public int SliceHeight => _sliceH;
         public int SliceCount => _sliceTextures.Count;
+
+        internal void SetBattleVisibility(bool visible)
+        {
+            _visibleInBattle = visible;
+            if (_visualRoot != null && _visualRoot.gameObject.activeSelf != visible)
+                _visualRoot.gameObject.SetActive(visible);
+        }
 
         private bool BuildOnEnable => !Application.isPlaying || _buildOnEnableInPlayMode;
 
@@ -162,6 +170,7 @@ namespace Modern8bitTanks
             visuals.name = VisualContainerName;
             visuals.gameObject.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
             _visualRoot = visuals.transform;
+            visuals.gameObject.SetActive(_visibleInBattle);
 
             var contact = visuals.ContactShadow;
             var cast = visuals.CastShadow;

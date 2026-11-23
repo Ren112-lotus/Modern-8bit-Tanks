@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Modern8bitTanks
@@ -6,25 +7,51 @@ namespace Modern8bitTanks
     {
         private readonly byte[] _radarSpots = new byte[MultiplayerSessionConnection.MaxPlayers];
 
-        private bool CanSeeOnRadar(TankEntity observer, TankEntity target, Vector2 center, float halfHeight)
+        private readonly HashSet<TankEntity> _visibleTanks = new();
+
+        private bool UsesTeamVisibility => MultiplayerSessionConnection.Online ||
+            battleMode is BattleMode.Duel1v1 or BattleMode.Squad2v2 or BattleMode.Battle5v5;
+
+        private static bool CanSpot(TankEntity tank) => tank != null && tank.alive && tank.gameObject.activeInHierarchy;
+
+        private TankEntity FindLocalObserver(TankEntity player)
         {
-            if (observer == null || !observer.alive || !observer.gameObject.activeSelf) return false;
-            Vector2 offset = target.Position2D - center;
+            if (CanSpot(player)) return player;
+            if (player == null) return null;
+
+            foreach (var tank in _tanks)
+            {
+                if (CanSpot(tank) && tank.factionTeam == player.factionTeam)
+                    return tank;
+            }
+
+            return null;
+        }
+
+        private bool CanObserveTank(TankEntity observer, TankEntity target, Vector2 viewCenter, float halfHeight)
+        {
+            if (!CanSpot(observer)) return false;
+
+            Vector2 from = observer.Position2D;
+            Vector2 position = target.Position2D;
+            Vector2 offset = position - viewCenter;
             float aspect = (float)renderWidth / renderHeight;
             if (Mathf.Abs(offset.x) > halfHeight * aspect || Mathf.Abs(offset.y) > halfHeight) return false;
+
             foreach (var smoke in _smokeClouds)
-                if ((target.Position2D - smoke.pos).sqrMagnitude < smoke.radius * smoke.radius) return false;
-            return HasLineOfSight(observer.Position2D, target.Position2D);
+                if ((position - smoke.pos).sqrMagnitude < smoke.radius * smoke.radius) return false;
+
+            return HasLineOfSight(from, position);
         }
 
         private void UpdateRadarContacts(MultiplayerMatchTransport transport)
         {
             System.Array.Clear(_radarSpots, 0, _radarSpots.Length);
-            if (_phase != GamePhase.Playing || _cam == null) return;
+            if (_phase != GamePhase.Playing || _cam == null || _networkTanks == null) return;
             for (int observerSlot = 0; observerSlot < _networkTanks.Length; observerSlot++)
             {
                 var observer = _networkTanks[observerSlot];
-                if (observer == null || !observer.alive || !transport.IsOccupied(observerSlot)) continue;
+                if (!CanSpot(observer) || !transport.IsOccupied(observerSlot)) continue;
                 Vector2 center;
                 float halfHeight;
                 if (observer.isPlayer)
@@ -52,30 +79,52 @@ namespace Modern8bitTanks
                 for (int slot = 0; slot < _networkTanks.Length; slot++)
                 {
                     var target = _networkTanks[slot];
-                    if (target == null || !target.alive || (slot < MultiplayerSessionConnection.MaxPlayers / 2) == alpha) continue;
-                    if (!CanSeeOnRadar(observer, target, center, halfHeight)) continue;
+                    if (!CanSpot(target) || (slot < MultiplayerSessionConnection.MaxPlayers / 2) == alpha) continue;
+                    if (!CanObserveTank(observer, target, center, halfHeight)) continue;
                     _radarSpots[observerSlot] |= (byte)(1 << slot);
                 }
             }
         }
 
-        internal bool IsRadarContactVisible(TankEntity target, TankEntity player)
+        private bool IsVisibleToLocalTeam(TankEntity target, TankEntity player, TankEntity observer)
         {
-            if (!MultiplayerSessionConnection.Online) return true;
-            if (player == null || _networkTanks == null) return false;
+            if (!UsesTeamVisibility || _phase != GamePhase.Playing) return true;
+            if (player == null) return false;
             if (target.factionTeam == player.factionTeam) return true;
-            int slot = System.Array.IndexOf(_networkTanks, target);
-            if (slot < 0 || _phase != GamePhase.Playing) return false;
-            int localSlot = MultiplayerSessionConnection.LocalSlot;
-            int teamSize = MultiplayerSessionConnection.MaxPlayers / 2;
-            int firstTeammate = localSlot < teamSize ? 0 : teamSize;
-            for (int observer = firstTeammate; observer < firstTeammate + teamSize; observer++)
+
+            if (_cam != null && CanObserveTank(observer, target, _cam.transform.position, _cam.orthographicSize))
+                return true;
+
+            if (MultiplayerSessionConnection.Online)
+                return HasSharedNetworkContact(target, player);
+
+            if (_cam == null) return false;
+            foreach (var teammate in _tanks)
             {
-                var teammate = _networkTanks[observer];
-                if (observer == localSlot || teammate == null || !teammate.alive) continue;
-                if ((_radarSpots[observer] & (1 << slot)) != 0) return true;
+                if (!CanSpot(teammate) || teammate == observer || teammate.factionTeam != player.factionTeam) continue;
+                if (CanObserveTank(teammate, target, teammate.Position2D, _cam.orthographicSize)) return true;
             }
-            return _cam != null && CanSeeOnRadar(player, target, _cam.transform.position, _cam.orthographicSize);
+
+            return false;
         }
+
+        private bool HasSharedNetworkContact(TankEntity target, TankEntity player)
+        {
+            if (_networkTanks == null) return false;
+            int targetSlot = System.Array.IndexOf(_networkTanks, target);
+            if (targetSlot < 0) return false;
+
+            int localSlot = MultiplayerSessionConnection.LocalSlot;
+            for (int slot = 0; slot < _networkTanks.Length; slot++)
+            {
+                var teammate = _networkTanks[slot];
+                if (slot == localSlot || !CanSpot(teammate) || teammate.factionTeam != player.factionTeam) continue;
+                if ((_radarSpots[slot] & (1 << targetSlot)) != 0) return true;
+            }
+
+            return false;
+        }
+
+        internal bool IsTankVisible(TankEntity target) => _visibleTanks.Contains(target);
     }
 }

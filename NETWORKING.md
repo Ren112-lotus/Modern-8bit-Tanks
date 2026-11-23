@@ -41,7 +41,7 @@ The WebGL vehicle-selection build was also tested in two Chrome tabs over Relay.
 
 The host simulates projectile contacts and damage. `BattleEffect` carries confirmed armor impacts, splash damage, wreck effects and environmental explosions to guests. The host and guests both call `PresentBattleEffect` and `RenderBattleFrame` locally, including for the X-ray replay, camera and HUD. Position prediction and remote interpolation remain separate from simulation and rendering.
 
-`UpdateRadarContacts` checks each living player's viewport and line of sight to enemies. The snapshots carry one contact mask per observer. `IsRadarContactVisible` combines the local view with living teammates' confirmed observations, so a player cannot retain their own stale contact through the team's shared radar. Props and smoke can block spotting. Allies and the local player remain visible on the minimap.
+`UpdateRadarContacts` checks each living player's viewport and line of sight to enemies. The snapshots carry one contact mask per observer. During play, tank rendering, tank movement effects, and the minimap use the same team visibility. The local view uses current line of sight, and living teammates share their confirmed observations. Props and smoke can block spotting. Allied vehicles remain visible.
 
 `MultiplayerRoom.Round` identifies gameplay messages, including scene readiness, and increments on each deployment. A round ends by clearing its expected roster mask. The lobby can start the next round after all remaining members have returned to the hangar.
 
