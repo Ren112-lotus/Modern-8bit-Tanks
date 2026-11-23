@@ -11,7 +11,8 @@ namespace Modern8bitTanks
     {
         Title,
         Playing,
-        RoundOver
+        RoundOver,
+        Briefing
     }
 
     /// <summary>
@@ -304,7 +305,6 @@ namespace Modern8bitTanks
 
             _hud.Initialize(this, _windowbox, _multiplayer);
 
-            // Dedicated Battle Scene: launch straight into combat against a random same-Tier rival!
             ResetRound();
             InitializeMultiplayerBattle();
         }
@@ -610,7 +610,8 @@ namespace Modern8bitTanks
         {
             if (_multiplayer.IsInBattle && _networkTanks != null) return;
             Time.timeScale = 1f;
-            _phase = GamePhase.Playing;
+            _phase = UsesControlPoints ? GamePhase.Briefing : GamePhase.Playing;
+            _briefingConfirmed = false;
             _currentWave = 1;
             _waitingNextWave = false;
             _aftermathTimer = 0f;
@@ -658,7 +659,8 @@ namespace Modern8bitTanks
                 Vector2 center = ClampCameraCenter(_camPos, halfSize);
                 _cam.transform.SetPositionAndRotation(new Vector3(center.x, center.y, -20f), Quaternion.identity);
             }
-            StartPlayerEngineAudio(player);
+            if (_phase == GamePhase.Playing) StartPlayerEngineAudio(player);
+            else StopLoopingAudio();
 
             if (_hud != null)
             {
@@ -677,11 +679,16 @@ namespace Modern8bitTanks
                     BattleMode.SurvivalWave => UiText.Format("{0}  WAVE 1", mapTag),
                     _ => UiText.Format("{0}  VS  {1}", mapTag, eLabel)
                 };
-                _hud.ShowWaveToast(startMsg, 2.2f);
+                if (_phase == GamePhase.Briefing) ShowBattleBriefing();
+                else
+                {
+                    _hud.HideBriefing();
+                    _hud.ShowWaveToast(startMsg, 2.2f);
+                }
             }
 
             ResetVoiceState();
-            if (!_multiplayer.IsInBattle)
+            if (_phase == GamePhase.Playing && !_multiplayer.IsInBattle)
                 NotifyVoiceBattleStart();
         }
 
@@ -903,6 +910,7 @@ namespace Modern8bitTanks
             if (_multiplayer.Connection != null && _multiplayer.Connection.IsReturningToLobby) return;
             float dt = Mathf.Min(0.04f, Time.deltaTime);
             var kb = Keyboard.current;
+            HandleBriefingInput(kb);
 
             if (_windowbox != null)
                 _windowbox.integerScale = integerWindowbox;
@@ -935,6 +943,12 @@ namespace Modern8bitTanks
             {
                 StopLoopingAudio();
                 PushHudUpdate(GetPlayerTank(), 0f);
+                return;
+            }
+
+            if (_phase == GamePhase.Briefing)
+            {
+                RenderBattleFrame(GetPlayerTank(), 0f);
                 return;
             }
 

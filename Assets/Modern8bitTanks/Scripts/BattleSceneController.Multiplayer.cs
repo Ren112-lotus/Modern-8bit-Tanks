@@ -66,7 +66,7 @@ namespace Modern8bitTanks
 
         private bool MultiplayerBattleReady()
         {
-            if (!_networkBattleStarted && _multiplayer.Transport != null && _multiplayer.Transport.AllExpectedPresent)
+            if (!_networkBattleStarted && _multiplayer.Transport != null && _multiplayer.Transport.AllExpectedReady)
             {
                 var connection = _multiplayer.Connection;
                 if (connection.Room.CountTeam(false) == 0)
@@ -75,8 +75,7 @@ namespace Modern8bitTanks
                     return false;
                 }
                 _networkBattleStarted = true;
-                _hud?.ShowWaveToast("BATTLE START", 2f);
-                NotifyVoiceBattleStart();
+                BeginBattle();
             }
             return _networkBattleStarted;
         }
@@ -122,8 +121,6 @@ namespace Modern8bitTanks
             transport.SmokeReceived += ApplyMultiplayerSmoke;
             transport.WeaponFired += ApplyMultiplayerWeaponEffects;
             transport.EffectReceived += ReceiveBattleEffect;
-            _hud?.ShowWaveToast("WAITING FOR PLAYERS", 9999f);
-            transport.MarkSceneReady();
             if (transport.IsHost) UpdateMultiplayerRoster();
         }
 
@@ -260,11 +257,10 @@ namespace Modern8bitTanks
             _poseIndex = (_poseIndex + 1) % SnapshotHistorySize;
             _poseCount = Mathf.Min(_poseCount + 1, SnapshotHistorySize);
             ApplyMultiplayerProjectiles(shots, shotCount, hostTime);
-            if (result == 3 && !_networkBattleStarted)
+            if (result != 0 && !_networkBattleStarted)
             {
                 _networkBattleStarted = true;
-                _hud?.ShowWaveToast("BATTLE START", 2f);
-                NotifyVoiceBattleStart();
+                BeginBattle();
             }
             if ((result == 1 || result == 2) && !_networkResultShown)
             {

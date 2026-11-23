@@ -158,6 +158,7 @@ namespace Modern8bitTanks
             {
                 RefreshMenuLabels();
                 _controlPointHud.RefreshObjective();
+                RefreshBriefingLabels();
             });
         }
 
@@ -215,6 +216,7 @@ namespace Modern8bitTanks
             if (_settingsOverlay != null) _settingsOverlay.SetActive(false);
             if (_settingsHitsGroup != null) _settingsHitsGroup.SetActive(false);
             if (_resultHitsGroup != null) _resultHitsGroup.SetActive(_resultShowing);
+            RefreshBriefingVisibility();
         }
 
         private void SetMenuOpen(bool open)
@@ -226,6 +228,7 @@ namespace Modern8bitTanks
             if (_menuHitsGroup != null) _menuHitsGroup.SetActive(open);
             if (_resultHitsGroup != null) _resultHitsGroup.SetActive(!open && _resultShowing);
             if (open) RefreshMenuLabels();
+            RefreshBriefingVisibility();
         }
 
         private void SetSettingsOpen(bool open, bool reopenPauseMenu = false)
@@ -240,6 +243,7 @@ namespace Modern8bitTanks
             if (_resultHitsGroup != null) _resultHitsGroup.SetActive(!open && !showPause && _resultShowing);
 
             if (open || showPause) RefreshMenuLabels();
+            RefreshBriefingVisibility();
         }
 
         private void RefreshMenuLabels()
@@ -767,6 +771,7 @@ namespace Modern8bitTanks
         {
             Font.textureRebuilt -= OnFontTextureRebuilt;
             if (_radarTex != null) Destroy(_radarTex);
+            if (_briefingTexture != null) Destroy(_briefingTexture);
         }
     }
 }

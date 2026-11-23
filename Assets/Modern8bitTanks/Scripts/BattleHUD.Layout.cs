@@ -65,6 +65,7 @@ namespace Modern8bitTanks
 
             BindBattleMenu();
             BindSettings();
+            briefingReady.Bind(_mgr.ConfirmBriefing);
             RefreshMenuLabels();
         }
 

@@ -73,14 +73,14 @@ namespace Modern8bitTanks
         public bool Ready => _network != null && _network.IsListening;
         public float RoundTripSeconds => Ready ? _network.NetworkConfig.NetworkTransport.GetCurrentRtt(NetworkManager.ServerClientId) * .001f : 0f;
         public bool IsOccupied(int slot) => _room != null && _room.IsOccupied(slot);
-        private readonly bool[] _sceneReady = new bool[MultiplayerSessionConnection.MaxPlayers];
-        public bool AllExpectedPresent
+        private readonly bool[] _briefingReady = new bool[MultiplayerSessionConnection.MaxPlayers];
+        public bool AllExpectedReady
         {
             get
             {
                 if (_room == null || _room.ExpectedMask == 0) return false;
-                for (var i = 0; i < _sceneReady.Length; i++)
-                    if ((_room.ExpectedMask & (1 << i)) != 0 && IsOccupied(i) && !_sceneReady[i]) return false;
+                for (var i = 0; i < _briefingReady.Length; i++)
+                    if ((_room.ExpectedMask & (1 << i)) != 0 && IsOccupied(i) && !_briefingReady[i]) return false;
                 return true;
             }
         }
@@ -167,13 +167,13 @@ namespace Modern8bitTanks
             _network.CustomMessagingManager.SendNamedMessage(ControlMessage, NetworkManager.ServerClientId, writer, NetworkDelivery.UnreliableSequenced);
         }
 
-        public void MarkSceneReady()
+        public void MarkBriefingReady()
         {
             if (!Ready || !UseRound(_room.Round)) return;
             if (IsHost)
             {
                 var slot = _room.LocalSlot;
-                if (slot >= 0) _sceneReady[slot] = true;
+                if (slot >= 0) _briefingReady[slot] = true;
                 return;
             }
             using var writer = CreateRoundWriter(0);
@@ -184,13 +184,13 @@ namespace Modern8bitTanks
         {
             if (!IsHost || !ReadRound(ref reader, 0)) return;
             var slot = _room.GetSlot(sender);
-            if (slot >= 0) _sceneReady[slot] = true;
+            if (slot >= 0) _briefingReady[slot] = true;
         }
 
         public bool TryGetControl(int slot, out Control control)
         {
             control = default;
-            if (!IsHost || slot < 0 || slot >= _sceneReady.Length || !IsOccupied(slot) || Time.unscaledTime - _lastControl[slot] > 0.5f) return false;
+            if (!IsHost || slot < 0 || slot >= _briefingReady.Length || !IsOccupied(slot) || Time.unscaledTime - _lastControl[slot] > 0.5f) return false;
             control = _controls[slot];
             return true;
         }
@@ -277,7 +277,7 @@ namespace Modern8bitTanks
         {
             if (!IsHost || !ReadRound(ref reader, 2)) return;
             var slot = _room.GetSlot(sender);
-            if (slot < 0 || !_sceneReady[slot]) return;
+            if (slot < 0 || !_briefingReady[slot]) return;
             reader.ReadValueSafe(out byte buttons);
             reader.ReadValueSafe(out sbyte ammo);
             _pendingActionTimes[slot] = Time.unscaledTime;
@@ -355,7 +355,7 @@ namespace Modern8bitTanks
 
         public void BroadcastSmoke(int slot)
         {
-            if (!Ready || !IsHost || slot < 0 || slot >= _sceneReady.Length) return;
+            if (!Ready || !IsHost || slot < 0 || slot >= _briefingReady.Length) return;
             using var writer = CreateRoundWriter(1);
             writer.WriteValueSafe((byte)slot);
             _network.CustomMessagingManager.SendNamedMessageToAll(SmokeMessage, writer, NetworkDelivery.ReliableSequenced);
@@ -365,12 +365,12 @@ namespace Modern8bitTanks
         {
             if (_network == null || _network.IsServer || sender != NetworkManager.ServerClientId || !ReadRound(ref reader, 1)) return;
             reader.ReadValueSafe(out byte slot);
-            if (slot < _sceneReady.Length) SmokeReceived?.Invoke(slot);
+            if (slot < _briefingReady.Length) SmokeReceived?.Invoke(slot);
         }
 
         public void BroadcastWeaponFired(int slot, ProjectileKind kind, AmmoType ammo, Vector2 muzzle, Vector2 ground, Vector2 direction)
         {
-            if (!Ready || !IsHost || slot < 0 || slot >= _sceneReady.Length) return;
+            if (!Ready || !IsHost || slot < 0 || slot >= _briefingReady.Length) return;
             using var writer = CreateRoundWriter(27);
             writer.WriteValueSafe((byte)slot);
             writer.WriteValueSafe((byte)kind);
@@ -390,7 +390,7 @@ namespace Modern8bitTanks
             reader.ReadValueSafe(out Vector2 muzzle);
             reader.ReadValueSafe(out Vector2 ground);
             reader.ReadValueSafe(out Vector2 direction);
-            if (slot < _sceneReady.Length) WeaponFired?.Invoke(slot, (ProjectileKind)kind, (AmmoType)ammo, muzzle, ground, direction);
+            if (slot < _briefingReady.Length) WeaponFired?.Invoke(slot, (ProjectileKind)kind, (AmmoType)ammo, muzzle, ground, direction);
         }
 
         internal void PublishEffect(BattleEffect effect)
@@ -427,7 +427,7 @@ namespace Modern8bitTanks
             if (_room.ExpectedMask == 0 || _room.Round != round) return false;
             if (_round == round) return true;
             _round = round;
-            Array.Clear(_sceneReady, 0, _sceneReady.Length);
+            Array.Clear(_briefingReady, 0, _briefingReady.Length);
             Array.Fill(_lastControl, float.NegativeInfinity);
             Array.Fill(_pendingActionTimes, float.NegativeInfinity);
             Array.Fill(_pendingActions, new Control { Ammo = -1 });

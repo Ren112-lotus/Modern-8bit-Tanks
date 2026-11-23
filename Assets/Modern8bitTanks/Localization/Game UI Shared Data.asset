@@ -739,6 +739,30 @@ MonoBehaviour:
     m_Key: VIEW
     m_Metadata:
       m_Items: []
+  - m_Id: 15410677145600
+    m_Key: MISSION BRIEFING
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534208
+    m_Key: CAPTURE THE CENTER / {0} TO WIN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534209
+    m_Key: YOUR TEAM
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534210
+    m_Key: OPPOSING TEAM
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534211
+    m_Key: CAPTURE POINT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534212
+    m_Key: 'READY [ENTER]'
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:
