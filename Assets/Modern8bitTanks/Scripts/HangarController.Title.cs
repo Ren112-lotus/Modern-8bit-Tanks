@@ -130,6 +130,7 @@ namespace Modern8bitTanks
         private void SetTitleOpen(bool open)
         {
             _titleOpen = open;
+            RefreshMapBackdropSprite(_sessionState.SelectedBattleMap);
             _titleTransitioning = false;
             _titleExitTimer = 0f;
             _titleTime = 0f;
