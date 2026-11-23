@@ -21,7 +21,7 @@ namespace Modern8bitTanks
     }
 
     /// <summary>
-    /// 100% Pixel-Perfect (480x270) Combat HUD for DesertBattle.unity:
+    /// 100% Pixel-Perfect (480x270) Combat HUD for Battle.unity:
     /// - Strictly native 8px / 16px HintedRaster pixel fonts on EVEN-sized integer pixel boxes (zero blur!)
     /// - Top Scoreboard showing Player vs Random Same-Tier Rival
     /// - Bottom-Left Primary Weapon / ATGM / Smoke [Q] HUD

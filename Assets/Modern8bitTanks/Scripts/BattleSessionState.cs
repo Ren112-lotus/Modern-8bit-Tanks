@@ -12,13 +12,13 @@ namespace Modern8bitTanks
     }
 
     /// <summary>
-    /// Cross-scene session state bridging Hangar.unity (Garage & WoT Tech Tree) and DesertBattle.unity (Combat).
+    /// Cross-scene session state bridging Hangar.unity (Garage & WoT Tech Tree) and Battle.unity (Combat).
     /// Also provides fair random same-Tier matchmaking based on vehicle Tier & performance class.
     /// </summary>
     public sealed class BattleSessionState : System.IDisposable
     {
         public const string HangarSceneName = "Hangar";
-        public const string BattleSceneName = "DesertBattle";
+        public const string BattleSceneName = "Battle";
 
         public string SelectedPlayerVehicleId = "us_m1a2_sep2";
         public BattleMode SelectedBattleMode = BattleMode.Duel1v1;

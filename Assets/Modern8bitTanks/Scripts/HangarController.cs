@@ -15,7 +15,7 @@ namespace Modern8bitTanks
     /// - Shows ONLY the player's selected tank DEAD-CENTER on a live 360° sunlit desert turntable
     /// - True Horizontal-Scrolling WoT Tech Tree (Tier I -> V trunk forking into VI -> X MBT+SP / LIGHT / SUPPORT)
     ///   with Mouse Wheel, Click-Drag, Arrow Keys, & Pixel Scrollbar
-    /// - Supports 1v1, 2v2, 5v5, & Survival Wave modes -> launches cleanly into DesertBattle.unity!
+    /// - Supports 1v1, 2v2, 5v5, & Survival Wave modes -> launches into Battle.unity.
     /// - Strictly native 8px / 16px HintedRaster pixel fonts on EVEN pixel rects (zero blurry text!)
     /// </summary>
     public partial class HangarController : MonoBehaviour

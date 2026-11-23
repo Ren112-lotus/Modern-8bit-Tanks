@@ -28,7 +28,7 @@ namespace Modern8bitTanks
         private float WorldH => WorldHeightPx / PPU;
         private float BorderPad => BorderPadPx / PPU;
 
-        [Header("Scene & Prefab References (Pre-placed in DesertBattle.unity)")]
+        [Header("Scene & Prefab References (Pre-placed in Battle.unity)")]
         public SpriteRenderer desertGroundRenderer;
         [SerializeField] private TankEntity _tankPrefab;
         [SerializeField] private Transform _tanksRoot;
