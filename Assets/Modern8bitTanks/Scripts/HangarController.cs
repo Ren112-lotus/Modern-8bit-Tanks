@@ -252,7 +252,7 @@ namespace Modern8bitTanks
 
             InitializeMenus();
             BuildTechTreeUI();
-            BuildTitleStage();
+            InitializeTitleStage();
 
             VehicleDef cur = GetSelectedVehicle();
             if (cur != null) _treeNation = cur.nation;

@@ -119,6 +119,213 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1001 &341577239
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1991926088}
+    m_Modifications:
+    - target: {fileID: 1106319191551839922, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: m_SortingOrder
+      value: -4250
+      objectReference: {fileID: 0}
+    - target: {fileID: 1410700786993528423, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: m_Name
+      value: HangarTitleStage
+      objectReference: {fileID: 0}
+    - target: {fileID: 3425224128682406982, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: m_SortingOrder
+      value: -4250
+      objectReference: {fileID: 0}
+    - target: {fileID: 4061814796323519306, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: hullAngleDeg
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 4061814796323519306, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: turretAngleDeg
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 5384029281253649196, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: hullAngleDeg
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 5384029281253649196, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: turretAngleDeg
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 7667210980914943060, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7667210980914943060, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7667210980914943060, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7667210980914943060, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7667210980914943060, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7667210980914943060, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7667210980914943060, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7667210980914943060, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7667210980914943060, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7667210980914943060, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+--- !u!114 &341577240 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4012015488811394316, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+  m_PrefabInstance: {fileID: 341577239}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+--- !u!114 &341577241 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8703028522915855855, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+  m_PrefabInstance: {fileID: 341577239}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+--- !u!114 &341577242 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7366855370434632009, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+  m_PrefabInstance: {fileID: 341577239}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+--- !u!114 &341577243 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5852917377301593124, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+  m_PrefabInstance: {fileID: 341577239}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+--- !u!114 &341577244 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1705207738802641046, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+  m_PrefabInstance: {fileID: 341577239}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+--- !u!114 &341577245 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8831626531151466665, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+  m_PrefabInstance: {fileID: 341577239}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+--- !u!114 &341577246 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 242433352360179611, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+  m_PrefabInstance: {fileID: 341577239}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+--- !u!114 &341577247 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5872215587373306526, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+  m_PrefabInstance: {fileID: 341577239}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+--- !u!114 &341577248 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4061814796323519306, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+  m_PrefabInstance: {fileID: 341577239}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd9898d7c788da441a75fd321975c129, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.TankEntity
+--- !u!114 &341577249 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5384029281253649196, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+  m_PrefabInstance: {fileID: 341577239}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd9898d7c788da441a75fd321975c129, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.TankEntity
+--- !u!114 &341577250 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7191482952357841232, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+  m_PrefabInstance: {fileID: 341577239}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+--- !u!4 &341577251 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7667210980914943060, guid: 81e301ad338b3174db6f12a0adbebc2f, type: 3}
+  m_PrefabInstance: {fileID: 341577239}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &403131394
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2525,6 +2732,21 @@ MonoBehaviour:
   _deployMapDesertBg: {fileID: 803286332}
   _deployMapCityBg: {fileID: 803286331}
   _deployMapForestBg: {fileID: 803286330}
+  _titleStageRoot: {fileID: 341577251}
+  _titleLogoStack: {fileID: 341577250}
+  _titleWingmen:
+  - {fileID: 341577249}
+  - {fileID: 341577248}
+  _titleScenery:
+  - {fileID: 341577247}
+  - {fileID: 341577246}
+  - {fileID: 341577245}
+  - {fileID: 341577244}
+  - {fileID: 341577243}
+  - {fileID: 341577242}
+  - {fileID: 341577241}
+  - {fileID: 341577240}
+  _titleDustPrefab: {fileID: 4286751976029668391, guid: e8455ca14bf222949b252642a8c2aa78, type: 3}
   desertGroundRenderer: {fileID: 1026104196}
   showcaseTank: {fileID: 403131395}
   renderWidth: 480
@@ -2670,6 +2892,7 @@ Transform:
   - {fileID: 1228549189}
   - {fileID: 888631232}
   - {fileID: 803286226}
+  - {fileID: 341577251}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1991926089

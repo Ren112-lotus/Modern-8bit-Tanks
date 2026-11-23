@@ -40,14 +40,15 @@ namespace Modern8bitTanks
         [SerializeField] private Image _deployMapForestBg;
 
         // 3D Sprite-Stacked Title Stage Objects
-        private Transform _titleStageRoot;
-        private SpriteStackRenderer _titleLogoStack;
-        private readonly List<TankEntity> _titleWingmen = new();
+        [SerializeField] private Transform _titleStageRoot;
+        [SerializeField] private SpriteStackRenderer _titleLogoStack;
+        [SerializeField] private TankEntity[] _titleWingmen;
+        [SerializeField] private SpriteStackRenderer[] _titleScenery;
+        [SerializeField] private SpriteRenderer _titleDustPrefab;
+        private Vector2[] _titleWingOffsets;
         private readonly List<TitlePropItem> _titleProps = new();
         private readonly List<TitleDustItem> _titleDusts = new();
-        private Sprite _titleDustSprite;
         private float _titleDustTimer;
-        private PropsMetaFile _titlePropsMeta;
 
         private class TitlePropItem
         {
@@ -55,7 +56,6 @@ namespace Modern8bitTanks
             public SortingGroup sg;
             public SpriteStackRenderer stack;
             public Vector2 pos;
-            public float speedMul;
         }
 
         private class TitleDustItem
@@ -77,93 +77,29 @@ namespace Modern8bitTanks
         // ============================================================
         // 2. Build 3D Sprite-Stacked Title Stage (Logo + Wingmen + Props)
         // ============================================================
-        private void BuildTitleStage()
+        private void InitializeTitleStage()
         {
-            if (_titleStageRoot != null) return;
-
-            var rootGo = new GameObject("TitleStackingStage");
-            rootGo.transform.SetParent(transform, false);
-            _titleStageRoot = rootGo.transform;
-
-            _titleDustSprite = Resources.Load<Sprite>("Hangar/TitleDust");
-            var logoSheet = Resources.Load<Texture2D>("Hangar/TitleLogo");
-            const int logoSlices = 10;
-            var logoGo = new GameObject("TitleStackedLogo");
-            logoGo.transform.SetParent(_titleStageRoot, false);
-            var logoSg = logoGo.AddComponent<SortingGroup>();
-            logoSg.sortingOrder = 18000; // Always floats proudly above the battlefield convoy!
-            _titleLogoStack = logoGo.AddComponent<SpriteStackRenderer>();
-            _titleLogoStack.metallicWear = 0.92f;
-            _titleLogoStack.Configure(logoSheet, logoSlices, PPU, _stackFlashMat, 0, 0f, groundShadow: true);
-            logoGo.transform.localScale = new Vector3(1.62f, 1.62f, 1f);
-
-            // 2. Escort Wingmen (2 extra Sprite-Stacked tanks running in echelon formation!)
-            string[] wingIds = { "us_m2a4", "de_leo2a7v" };
-            for (int i = 0; i < wingIds.Length; i++)
+            var center = new Vector2(WorldW * 0.5f, WorldH * 0.5f);
+            _titleWingOffsets = new Vector2[_titleWingmen.Length];
+            for (int i = 0; i < _titleWingmen.Length; i++)
             {
-                VehicleDef wDef = _vehicleMap.TryGetValue(wingIds[i], out var found) ? found : GetSelectedVehicle();
-                if (wDef == null) continue;
-
-                var wGo = new GameObject($"TitleWingman_{i}");
-                wGo.transform.SetParent(_titleStageRoot, false);
-                var tank = wGo.AddComponent<TankEntity>();
-                tank.isPlayer = false;
-                tank.factionTeam = "ally";
-
-                Texture2D hullTex = LoadCachedHull(wDef.id);
-                Texture2D turretTex = LoadCachedTurret(wDef.id);
-                tank.ApplyVehicleDef(wDef, hullTex, turretTex, _stackFlashMat);
-                tank.CaptureSpawnAndReset(new Vector2(WorldW * 0.5f, WorldH * 0.5f), TitleConvoyAngleDeg);
-                _titleWingmen.Add(tank);
+                var tank = _titleWingmen[i];
+                string id = tank.tankType;
+                _titleWingOffsets[i] = tank.Position2D - center;
+                var vehicle = _vehicleMap.TryGetValue(id, out var found) ? found : GetSelectedVehicle();
+                if (vehicle == null) continue;
+                tank.ApplyVehicleDef(vehicle, LoadCachedHull(vehicle.id), LoadCachedTurret(vehicle.id), _stackFlashMat);
+                tank.CaptureSpawnAndReset(tank.Position2D, TitleConvoyAngleDeg);
             }
 
-            // 3. Scrolling Sprite-Stacked Desert Props (parallax立体風景!)
-            _titlePropsMeta = MetaLoader.LoadPropsMeta();
-            string[] propKinds =
+            foreach (var scenery in _titleScenery)
             {
-                "palm_tree", "desert_rock", "sandbag_wall", "palm_tree",
-                "desert_bunker", "desert_rock", "watch_tower", "hesco_barrier"
-            };
-            Vector2 center = new Vector2(WorldW * 0.5f, WorldH * 0.5f);
-            Vector2[] offsets =
-            {
-                new Vector2(-6.5f,  2.8f),
-                new Vector2( 2.8f,  3.2f),
-                new Vector2( 7.6f,  1.2f),
-                new Vector2(-2.2f, -3.4f),
-                new Vector2( 5.4f, -2.9f),
-                new Vector2(-8.2f, -1.6f),
-                new Vector2( 9.5f,  3.6f),
-                new Vector2(-4.4f,  3.7f)
-            };
-
-            for (int i = 0; i < propKinds.Length; i++)
-            {
-                string kind = propKinds[i];
-                Texture2D sheet = Resources.Load<Texture2D>($"Props/{kind}_slices");
-                PropMetaEntry pMeta = _titlePropsMeta != null ? _titlePropsMeta.GetByKind(kind) : null;
-                if (sheet == null || pMeta == null) continue;
-
-                var pGo = new GameObject($"TitleProp_{i}_{kind}");
-                pGo.transform.SetParent(_titleStageRoot, false);
-                var sg = pGo.AddComponent<SortingGroup>();
-                var st = pGo.AddComponent<SpriteStackRenderer>();
-                st.angleDeg = (i * 37f) % 360f;
-                st.Configure(sheet, pMeta.slices, PPU, _stackFlashMat, 0, 0f, groundShadow: true);
-                st.squash = squash;
-                st.spacingPx = spacingPx;
-
-                Vector2 p = center + offsets[i];
-                pGo.transform.position = new Vector3(p.x, p.y, 0f);
-                sg.sortingOrder = Mathf.Clamp(Mathf.RoundToInt(-p.y * 100f), -10000, 10000);
-
                 _titleProps.Add(new TitlePropItem
                 {
-                    root = pGo.transform,
-                    sg = sg,
-                    stack = st,
-                    pos = p,
-                    speedMul = 1.0f
+                    root = scenery.transform,
+                    sg = scenery.GetComponent<SortingGroup>(),
+                    stack = scenery,
+                    pos = scenery.transform.position
                 });
             }
         }
@@ -223,7 +159,7 @@ namespace Modern8bitTanks
             {
                 ClearTitleDust();
                 if (_titleLogoStack != null) _titleLogoStack.dropProgress = 1f;
-                for (int i = 0; i < _titleWingmen.Count; i++)
+                for (int i = 0; i < _titleWingmen.Length; i++)
                     if (_titleWingmen[i] != null) _titleWingmen[i].SetAssemblyDrop(1f);
                 if (showcaseTank != null)
                 {
@@ -373,12 +309,7 @@ namespace Modern8bitTanks
                 showcaseTank.SyncVisuals(squash, tankSpacing);
             }
 
-            Vector2[] wingOffsets =
-            {
-                new Vector2(-3.35f,  0.65f),
-                new Vector2(-2.90f, -2.05f)
-            };
-            for (int i = 0; i < _titleWingmen.Count; i++)
+            for (int i = 0; i < _titleWingmen.Length; i++)
             {
                 TankEntity w = _titleWingmen[i];
                 if (w == null) continue;
@@ -389,7 +320,7 @@ namespace Modern8bitTanks
 
                 w.SetAssemblyDrop(wingDrop01, dropHeightPx: 54f);
                 Vector2 exitPush = (i == 0 ? new Vector2(-1f, 0.6f) : new Vector2(-1f, -0.6f)) * (exit01 * exit01 * 9.5f);
-                Vector2 wPos = center + wingOffsets[i] + new Vector2(0f, Mathf.Sin(_titleTime * 1.2f + i * 2.1f) * 0.10f * wingEase) + exitPush;
+                Vector2 wPos = center + _titleWingOffsets[i] + new Vector2(0f, Mathf.Sin(_titleTime * 1.2f + i * 2.1f) * 0.10f * wingEase) + exitPush;
                 w.Position2D = wPos;
                 w.hullAngleDeg = TitleConvoyAngleDeg + Mathf.Sin(_titleTime * 0.75f + i * 1.7f) * 3f;
                 w.turretAngleDeg = w.hullAngleDeg + Mathf.Cos(_titleTime * 0.68f + i * 1.9f) * 20f * wingEase;
@@ -403,7 +334,7 @@ namespace Modern8bitTanks
             {
                 var item = _titleProps[i];
                 if (item == null || item.root == null) continue;
-                item.pos -= convoyDir * (TitleScrollSpeed * item.speedMul * dt);
+                item.pos -= convoyDir * (TitleScrollSpeed * dt);
 
                 // Seamless wrap-around back ahead of the convoy
                 if (item.pos.x < center.x - halfSpanX)
@@ -431,7 +362,7 @@ namespace Modern8bitTanks
             {
                 _titleDustTimer = 0.068f;
                 if (showcaseTank != null && leadDrop01 >= 0.56f) EmitTitleTrackDust(showcaseTank, convoyDir);
-                for (int i = 0; i < _titleWingmen.Count; i++)
+                for (int i = 0; i < _titleWingmen.Length; i++)
                 {
                     float wDrop = Mathf.Clamp01((_titleTime - (0.55f + i * 0.35f)) / 2.55f);
                     if (_titleWingmen[i] != null && wDrop >= 0.56f) EmitTitleTrackDust(_titleWingmen[i], convoyDir);
@@ -455,7 +386,7 @@ namespace Modern8bitTanks
 
         private void EmitTitleTrackDust(TankEntity t, Vector2 convoyDir)
         {
-            if (_titleDusts.Count > 110 || _titleDustSprite == null) return;
+            if (_titleDusts.Count > 110) return;
             Vector2 fwd = TankEntity.SliceAngleToDir(t.hullAngleDeg);
             Vector2 right = new Vector2(-fwd.y, fwd.x);
             float trackW = ((t.meta != null && t.meta.hullWidth > 0 ? t.meta.hullWidth : 22) * 0.40f) / PPU;
@@ -494,13 +425,10 @@ namespace Modern8bitTanks
 
         private void SpawnTitleDustPuff(Vector2 pos, Vector2 vel, float size, float life, Color color)
         {
-            if (_titleStageRoot == null || _titleDustSprite == null) return;
-            var go = new GameObject("TitleDust");
-            go.transform.SetParent(_titleStageRoot, false);
+            var sr = Instantiate(_titleDustPrefab, _titleStageRoot, false);
+            var go = sr.gameObject;
             go.transform.position = new Vector3(pos.x, pos.y, -0.3f);
             go.transform.localScale = new Vector3(size * 0.75f, size * 0.75f, 1f);
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = _titleDustSprite;
             sr.color = color;
             sr.sortingOrder = Mathf.Clamp(Mathf.RoundToInt(-pos.y * 100f) - 18, -10500, 10500);
             _titleDusts.Add(new TitleDustItem
