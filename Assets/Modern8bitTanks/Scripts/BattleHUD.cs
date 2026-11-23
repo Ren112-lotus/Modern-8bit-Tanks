@@ -673,19 +673,19 @@ namespace Modern8bitTanks
             {
                 Vector2 edge = start + direction * distance;
                 var headingColor = new Color32(160, 131, 74, 255);
-                PlotRadarSegment(end, edge, headingColor, stride: 2);
+                PlotRadarSegment(end, edge, headingColor);
                 PlotRadarPixel(Mathf.RoundToInt(edge.x), Mathf.RoundToInt(edge.y), headingColor);
             }
 
-            PlotRadarSegment(start, end, new Color32(218, 166, 74, 255), stride: 1);
+            PlotRadarSegment(start, end, new Color32(218, 166, 74, 255));
             PlotRadarPixel(Mathf.RoundToInt(end.x), Mathf.RoundToInt(end.y), new Color32(255, 230, 138, 255));
         }
 
-        private void PlotRadarSegment(Vector2 start, Vector2 end, Color32 color, int stride)
+        private void PlotRadarSegment(Vector2 start, Vector2 end, Color32 color)
         {
             Vector2 delta = end - start;
             int steps = Mathf.CeilToInt(Mathf.Max(Mathf.Abs(delta.x), Mathf.Abs(delta.y)));
-            for (int i = 0; i < steps; i += stride)
+            for (int i = 0; i < steps; i++)
             {
                 Vector2 point = start + delta * (i / (float)steps);
                 PlotRadarPixel(Mathf.RoundToInt(point.x), Mathf.RoundToInt(point.y), color);
