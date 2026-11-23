@@ -35,6 +35,7 @@ namespace Modern8bitTanks
             {
                 Vector2 center = district.Center * PlanScale + new Vector2(random.Next(-10, 11), random.Next(-12, 13));
                 float angle = district.Angle + random.Next(-6, 7);
+                if (map == BattleMap.City) angle = Mathf.Round(district.Angle / 90f) * 90f;
                 Vector2 right = Direction(angle);
                 center.y = ControlPoint.y + (center.y - ControlPoint.y) * reflection;
                 bool isConnector = district.Cover.Length == 0;
@@ -48,6 +49,8 @@ namespace Modern8bitTanks
                     offset.y *= reflection;
                     Vector2 position = Vector2Int.RoundToInt(center + offset);
                     float rotation = (angle + piece.Angle) * reflection;
+                    if (map == BattleMap.City && piece.Kind != BattlefieldCoverKind.Barricade)
+                        rotation = Mathf.Round(rotation / 90f) * 90f;
                     var prefab = theme.GetCover(piece.Kind);
                     if (piece.Kind == BattlefieldCoverKind.Ridge && prefab == null) continue;
                     _cover.Add(new CoverPlacement(prefab, position, rotation));
@@ -122,11 +125,10 @@ namespace Modern8bitTanks
                 IsConnector = isConnector;
             }
 
-            internal float Sample(Vector2 point, out Vector2 local)
+            internal Vector2 ToLocal(Vector2 point)
             {
                 Vector2 delta = point - Center;
-                local = new Vector2(Vector2.Dot(delta, Right), Vector2.Dot(delta, Vector2.Perpendicular(Right)));
-                return PadDistance(local, HalfSize.x, HalfSize.y);
+                return new Vector2(Vector2.Dot(delta, Right), Vector2.Dot(delta, Vector2.Perpendicular(Right)));
             }
         }
 
@@ -150,18 +152,11 @@ namespace Modern8bitTanks
                 Color32 color = SampleTerrain(x, y, earth, dark, verge, out float patch, out float grain);
 
                 Vector2 point = new(x + 0.5f, y + 0.5f);
-                color = PaintDistrict(point, color, concrete, dark, verge, patch, grain);
-                float west = PadDistance(point - _westBase, 92f, 90f);
-                float east = PadDistance(point - Mirror(_westBase), 92f, 90f);
-                float plaza = (point - ControlPoint).sqrMagnitude;
-                if (west < 1f || east < 1f || plaza < 70f * 70f)
-                {
-                    bool joint = (x + 13) % 27 == 0 || (y + 7) % 27 == 0;
-                    bool rim = (west > 0.92f && west < 1f) || (east > 0.92f && east < 1f)
-                        || (plaza >= 67f * 67f && plaza < 70f * 70f);
-                    color = Color32.Lerp(concrete, dark, 0.12f * grain + 0.17f * patch + (joint ? 0.19f : 0f));
-                    if (rim) color = Color32.Lerp(color, verge, 0.66f);
-                }
+                color = _map == BattleMap.City
+                    ? PaintCityDistricts(point, color, concrete, dark, verge, patch, grain)
+                    : PaintNaturalDistricts(point, color, earth, verge, patch);
+                color = PaintDeploymentAndPlaza(point, color, concrete, dark, verge, patch, grain);
+
                 int edgeX = Mathf.Min(x, Width - 1 - x);
                 int edgeY = Mathf.Min(y, Height - 1 - y);
                 int edge = Mathf.Min(edgeX, edgeY);
@@ -219,40 +214,83 @@ namespace Modern8bitTanks
         private (Color32 Earth, Color32 Dark, Color32 Verge, Color32 Concrete) TerrainPalette() =>
             _map switch
             {
-                BattleMap.City => ((Color32)new Color(0.54f, 0.49f, 0.43f), (Color32)new Color(0.31f, 0.31f, 0.29f),
-                    (Color32)new Color(0.69f, 0.64f, 0.54f), (Color32)new Color(0.52f, 0.54f, 0.52f)),
+                BattleMap.City => ((Color32)new Color(0.44f, 0.43f, 0.39f), (Color32)new Color(0.31f, 0.33f, 0.33f),
+                    (Color32)new Color(0.68f, 0.64f, 0.54f), (Color32)new Color(0.51f, 0.54f, 0.53f)),
                 BattleMap.Forest => ((Color32)new Color(0.36f, 0.47f, 0.27f), (Color32)new Color(0.15f, 0.23f, 0.15f),
                     (Color32)new Color(0.51f, 0.46f, 0.29f), (Color32)new Color(0.48f, 0.49f, 0.40f)),
                 _ => ((Color32)new Color(0.69f, 0.51f, 0.31f), (Color32)new Color(0.44f, 0.30f, 0.19f),
                     (Color32)new Color(0.73f, 0.61f, 0.40f), (Color32)new Color(0.59f, 0.55f, 0.46f))
             };
 
-        private Color32 PaintDistrict(Vector2 point, Color32 terrain, Color32 concrete, Color32 dark,
-            Color32 border, float patch, float grain)
+        private Color32 PaintDeploymentAndPlaza(Vector2 point, Color32 terrain, Color32 concrete, Color32 dark,
+            Color32 trim, float patch, float grain)
         {
+            float west = PadDistance(point - _westBase, 92f, 90f);
+            float east = PadDistance(point - Mirror(_westBase), 92f, 90f);
+            float plaza = Vector2.Distance(point, ControlPoint) / 70f;
+            float edge = Mathf.Min(Mathf.Min(west, east), plaza);
+            if (edge >= 1f) return terrain;
+
+            bool city = _map == BattleMap.City;
+            bool joint = city && (Mathf.Repeat(point.x + 13f, 27f) < 1f || Mathf.Repeat(point.y + 7f, 27f) < 1f);
+            Color32 surface = Color32.Lerp(concrete, dark, 0.12f * grain + 0.17f * patch + (joint ? 0.14f : 0f));
+            if (city && edge is > 0.91f and < 0.96f) surface = Color32.Lerp(surface, trim, 0.45f);
+            float blend = Mathf.SmoothStep(0f, 1f, (1f - edge) * (city ? 21f : 4f)) * (city ? 0.9f : 0.54f);
+            return Color32.Lerp(terrain, surface, blend);
+        }
+
+        private Color32 PaintNaturalDistricts(Vector2 point, Color32 terrain, Color32 earth, Color32 verge, float patch)
+        {
+            float coverage = 0f;
             foreach (var district in _districtGround)
             {
                 if ((point - district.Center).sqrMagnitude > district.RadiusSquared) continue;
-                float edge = district.Sample(point, out Vector2 local);
-                if (edge >= 1f) continue;
-
-                bool seam = Mathf.Repeat(local.x + 12f, 34f) < 1.15f ||
-                    Mathf.Repeat(local.y + 8f, 30f) < 1.15f;
-                float weathering = grain * 0.06f + patch * 0.19f;
-                if (_map == BattleMap.City && seam) weathering += 0.14f;
-                Color32 floor = Color32.Lerp(concrete, dark, weathering);
-                if (_map == BattleMap.City && !district.IsConnector &&
-                    Mathf.Abs(local.x) < district.HalfSize.x * 0.72f &&
-                    Mathf.Abs(Mathf.Abs(local.y) - district.HalfSize.y * 0.76f) < 1.4f &&
-                    Mathf.Repeat(local.x, 22f) < 13f)
-                    floor = Color32.Lerp(floor, border, 0.53f);
-
-                float strength = _map == BattleMap.City ? 0.83f : 0.68f;
-                if (district.IsConnector) strength *= 0.74f;
-                return Color32.Lerp(terrain, floor, Mathf.Clamp01((1f - edge) * 9f) * strength);
+                Vector2 local = district.ToLocal(point);
+                var normalized = new Vector2(local.x / district.HalfSize.x, local.y / district.HalfSize.y);
+                float distance = normalized.magnitude + (patch - 0.5f) * 0.18f;
+                float weight = Mathf.SmoothStep(0f, 1f, (1f - distance) * 2.3f);
+                coverage = Mathf.Max(coverage, weight * (district.IsConnector ? 0.19f : 0.34f));
             }
 
-            return terrain;
+            Color32 soil = Color32.Lerp(earth, verge, 0.14f + patch * 0.17f);
+            return Color32.Lerp(terrain, soil, coverage);
+        }
+
+        private Color32 PaintCityDistricts(Vector2 point, Color32 terrain, Color32 concrete, Color32 dark,
+            Color32 trim, float patch, float grain)
+        {
+            float street = 0f;
+            float yard = 0f;
+            float curb = 0f;
+            float streetMark = 0f;
+            foreach (var district in _districtGround)
+            {
+                if ((point - district.Center).sqrMagnitude > district.RadiusSquared) continue;
+                Vector2 local = district.ToLocal(point);
+                float inset = Mathf.Min(district.HalfSize.x - Mathf.Abs(local.x), district.HalfSize.y - Mathf.Abs(local.y));
+                if (inset <= 0f) continue;
+
+                float weight = Mathf.SmoothStep(0f, 1f, inset / 6f);
+                if (district.IsConnector)
+                {
+                    street = Mathf.Max(street, weight);
+                    if (Mathf.Abs(local.y) < 1.2f && Mathf.Repeat(local.x + 11f, 43f) < 21f)
+                        streetMark = Mathf.Max(streetMark, weight);
+                }
+                else
+                {
+                    yard = Mathf.Max(yard, weight);
+                    float strip = Mathf.Clamp01(1f - Mathf.Abs(inset - 4.5f) / 2.5f);
+                    curb = Mathf.Max(curb, strip);
+                }
+            }
+
+            Color32 asphalt = Color32.Lerp(terrain, dark, street * 0.49f);
+            asphalt = Color32.Lerp(asphalt, trim, streetMark * 0.46f * (1f - yard));
+            bool joint = Mathf.Repeat(point.x + 12f, 34f) < 1.2f || Mathf.Repeat(point.y + 8f, 30f) < 1.2f;
+            Color32 paving = Color32.Lerp(concrete, dark, 0.06f * grain + 0.17f * patch + (joint ? 0.13f : 0f));
+            Color32 color = Color32.Lerp(asphalt, paving, yard * 0.87f);
+            return Color32.Lerp(color, trim, curb * (1f - street) * 0.60f);
         }
 
         private Color32 PaintTerrain(int x, int y, Color32 surface, Color32 low, Color32 high, float patch, float grain)
@@ -261,11 +299,7 @@ namespace Modern8bitTanks
             switch (_map)
             {
                 case BattleMap.City:
-                    bool paved = Grain(x / 157, y / 137) > 0.36f;
-                    bool seam = y % 31 == 0 || (x + (y / 31 & 1) * 21) % 44 == 0;
-                    if (paved) surface = Color32.Lerp(surface, high, seam ? 0.02f : 0.13f);
-                    if (paved && seam && grain > 0.18f) return Color32.Lerp(surface, low, 0.27f);
-                    break;
+                    return Color32.Lerp(surface, high, 0.027f * patch + 0.026f * cluster);
                 case BattleMap.Forest:
                     if (cluster > 0.71f && grain > 0.37f)
                         return Color32.Lerp(surface, high, (cluster - 0.70f) * 0.93f * patch);
