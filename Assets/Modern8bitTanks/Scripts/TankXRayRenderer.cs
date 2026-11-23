@@ -10,6 +10,10 @@ namespace Modern8bitTanks
     /// </summary>
     public sealed class TankXRayRenderer
     {
+        private const byte SliceAlphaThreshold = 105;
+        private const float StatusHullAngle = 180f;
+        private const float StatusSquash = 0.90f;
+        private const float StatusSliceSpacing = 0.38f;
         private static readonly Dictionary<Texture2D, Color32[]> SheetPixelCache = new();
 
         public Texture2D Texture { get; private set; }
@@ -29,6 +33,11 @@ namespace Modern8bitTanks
         private float _halfL;
         private float _spacing;
         private int _hullBaseHeight;
+
+        private Texture2D _statusHullSheet;
+        private Texture2D _statusTurretSheet;
+        private TankMetaEntry _statusMeta;
+        private Rect _statusBounds;
 
         public TankXRayRenderer(int width, int height)
         {
@@ -67,6 +76,77 @@ namespace Modern8bitTanks
             return px;
         }
 
+        public void RenderStatus(Texture2D hullSheet, Texture2D turretSheet, TankMetaEntry meta,
+            float turretAngleRelative, Rect viewport)
+        {
+            if (_statusMeta != meta || _statusHullSheet != hullSheet || _statusTurretSheet != turretSheet)
+            {
+                _statusMeta = meta;
+                _statusHullSheet = hullSheet;
+                _statusTurretSheet = turretSheet;
+                _statusBounds = GetStatusBounds(hullSheet, turretSheet, meta);
+            }
+
+            float scale = Mathf.Min(1.15f,
+                viewport.width / Mathf.Max(1f, _statusBounds.width),
+                viewport.height / Mathf.Max(1f, _statusBounds.height));
+            Vector2 center = viewport.center - _statusBounds.center * scale;
+            Render(hullSheet, turretSheet, meta, StatusHullAngle, StatusHullAngle + turretAngleRelative,
+                StatusSquash, StatusSliceSpacing, scale, center);
+        }
+
+        // Fit the opaque hull and the entire turret sweep once per vehicle to keep the diagram steady while aiming.
+        private static Rect GetStatusBounds(Texture2D hullSheet, Texture2D turretSheet, TankMetaEntry meta)
+        {
+            Vector2 min = Vector2.zero;
+            Vector2 max = Vector2.zero;
+            Vector2 turretPivot = TankEntity.SliceAngleToDir(StatusHullAngle) * meta.hullPivotOffsetY;
+            turretPivot.y *= StatusSquash;
+            IncludeStack(hullSheet, meta.hullSlices, Vector2.zero, 0, rotates: false);
+            IncludeStack(turretSheet, meta.turretSlices, turretPivot, Mathf.Max(4, meta.hullBaseHeight), rotates: true);
+            return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+
+            void IncludeStack(Texture2D sheet, int slices, Vector2 pivot, int baseSlice, bool rotates)
+            {
+                Color32[] pixels = GetSheetPixels(sheet);
+                if (pixels == null || slices <= 0) return;
+
+                int width = sheet.width / slices;
+                for (int z = 0; z < slices; z++)
+                {
+                    float lift = (baseSlice + z) * StatusSliceSpacing;
+                    float radiusSquared = 0f;
+                    for (int y = 0; y < sheet.height; y++)
+                    for (int x = 0; x < width; x++)
+                    {
+                        if (pixels[y * sheet.width + z * width + x].a < SliceAlphaThreshold) continue;
+
+                        var local = new Vector2(x - (width - 1) * 0.5f, y - (sheet.height - 1) * 0.5f);
+                        if (rotates)
+                        {
+                            // The nearest-neighbor footprint extends half a texel beyond the source pixel center.
+                            var corner = new Vector2(Mathf.Abs(local.x) + 0.5f, Mathf.Abs(local.y) + 0.5f);
+                            radiusSquared = Mathf.Max(radiusSquared, corner.sqrMagnitude);
+                        }
+                        else
+                        {
+                            min = Vector2.Min(min, new Vector2(-local.x - 0.5f, (-local.y - 0.5f) * StatusSquash + lift));
+                            max = Vector2.Max(max, new Vector2(-local.x + 0.5f, (-local.y + 0.5f) * StatusSquash + lift));
+                        }
+                    }
+
+                    if (radiusSquared > 0f)
+                    {
+                        float radius = Mathf.Sqrt(radiusSquared);
+                        var extent = new Vector2(radius, radius * StatusSquash);
+                        Vector2 center = pivot + Vector2.up * lift;
+                        min = Vector2.Min(min, center - extent);
+                        max = Vector2.Max(max, center + extent);
+                    }
+                }
+            }
+        }
+
         public void Render(
             Texture2D hullSheet,
             Texture2D turretSheet,
@@ -92,7 +172,7 @@ namespace Modern8bitTanks
             _hullDeg = hullAngleDeg;
             _squash = Mathf.Clamp(squash, 0.35f, 1.0f);
             _spacing = spacingPx;
-            _scale = Mathf.Max(0.4f, scale);
+            _scale = Mathf.Max(0.01f, scale);
             _halfW = Mathf.Max(1f, meta.hullWidth * 0.5f);
             _halfL = Mathf.Max(1f, meta.hullLength * 0.5f);
             _hullBaseHeight = Mathf.Max(4, meta.hullBaseHeight);
@@ -243,7 +323,7 @@ namespace Modern8bitTanks
                         if (ix < 0 || ix >= sliceW || iy < 0 || iy >= sliceH) continue;
 
                         Color32 c = sheetPx[iy * sheetW + xOff + ix];
-                        if (c.a < 105) continue;
+                        if (c.a < SliceAlphaThreshold) continue;
 
                         int idx = dstRow + px;
                         _partBuf[idx] = partId;

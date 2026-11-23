@@ -34,10 +34,21 @@ namespace Modern8bitTanks
         private static readonly Color CookoffCore = new Color32(255, 248, 210, 255);
 
         private static readonly TankCrew[] CrewSeats = { TankCrew.Driver, TankCrew.Gunner, TankCrew.Commander, TankCrew.Loader };
+        private const float StatusCrewColumnWidth = 12f;
 
         private Mode _mode = Mode.Status;
         private TankXRayRenderer _xray;
         private RawImage _bgImage;
+        private RectMask2D _viewportMask;
+
+        private Rect StatusBodyRect
+        {
+            get
+            {
+                Vector4 padding = _viewportMask != null ? _viewportMask.padding : Vector4.zero;
+                return Rect.MinMaxRect(padding.x, padding.y, _xray.Width - padding.z, _xray.Height - padding.w);
+            }
+        }
 
         // Cached vehicle state
         private string _vehicleId;
@@ -53,6 +64,22 @@ namespace Modern8bitTanks
         private bool _turretless;
         private TankMetaEntry _meta;
         private float _lastStatusTurretRel = -999f;
+
+        private struct ModuleMarker
+        {
+            public TankModule Module;
+            public Vector2 LocalPosition;
+            public Vector2 Position;
+            public Vector2 HalfSize;
+
+            public ModuleMarker(TankModule module, Vector2 localPosition, Vector2 position, float scale)
+            {
+                Module = module;
+                LocalPosition = localPosition;
+                Position = position;
+                HalfSize = ModuleHalfSize(module) * scale;
+            }
+        }
 
         // Live Replay state (tracks real enemy movement & supports concurrent multi-shot autocannon bursts!)
         private struct ReplayShot
@@ -75,6 +102,7 @@ namespace Modern8bitTanks
         public void AttachBackdrop(RawImage rawImg, int texW, int texH)
         {
             _bgImage = rawImg;
+            _viewportMask = GetComponentInParent<RectMask2D>();
             if (_xray != null) _xray.Dispose();
             _xray = new TankXRayRenderer(texW, texH);
             if (_bgImage != null)
@@ -113,24 +141,11 @@ namespace Modern8bitTanks
 
             if (vehicleChanged && _xray != null)
             {
-                float maxDim = Mathf.Max(tank.meta.hullLength * 1.04f, tank.meta.hullWidth * 1.25f);
-                const float serviceLineHeight = 12f;
-                float diagramHeight = _xray.Height - serviceLineHeight;
-                float fitScale = Mathf.Clamp((diagramHeight - 6f) / Mathf.Max(20f, maxDim), 0.66f, 1.15f);
-                Vector2 c = new Vector2(_xray.Width * 0.39f, serviceLineHeight + diagramHeight * 0.43f);
-                _xray.Render(
-                    tank.hullStack != null ? tank.hullStack.sourceSheet : null,
-                    tank.turretStack != null ? tank.turretStack.sourceSheet : null,
-                    tank.meta,
-                    hullAngleDeg: 180f,
-                    turretAngleDeg: 180f + turretRel,
-                    squash: 0.90f,
-                    spacingPx: 0.38f,
-                    scale: fitScale,
-                    centerOverride: c,
-                    drawGrid: false,
-                    transparentBg: true
-                );
+                Rect body = StatusBodyRect;
+                Rect diagram = Rect.MinMaxRect(body.xMin + 1f, body.yMin + 2f,
+                    body.xMax - StatusCrewColumnWidth - 2f, body.yMax - 1f);
+                _xray.RenderStatus(tank.hullStack != null ? tank.hullStack.sourceSheet : null,
+                    tank.turretStack != null ? tank.turretStack.sourceSheet : null, tank.meta, turretRel, diagram);
             }
             SetVerticesDirty();
         }
@@ -332,19 +347,32 @@ namespace Modern8bitTanks
             Vector2 trvLocal = TankDamageLayout.Traverse(_turretless);
             Vector2 wpnLocal = TankDamageLayout.Weapon(_turretless);
 
-            DrawModule(mesh, Proj(engLocal, hullMidZ), TankModule.Engine, uiScale, Engulfed(engLocal));
-            DrawModule(mesh, Proj(trvLocal, _meta.hullBaseHeight * 0.85f), TankModule.Traverse, uiScale, Engulfed(trvLocal));
-            DrawModule(mesh, Proj(wpnLocal, _turretless ? hullMidZ + 1.5f : turretZ), TankModule.Weapon, uiScale, Engulfed(wpnLocal));
-            DrawModule(mesh, Proj(ammoLocal, _unmannedTurret ? hullMidZ + 1f : hullMidZ), TankModule.Ammo, uiScale, Engulfed(ammoLocal));
+            System.Span<ModuleMarker> markers = stackalloc ModuleMarker[]
+            {
+                new(TankModule.Engine, engLocal, Proj(engLocal, hullMidZ), uiScale),
+                new(TankModule.Traverse, trvLocal, Proj(trvLocal, _meta.hullBaseHeight * 0.85f), uiScale),
+                new(TankModule.Weapon, wpnLocal, Proj(wpnLocal, _turretless ? hullMidZ + 1.5f : turretZ), uiScale),
+                new(TankModule.Ammo, ammoLocal, Proj(ammoLocal, _unmannedTurret ? hullMidZ + 1f : hullMidZ), uiScale)
+            };
+            Rect statusBody = _mode == Mode.Status ? StatusBodyRect : default;
+            if (_mode == Mode.Status)
+                SpaceStatusMarkers(markers, oy + statusBody.yMin * sy + 1f, oy + statusBody.yMax * sy);
+            foreach (var marker in markers)
+                DrawModule(mesh, marker, uiScale, Engulfed(marker.LocalPosition));
 
             // 3. Crew Seats
             if (_mode == Mode.Status)
             {
-                float colX = ox + rect.width - 7f;
-                Line(mesh, new Vector2(colX - 7f, oy + 3f), new Vector2(colX - 7f, oy + rect.height - 3f), 1f, Grid);
+                Rect body = statusBody;
+                float dividerX = ox + (body.xMax - StatusCrewColumnWidth) * sx;
+                float dividerY = oy + (body.yMin + 0.5f) * sy;
+                Line(mesh, new Vector2(ox + body.xMin * sx, dividerY), new Vector2(ox + body.xMax * sx, dividerY), sy, Grid);
+                Line(mesh, new Vector2(dividerX, dividerY), new Vector2(dividerX, oy + body.yMax * sy), sx, Grid);
+                float colX = dividerX + StatusCrewColumnWidth * 0.5f * sx;
+                float centerY = oy + body.center.y * sy;
                 for (int i = 0; i < _crewCapacity; i++)
                 {
-                    Vector2 pos = new Vector2(colX, oy + rect.height * 0.5f + ((_crewCapacity - 1) * 0.5f - i) * 9.5f);
+                    Vector2 pos = new Vector2(colX, centerY + ((_crewCapacity - 1) * 0.5f - i) * 9.5f * sy);
                     DrawCrew(mesh, pos, CrewSeats[i], 0.76f, false);
                 }
             }
@@ -440,31 +468,76 @@ namespace Modern8bitTanks
             return _active || _mode != Mode.Status ? WtIntactModule : WtInactive;
         }
 
-        private void DrawModule(VertexHelper mesh, Vector2 pos, TankModule module, float s, bool engulfed)
+        private static Vector2 ModuleHalfSize(TankModule module) => module switch
         {
+            TankModule.Weapon => new Vector2(4.4f, 1.9f),
+            TankModule.Traverse => new Vector2(4f, 4f),
+            TankModule.Ammo => new Vector2(3.8f, 3.8f),
+            _ => new Vector2(4.6f, 2.9f)
+        };
+
+        private static void SpaceStatusMarkers(System.Span<ModuleMarker> markers, float bottom, float top)
+        {
+            const float gap = 1f;
+            for (int i = 1; i < markers.Length; i++)
+            {
+                for (int j = i; j > 0 && markers[j].Position.y < markers[j - 1].Position.y; j--)
+                    (markers[j - 1], markers[j]) = (markers[j], markers[j - 1]);
+            }
+
+            // Keep each marker over its part horizontally, and give neighboring markers room on the vertical axis.
+            for (int i = 0; i < markers.Length; i++)
+            {
+                ref ModuleMarker marker = ref markers[i];
+                float y = Mathf.Max(marker.Position.y, bottom + marker.HalfSize.y);
+                foreach (ModuleMarker other in markers[..i])
+                    if (SharesColumn(marker, other))
+                        y = Mathf.Max(y, other.Position.y + other.HalfSize.y + marker.HalfSize.y + gap);
+                marker.Position.y = y;
+            }
+
+            for (int i = markers.Length - 1; i >= 0; i--)
+            {
+                ref ModuleMarker marker = ref markers[i];
+                float y = Mathf.Min(marker.Position.y, top - marker.HalfSize.y);
+                foreach (ModuleMarker other in markers[(i + 1)..])
+                    if (SharesColumn(marker, other))
+                        y = Mathf.Min(y, other.Position.y - other.HalfSize.y - marker.HalfSize.y - gap);
+                marker.Position.y = y;
+            }
+
+            static bool SharesColumn(ModuleMarker marker, ModuleMarker other) =>
+                Mathf.Abs(marker.Position.x - other.Position.x) < marker.HalfSize.x + other.HalfSize.x + gap;
+        }
+
+        private void DrawModule(VertexHelper mesh, ModuleMarker marker, float s, bool engulfed)
+        {
+            Vector2 pos = marker.Position;
+            TankModule module = marker.Module;
             Color ink = ModuleColor(module, engulfed);
             Color border = engulfed ? WtDestroyedRed : Dark;
+            if (module == TankModule.Traverse)
+                Diamond(mesh, pos, marker.HalfSize.x, border);
+            else
+                Box(mesh, pos - marker.HalfSize, marker.HalfSize.x * 2f, marker.HalfSize.y * 2f, border);
+
             if (module == TankModule.Weapon)
             {
-                Box(mesh, pos + new Vector2(-4.4f, -1.9f) * s, 8.8f * s, 3.8f * s, border);
                 Box(mesh, pos + new Vector2(-3.4f, -0.9f) * s, 6.8f * s, 1.8f * s, ink);
                 Box(mesh, pos + new Vector2(1.0f, -1.9f) * s, 1.8f * s, 3.8f * s, ink);
             }
             else if (module == TankModule.Traverse)
             {
-                Diamond(mesh, pos, 4.0f * s, border);
                 Diamond(mesh, pos, 3.0f * s, ink);
                 Diamond(mesh, pos, 1.1f * s, Dark);
             }
             else if (module == TankModule.Ammo)
             {
-                Box(mesh, pos - new Vector2(3.8f, 3.8f) * s, 7.6f * s, 7.6f * s, border);
                 for (int i = -2; i <= 2; i += 2)
                     Box(mesh, pos + new Vector2(i - 0.6f, -2.4f) * s, 1.2f * s, 4.8f * s, ink);
             }
             else // Engine
             {
-                Box(mesh, pos - new Vector2(4.6f, 2.9f) * s, 9.2f * s, 5.8f * s, border);
                 Box(mesh, pos - new Vector2(3.6f, 1.9f) * s, 7.2f * s, 3.8f * s, ink);
                 for (int i = -2; i <= 2; i += 2)
                     Box(mesh, pos + new Vector2(i - 0.4f, -1.1f) * s, 0.8f * s, 2.2f * s, Dark);
