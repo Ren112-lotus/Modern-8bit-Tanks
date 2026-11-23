@@ -22,6 +22,7 @@ namespace Modern8bitTanks
             if (battle != null)
             {
                 builder.Register<BattleVisibility>(Lifetime.Scoped);
+                builder.Register<ControlPointSystem>(Lifetime.Scoped);
                 builder.RegisterComponent(battle);
             }
         }
