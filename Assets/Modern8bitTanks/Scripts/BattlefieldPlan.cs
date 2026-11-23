@@ -9,7 +9,8 @@ namespace Modern8bitTanks
         Building,
         Wall,
         Barricade,
-        Ridge
+        Ridge,
+        RidgeVariant
     }
 
     [Serializable]
@@ -20,6 +21,7 @@ namespace Modern8bitTanks
         [SerializeField] private DestructibleProp wall;
         [SerializeField] private DestructibleProp barricade;
         [SerializeField] private DestructibleProp ridge;
+        [SerializeField] private DestructibleProp ridgeVariant;
 
         internal DestructibleProp GetCover(BattlefieldCoverKind kind) => kind switch
         {
@@ -28,6 +30,7 @@ namespace Modern8bitTanks
             BattlefieldCoverKind.Wall => wall,
             BattlefieldCoverKind.Barricade => barricade,
             BattlefieldCoverKind.Ridge => ridge,
+            BattlefieldCoverKind.RidgeVariant => ridgeVariant != null ? ridgeVariant : ridge,
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
     }

@@ -10,6 +10,7 @@ namespace Modern8bitTanks
         public const int Height = 1248;
         internal static readonly Color32 BoundaryColor = new(226, 218, 178, 255);
         private const float PlanScale = 1.5f;
+        private const float RidgeFootMargin = 36f;
         private static readonly Vector2 MapSize = new(Width, Height);
         private static readonly Vector2[] DeploymentOffsets =
         {
@@ -21,6 +22,7 @@ namespace Modern8bitTanks
         private readonly Vector2 _westBase;
         private readonly List<CoverPlacement> _cover = new();
         private readonly List<DistrictGround> _districtGround = new();
+        private readonly List<DistrictGround> _ridgeGround = new();
         private Color32[] _ground;
 
         internal BattlefieldLayout(BattleMap map, int seed, BattlefieldPlan plan, BattlefieldTheme theme)
@@ -52,7 +54,13 @@ namespace Modern8bitTanks
                     if (map == BattleMap.City && piece.Kind != BattlefieldCoverKind.Barricade)
                         rotation = Mathf.Round(rotation / 90f) * 90f;
                     var prefab = theme.GetCover(piece.Kind);
-                    if (piece.Kind == BattlefieldCoverKind.Ridge && prefab == null) continue;
+                    if (piece.Kind is BattlefieldCoverKind.Ridge or BattlefieldCoverKind.RidgeVariant)
+                    {
+                        if (prefab == null) continue;
+                        var size = new Vector2(prefab.meta.width + RidgeFootMargin * 2f,
+                            prefab.meta.length + RidgeFootMargin * 2f);
+                        _ridgeGround.Add(new DistrictGround(position, size, Direction(rotation), false));
+                    }
                     _cover.Add(new CoverPlacement(prefab, position, rotation));
                     _cover.Add(new CoverPlacement(prefab, Mirror(position), rotation + 180f));
                 }
@@ -154,7 +162,8 @@ namespace Modern8bitTanks
                 Vector2 point = new(x + 0.5f, y + 0.5f);
                 color = _map == BattleMap.City
                     ? PaintCityDistricts(point, color, concrete, dark, verge, patch, grain)
-                    : PaintNaturalDistricts(point, color, earth, verge, patch);
+                    : PaintRidgeFeet(point, PaintNaturalDistricts(point, color, earth, verge, patch),
+                        earth, dark, verge, patch, grain);
                 color = PaintDeploymentAndPlaza(point, color, concrete, dark, verge, patch, grain);
 
                 int edgeX = Mathf.Min(x, Width - 1 - x);
@@ -254,6 +263,34 @@ namespace Modern8bitTanks
 
             Color32 soil = Color32.Lerp(earth, verge, 0.14f + patch * 0.17f);
             return Color32.Lerp(terrain, soil, coverage);
+        }
+
+        private Color32 PaintRidgeFeet(Vector2 point, Color32 terrain, Color32 earth, Color32 dark, Color32 verge,
+            float patch, float grain)
+        {
+            float deposit = 0f;
+            foreach (var ridge in _ridgeGround)
+            {
+                if ((point - ridge.Center).sqrMagnitude > ridge.RadiusSquared) continue;
+
+                Vector2 local = ridge.ToLocal(point);
+                var normalized = new Vector2(local.x / ridge.HalfSize.x, local.y / ridge.HalfSize.y);
+                // Break up the edge of the scree with differently sized pockets of exposed ground.
+                float pockets = Mathf.PerlinNoise(point.x * 0.043f + 14f, point.y * 0.052f);
+                float falloff = 1f - normalized.magnitude + (pockets - 0.5f) * 0.26f;
+                float weight = Mathf.SmoothStep(0f, 1f, falloff * 2.8f);
+                deposit = Mathf.Max(deposit, weight * (0.24f + pockets * 0.76f));
+            }
+            if (deposit <= 0f) return terrain;
+
+            float chips = Grain((int)point.x / 3, (int)point.y / 3);
+            Color32 soil = Color32.Lerp(earth, verge, 0.14f + patch * 0.26f);
+            Color32 result = Color32.Lerp(terrain, soil, deposit * 0.64f);
+            if (chips > 0.72f && grain > 0.32f)
+                return Color32.Lerp(result, verge, deposit * (chips - 0.72f) * 1.5f);
+            if (chips < 0.11f)
+                return Color32.Lerp(result, dark, deposit * (0.11f - chips) * 3.2f);
+            return result;
         }
 
         private Color32 PaintCityDistricts(Vector2 point, Color32 terrain, Color32 concrete, Color32 dark,
