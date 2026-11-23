@@ -51,7 +51,6 @@ namespace Modern8bitTanks
         private TankModule _burstStruckModules;
         private TankCrew _burstKnockedOut;
         private int _burstHitCount;
-        private int _radarPanelHeight;
 
         private void UpdateVehicleStatus(TankEntity player)
         {
@@ -186,7 +185,8 @@ namespace Modern8bitTanks
                 dockLeft = vp.x >= 0.48f;
             }
             int hx = dockLeft ? 4 : (_W - 4 - HitCamW);
-            int hy = isDecisiveKill ? (_H - 4 - HitCamH) : (dockLeft ? (_H - 6 - HitCamH) : (_H - _radarPanelHeight - 8 - HitCamH));
+            int radarHeight = Mathf.RoundToInt(_radarRect.rect.height);
+            int hy = isDecisiveKill ? (_H - 4 - HitCamH) : (dockLeft ? (_H - 6 - HitCamH) : (_H - radarHeight - 8 - HitCamH));
             SetPixelRect(_hitCameraCard, hx, hy, HitCamW, HitCamH);
 
             _hitCameraTargetTank = target;

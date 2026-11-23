@@ -6,6 +6,8 @@ namespace Modern8bitTanks
     {
         private System.Func<int, TankEntity, BattleViewport?> _getNetworkViewport;
 
+        internal (Vector2 Start, Vector2 End, Vector2 Direction)? PlayerGroundAim { get; private set; }
+
         private BattleViewport CameraViewport => new BattleViewport(_cam.transform.position,
             new Vector2(_cam.orthographicSize * _cam.aspect, _cam.orthographicSize), _camRollDeg);
 

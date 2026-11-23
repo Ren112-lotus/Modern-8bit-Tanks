@@ -80,12 +80,12 @@ namespace Modern8bitTanks
         [SerializeField] private Text _waveToastText;
         private float _waveToastTimer;
 
-        // Top-Right Minimalist Tactical Minimap (68x44, no header bar!)
+        // Tactical minimap
         private Texture2D _radarTex;
         private Color32[] _radarPixels;
         private float _nextOnlineRadarUpdate;
-        private const int RadarW = 68;
-        private const int RadarH = 44;
+        private int _radarWidth;
+        private int _radarHeight;
         private bool[] _laneRadarMask;
         private BattleMap _laneRadarMap;
 
@@ -554,6 +554,7 @@ namespace Modern8bitTanks
                 if (Time.unscaledTime < _nextOnlineRadarUpdate) return;
                 _nextOnlineRadarUpdate = Time.unscaledTime + MultiplayerMatchTransport.SnapshotInterval;
             }
+            var mapScale = new Vector2((_radarWidth - 1) / worldW, (_radarHeight - 1) / worldH);
             BattleMap curMap = _mgr != null ? _mgr.battleMap : BattleMap.Desert;
             Color32 bg = curMap switch
             {
@@ -571,19 +572,19 @@ namespace Modern8bitTanks
             if (hasControlPoints && (_laneRadarMask == null || _laneRadarMap != curMap))
             {
                 _laneRadarMap = curMap;
-                _laneRadarMask ??= new bool[RadarW * RadarH];
-                for (int y = 0; y < RadarH; y++)
-                for (int x = 0; x < RadarW; x++)
-                    _laneRadarMask[y * RadarW + x] = _mgr.IsLaneRoute(x / (float)(RadarW - 1), y / (float)(RadarH - 1));
+                _laneRadarMask ??= new bool[_radarWidth * _radarHeight];
+                for (int y = 0; y < _radarHeight; y++)
+                for (int x = 0; x < _radarWidth; x++)
+                    _laneRadarMask[y * _radarWidth + x] = _mgr.IsLaneRoute(x / (float)(_radarWidth - 1), y / (float)(_radarHeight - 1));
             }
-            for (int y = 0; y < RadarH; y++)
+            for (int y = 0; y < _radarHeight; y++)
             {
-                for (int x = 0; x < RadarW; x++)
+                for (int x = 0; x < _radarWidth; x++)
                 {
                     bool line = hasControlPoints
-                        ? _laneRadarMask[y * RadarW + x]
+                        ? _laneRadarMask[y * _radarWidth + x]
                         : (x % 17 == 0) || (y % 14 == 0);
-                    _radarPixels[y * RadarW + x] = line ? grid : bg;
+                    _radarPixels[y * _radarWidth + x] = line ? grid : bg;
                 }
             }
 
@@ -595,12 +596,13 @@ namespace Modern8bitTanks
             foreach (var prop in props)
             {
                 if (prop == null || !prop.alive) continue;
-                int px = Mathf.Clamp(Mathf.RoundToInt((prop.transform.position.x / worldW) * (RadarW - 1)), 1, RadarW - 2);
-                int py = Mathf.Clamp(Mathf.RoundToInt((prop.transform.position.y / worldH) * (RadarH - 1)), 1, RadarH - 2);
+                Vector2 position = Vector2.Scale(prop.transform.position, mapScale);
+                int px = Mathf.Clamp(Mathf.RoundToInt(position.x), 1, _radarWidth - 2);
+                int py = Mathf.Clamp(Mathf.RoundToInt(position.y), 1, _radarHeight - 2);
                 if (prop.meta != null && prop.meta.fixedCover)
                 {
-                    int halfWidth = Mathf.FloorToInt(prop.meta.width / prop.pixelsPerUnit * (RadarW - 1) / (2f * worldW));
-                    int halfHeight = Mathf.FloorToInt(prop.meta.length * prop.stack.squash / prop.pixelsPerUnit * (RadarH - 1) / (2f * worldH));
+                    int halfWidth = Mathf.FloorToInt(prop.meta.width / prop.pixelsPerUnit * mapScale.x * 0.5f);
+                    int halfHeight = Mathf.FloorToInt(prop.meta.length * prop.stack.squash / prop.pixelsPerUnit * mapScale.y * 0.5f);
                     PlotRadarRect(px, py, halfWidth, halfHeight, bldgCol);
                     continue;
                 }
@@ -618,53 +620,112 @@ namespace Modern8bitTanks
                 Color32 smkCol = new Color32(195, 202, 208, 255);
                 foreach (var sm in smokes)
                 {
-                    int sx = Mathf.Clamp(Mathf.RoundToInt((sm.pos.x / worldW) * (RadarW - 1)), 2, RadarW - 3);
-                    int sy = Mathf.Clamp(Mathf.RoundToInt((sm.pos.y / worldH) * (RadarH - 1)), 2, RadarH - 3);
+                    Vector2 position = Vector2.Scale(sm.pos, mapScale);
+                    int sx = Mathf.Clamp(Mathf.RoundToInt(position.x), 2, _radarWidth - 3);
+                    int sy = Mathf.Clamp(Mathf.RoundToInt(position.y), 2, _radarHeight - 3);
                     PlotDot(sx, sy, 2, smkCol);
                 }
             }
 
+            if (player != null && player.alive && _mgr.PlayerGroundAim is { } aim)
+                PlotRadarAim(Vector2.Scale(aim.Start, mapScale), Vector2.Scale(aim.End, mapScale),
+                    Vector2.Scale(aim.Direction, mapScale));
+
             if (hasControlPoints)
             {
-                Vector2 position = _mgr.ControlPointPosition;
-                int x = Mathf.RoundToInt(position.x / worldW * (RadarW - 1));
-                int y = Mathf.RoundToInt(position.y / worldH * (RadarH - 1));
+                Vector2Int position = Vector2Int.RoundToInt(Vector2.Scale(_mgr.ControlPointPosition, mapScale));
+                int x = position.x;
+                int y = position.y;
                 PlotDot(x, y, 3, _mgr.ControlPointColor());
                 PlotDot(x, y, 2, bg);
             }
 
             foreach (var t in tanks)
             {
-                if (t == null || !t.alive || !_mgr.IsTankVisible(t)) continue;
-                int tx = Mathf.Clamp(Mathf.RoundToInt((t.Position2D.x / worldW) * (RadarW - 1)), 1, RadarW - 2);
-                int ty = Mathf.Clamp(Mathf.RoundToInt((t.Position2D.y / worldH) * (RadarH - 1)), 1, RadarH - 2);
-                Color32 tc = t.isPlayer
-                    ? new Color32(255, 232, 118, 255)
-                    : (player != null && _multiplayer.IsInBattle ? t.factionTeam == player.factionTeam : t.factionTeam == "ally")
-                        ? new Color32(82, 214, 255, 255)
-                        : new Color32(255, 92, 74, 255);
+                if (t == null || t == player || !t.alive || !_mgr.IsTankVisible(t)) continue;
+                Vector2 contact = Vector2.Scale(t.Position2D, mapScale);
+                int tx = Mathf.Clamp(Mathf.RoundToInt(contact.x), 1, _radarWidth - 2);
+                int ty = Mathf.Clamp(Mathf.RoundToInt(contact.y), 1, _radarHeight - 2);
+                bool ally = player != null && _multiplayer.IsInBattle ? t.factionTeam == player.factionTeam : t.factionTeam == "ally";
+                Color32 tc = ally ? new Color32(82, 214, 255, 255) : new Color32(255, 92, 74, 255);
                 PlotDot(tx, ty, 1, tc);
+            }
+
+            if (player != null && player.alive)
+            {
+                Vector2 position = Vector2.Scale(player.Position2D, mapScale);
+                Vector2 heading = SpriteStackCamera.Squash(TankEntity.SliceAngleToDir(player.hullAngleDeg), _mgr.squash);
+                PlotRadarPlayer(Vector2Int.RoundToInt(position), Vector2.Scale(heading, mapScale).normalized);
             }
 
             _radarTex.SetPixels32(_radarPixels);
             _radarTex.Apply(false, false);
         }
 
+        private void PlotRadarAim(Vector2 start, Vector2 end, Vector2 direction)
+        {
+            float toX = Mathf.Abs(direction.x) < 0.00001f ? float.PositiveInfinity
+                : ((direction.x > 0f ? _radarWidth - 1 : 0f) - start.x) / direction.x;
+            float toY = Mathf.Abs(direction.y) < 0.00001f ? float.PositiveInfinity
+                : ((direction.y > 0f ? _radarHeight - 1 : 0f) - start.y) / direction.y;
+            float distance = Mathf.Min(toX, toY);
+            if (distance > 0f && float.IsFinite(distance))
+            {
+                Vector2 edge = start + direction * distance;
+                var headingColor = new Color32(160, 131, 74, 255);
+                PlotRadarSegment(end, edge, headingColor, stride: 2);
+                PlotRadarPixel(Mathf.RoundToInt(edge.x), Mathf.RoundToInt(edge.y), headingColor);
+            }
+
+            PlotRadarSegment(start, end, new Color32(218, 166, 74, 255), stride: 1);
+            PlotRadarPixel(Mathf.RoundToInt(end.x), Mathf.RoundToInt(end.y), new Color32(255, 230, 138, 255));
+        }
+
+        private void PlotRadarSegment(Vector2 start, Vector2 end, Color32 color, int stride)
+        {
+            Vector2 delta = end - start;
+            int steps = Mathf.CeilToInt(Mathf.Max(Mathf.Abs(delta.x), Mathf.Abs(delta.y)));
+            for (int i = 0; i < steps; i += stride)
+            {
+                Vector2 point = start + delta * (i / (float)steps);
+                PlotRadarPixel(Mathf.RoundToInt(point.x), Mathf.RoundToInt(point.y), color);
+            }
+        }
+
+        private void PlotRadarPlayer(Vector2Int center, Vector2 forward)
+        {
+            Vector2 side = Vector2.Perpendicular(forward);
+            var trackColor = new Color32(200, 149, 66, 255);
+            var hullColor = new Color32(255, 216, 106, 255);
+            var noseColor = new Color32(255, 249, 202, 255);
+            for (int y = -4; y <= 4; y++)
+            for (int x = -4; x <= 4; x++)
+            {
+                var offset = new Vector2(x, y);
+                float along = Vector2.Dot(offset, forward);
+                float across = Mathf.Abs(Vector2.Dot(offset, side));
+                if (across <= 0.8f && along > 1.5f && along <= 3.4f)
+                    PlotRadarPixel(center.x + x, center.y + y, noseColor);
+                else if (across <= 1.3f && along >= -1.8f && along <= 1.8f)
+                    PlotRadarPixel(center.x + x, center.y + y, hullColor);
+                else if (across > 1.3f && across <= 2.7f && along >= -2.4f && along <= 1.6f)
+                    PlotRadarPixel(center.x + x, center.y + y, trackColor);
+            }
+        }
+
+        private void PlotRadarPixel(int x, int y, Color32 color)
+        {
+            if (x >= 0 && x < _radarWidth && y >= 0 && y < _radarHeight)
+                _radarPixels[y * _radarWidth + x] = color;
+        }
+
         private void PlotDot(int cx, int cy, int r, Color32 col) => PlotRadarRect(cx, cy, r, r, col);
 
         private void PlotRadarRect(int cx, int cy, int halfWidth, int halfHeight, Color32 col)
         {
-            for (int dy = -halfHeight; dy <= halfHeight; dy++)
-            {
-                int y = cy + dy;
-                if (y < 0 || y >= RadarH) continue;
-                for (int dx = -halfWidth; dx <= halfWidth; dx++)
-                {
-                    int x = cx + dx;
-                    if (x < 0 || x >= RadarW) continue;
-                    _radarPixels[y * RadarW + x] = col;
-                }
-            }
+            for (int y = cy - halfHeight; y <= cy + halfHeight; y++)
+            for (int x = cx - halfWidth; x <= cx + halfWidth; x++)
+                PlotRadarPixel(x, y, col);
         }
 
         private RectTransform _hitCameraRectOrNull() => _hitCameraCard != null && _hitCameraCard.gameObject.activeSelf ? _hitCameraCard : null;

@@ -620,6 +620,7 @@ namespace Modern8bitTanks
             _pendingWinner = null;
             _wonByControl = false;
             _killZoomBoost = 0f;
+            PlayerGroundAim = null;
             _hitStop = 0f;
             _shake = 0f;
             _camKickPos = Vector2.zero;
@@ -2937,6 +2938,7 @@ namespace Modern8bitTanks
                 else if (FindPropHit(gndMuz, endGnd, out float hit) != null)
                     endGnd = Vector2.Lerp(gndMuz, endGnd, hit);
 
+                PlayerGroundAim = (gndMuz, endGnd, dir);
                 _aimLine.SetPosition(0, new Vector3(visMuz.x, visMuz.y, -4f));
                 _aimLine.SetPosition(1, new Vector3(endGnd.x + zLiftVec.x, endGnd.y + zLiftVec.y, -4f));
 
@@ -2947,6 +2949,7 @@ namespace Modern8bitTanks
             }
             else
             {
+                PlayerGroundAim = null;
                 _aimLine.enabled = false;
                 _reticleSr.enabled = false;
             }

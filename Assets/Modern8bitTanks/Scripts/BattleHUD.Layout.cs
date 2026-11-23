@@ -50,14 +50,16 @@ namespace Modern8bitTanks
             _pixelCanvas.enabled = true;
             _menuHitRoot.SetParent(_windowbox.HitOverlayRect, false);
 
-            _radarTex = new Texture2D(RadarW, RadarH, TextureFormat.RGBA32, false)
+            Vector2 radarSize = _radarImage.rectTransform.rect.size;
+            _radarWidth = Mathf.RoundToInt(radarSize.x);
+            _radarHeight = Mathf.RoundToInt(radarSize.y);
+            _radarTex = new Texture2D(_radarWidth, _radarHeight, TextureFormat.RGBA32, false)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp
             };
-            _radarPixels = new Color32[RadarW * RadarH];
+            _radarPixels = new Color32[_radarWidth * _radarHeight];
             _radarImage.texture = _radarTex;
-            _radarPanelHeight = RadarH + 8;
             AttachCutaway(_vehicleStatusGraphic, _vehicleStatusBackdrop);
             AttachCutaway(_hitCameraGraphic, _hitCameraBackdrop);
 
