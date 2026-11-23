@@ -490,19 +490,15 @@ namespace Modern8bitTanks
             var keyboard = Keyboard.current;
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) _hud?.HandleEscapeKey();
             if (keyboard != null && keyboard.hKey.wasPressedThisFrame) _hud?.CycleHudDensity();
-            UpdateCameraZoom();
             var menuOpen = _hud != null && _hud.IsMenuOpen;
             _audio?.UpdateBgm(active: true, bgmEnabled, bgmVolume, duckForMenu: menuOpen);
 
-            var input = new TankControlInput { Arcade = arcadeWASD, AimWorld = GetMouseWorld2D(), AmmoSlot = -1 };
-            if (!menuOpen && _networkBattleStarted && player != null && player.alive && _phase == GamePhase.Playing && TryReadTankControl(out input))
+            bool sendView = _networkBattleStarted && player != null && player.alive && _phase == GamePhase.Playing;
+            if (!sendView || menuOpen || !TryReadTankControl(out var input))
             {
-                transport.SendControl(PackControl(input));
-            }
-            else
-            {
-                transport.StopSendingControls();
-                if (player != null) input.AimWorld = player.GetTurretPivotWorld(squash) + SpriteStackCamera.Squash(TankEntity.SliceAngleToDir(player.turretAngleDeg), squash);
+                input = new TankControlInput { Arcade = arcadeWASD, AmmoSlot = -1 };
+                if (player != null)
+                    input.AimWorld = player.GetTurretPivotWorld(squash) + SpriteStackCamera.Squash(TankEntity.SliceAngleToDir(player.turretAngleDeg), squash);
             }
 
             UpdateRoundAftermath();
@@ -510,6 +506,15 @@ namespace Modern8bitTanks
             InterpolateRemoteTanks();
             RenderGuestProjectiles(dt);
             RenderBattleFrame(player, dt);
+            if (sendView)
+            {
+                var control = PackControl(input);
+                control.ViewCenter = _cam.transform.position;
+                control.ViewRoll = _camRollDeg;
+                transport.SendControl(control);
+            }
+            else
+                transport.StopSendingControls();
         }
 
         private void CleanupMultiplayerBattle()

@@ -55,7 +55,7 @@ namespace Modern8bitTanks
             try
             {
                 var network = connection._network;
-                network.NetworkConfig.ProtocolVersion = 8;
+                network.NetworkConfig.ProtocolVersion = 9;
                 network.AddNetworkPrefab(connection._roomPrefab.gameObject);
                 network.ConnectionApprovalCallback = connection.ApproveConnection;
                 network.OnClientDisconnectCallback += connection.OnDisconnected;

@@ -164,7 +164,7 @@ namespace Modern8bitTanks
         public float speed;
         public float hullTurnSpeed;   // deg/sec hull traverse rate
         public float turretTurnSpeed; // deg/sec turret / gun traverse rate
-        public int sightRangePixels;
+        public int cameraWidthPixels;
         public float penetration; // Gameplay rating shared with armor, in arbitrary units.
         public int crewCount;
         public float reload;
@@ -215,8 +215,8 @@ namespace Modern8bitTanks
         public float EffectiveHullTurnSpeed => hullTurnSpeed > 0f ? hullTurnSpeed : ComputeDefaultHullTurnSpeed();
         public float EffectiveTurretTurnSpeed => turretTurnSpeed > 0f ? turretTurnSpeed : ComputeDefaultTurretTurnSpeed();
 
-        internal const int DefaultSightRangePixels = 192;
-        public int EffectiveSightRangePixels => sightRangePixels > 0 ? sightRangePixels : DefaultSightRangePixels;
+        internal const int DefaultCameraWidthPixels = 436;
+        public int EffectiveCameraWidthPixels => cameraWidthPixels > 0 ? cameraWidthPixels : DefaultCameraWidthPixels;
 
         private float ComputeDefaultHullTurnSpeed()
         {

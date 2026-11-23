@@ -23,6 +23,7 @@ namespace Modern8bitTanks
         public const int WorldHeightPx = 1360;
         public const int BorderPadPx = 24;
         public const float PPU = 16f;
+        private const float CameraLookAhead = 3.4f;
 
         private int MapWidthPx => UsesControlPoints ? BattlefieldLayout.Width : WorldWidthPx;
         private int MapHeightPx => UsesControlPoints ? BattlefieldLayout.Height : WorldHeightPx;
@@ -54,7 +55,6 @@ namespace Modern8bitTanks
         [Header("Sprite Stacking Settings")]
         [Range(0.45f, 1.0f)] public float squash = 0.80f;
         [Range(0f, 2.5f)] public float spacingPx = 0.72f;
-        [Range(0.7f, 1.5f)] public float cameraZoom = 1.10f;
 
         [Header("Fixed RenderTexture Letterbox")]
         public int renderWidth = 480;
@@ -140,6 +140,7 @@ namespace Modern8bitTanks
             _visibility = visibility;
             _controlPoints = controlPoints;
             _hasTankSight = HasTankSight;
+            _getNetworkViewport = GetNetworkViewport;
             _windowbox = windowbox;
             _postProcess = postProcess;
             _atmosphere = atmosphere;
@@ -246,7 +247,6 @@ namespace Modern8bitTanks
             // Crisp low-slung hull/turret height with clean vertical pixel preservation for small & large tanks alike!
             squash = 0.80f;
             spacingPx = 0.72f;
-            cameraZoom = Mathf.Clamp(cameraZoom < 1.05f ? 1.10f : cameraZoom, 0.80f, 1.45f);
 
             // Pull player's Hangar selection & persistent settings from BattleSessionState!
             selectedPlayerVehicleId = _sessionState.SelectedPlayerVehicleId;
@@ -651,7 +651,13 @@ namespace Modern8bitTanks
                 _camPos = player.Position2D;
             _camRollDeg = 0f;
             SpriteStackCamera.SetRoll(0f);
-            if (_cam != null) _cam.transform.rotation = Quaternion.identity;
+            if (_cam != null)
+            {
+                Vector2 halfSize = BattleViewport.HalfSizeFor(player, _cam.aspect);
+                _cam.orthographicSize = halfSize.y;
+                Vector2 center = ClampCameraCenter(_camPos, halfSize);
+                _cam.transform.SetPositionAndRotation(new Vector3(center.x, center.y, -20f), Quaternion.identity);
+            }
             StartPlayerEngineAudio(player);
 
             if (_hud != null)
@@ -941,8 +947,6 @@ namespace Modern8bitTanks
             if (kb != null && kb.hKey.wasPressedThisFrame)
                 _hud?.CycleHudDensity();
 
-            UpdateCameraZoom();
-
             if (_hitStop > 0f)
             {
                 _hitStop -= Time.unscaledDeltaTime;
@@ -1076,8 +1080,10 @@ namespace Modern8bitTanks
             if (_controlMarker != null) _controlMarker.color = ControlPointColor();
             _shake = Mathf.Max(0f, _shake - Time.unscaledDeltaTime * 15f);
             UpdateCameraRoll(player, dt);
+            TankEntity observer = BattleVisibility.FindObserver(_tanks, player);
+            UpdateCameraAndAim(player, observer, dt);
             bool limitVisibility = _phase == GamePhase.Playing && battleMode != BattleMode.FiringRange;
-            _visibility.Refresh(_tanks, _networkTanks, player, limitVisibility, _hasTankSight);
+            _visibility.Refresh(_tanks, _networkTanks, player, observer, CameraViewport, _cam.aspect, limitVisibility, _hasTankSight);
             foreach (var tank in _tanks)
             {
                 if (tank == null || !tank.gameObject.activeInHierarchy) continue;
@@ -1103,7 +1109,6 @@ namespace Modern8bitTanks
 
             UpdateSmokeClouds(dt);
             UpdateParticles(dt);
-            UpdateCameraAndAim(player, dt);
             UpdateMechanicalAudio(player, dt);
             PushHudUpdate(player, dt);
 
@@ -1430,9 +1435,10 @@ namespace Modern8bitTanks
             Vector2 delta = target.Position2D - piv;
             float dist = delta.magnitude;
 
-            bool targetVisible = BattleVisibility.IsWithinSightRange(t, target) &&
-                HasLineOfSight(t.Position2D, target.Position2D);
-            float preferredDistance = Mathf.Min(19.5f, BattleVisibility.SightRange(t) * 0.85f);
+            Vector2 halfSize = BattleViewport.HalfSizeFor(t, _cam.aspect);
+            var viewport = new BattleViewport(t.Position2D, halfSize);
+            bool targetVisible = viewport.Contains(target.Position2D) && HasLineOfSight(t.Position2D, target.Position2D);
+            float preferredDistance = Mathf.Min(19.5f, halfSize.y * 0.85f);
             float retreatDistance = Mathf.Min(8f, preferredDistance * 0.75f);
 
             float aiTurretDegPerSec = t.turretTurnSpeed * t.TraverseFactor;
@@ -2861,22 +2867,20 @@ namespace Modern8bitTanks
                 _cam.transform.rotation = Quaternion.Euler(0f, 0f, _camRollDeg);
         }
 
-        private void UpdateCameraZoom()
+        private Vector2 ClampCameraCenter(Vector2 center, Vector2 halfSize)
         {
-            if (_phase != GamePhase.Playing || Mouse.current == null) return;
-
-            float scrollY = Mouse.current.scroll.ReadValue().y;
-            if (Mathf.Abs(scrollY) > 0.01f)
-                cameraZoom = Mathf.Clamp(cameraZoom + Mathf.Sign(scrollY) * 0.08f, 0.76f, 1.48f);
+            return new Vector2(
+                Mathf.Clamp(center.x, halfSize.x, Mathf.Max(halfSize.x, WorldW - halfSize.x)),
+                Mathf.Clamp(center.y, halfSize.y, Mathf.Max(halfSize.y, WorldH - halfSize.y)));
         }
 
-        private void UpdateCameraAndAim(TankEntity player, float dt)
+        private void UpdateCameraAndAim(TankEntity player, TankEntity observer, float dt)
         {
             if (_cam == null) return;
 
-            float effectiveZoom = Mathf.Clamp(cameraZoom + _killZoomBoost, 0.7f, 1.85f);
-            float orthoSize = ((renderHeight / PPU) * 0.5f) / effectiveZoom;
-            _cam.orthographicSize = orthoSize;
+            Vector2 halfSize = BattleViewport.HalfSizeFor(observer != null ? observer : player, _cam.aspect)
+                / (1f + _killZoomBoost);
+            _cam.orthographicSize = halfSize.y;
 
             Vector2 mouseW = GetMouseWorld2D();
             Vector2 targetCam = _camPos;
@@ -2888,25 +2892,16 @@ namespace Modern8bitTanks
             }
             else if (player != null && player.alive)
             {
-                Vector2 lookAhead = Vector2.ClampMagnitude((mouseW - player.Position2D) * 0.26f, 3.4f);
+                Vector2 lookAhead = Vector2.ClampMagnitude((mouseW - player.Position2D) * 0.26f, CameraLookAhead);
                 targetCam = player.Position2D + lookAhead;
                 camSmooth = dt * 6.5f;
             }
             else
             {
-                TankEntity spec = BattleVisibility.FindObserver(_tanks, player);
-                if (spec != null) targetCam = spec.Position2D;
+                if (observer != null) targetCam = observer.Position2D;
                 camSmooth = dt * 3.8f;
             }
-            _camPos = Vector2.Lerp(_camPos, targetCam, Mathf.Clamp01(camSmooth));
-
-            float aspect = (float)renderWidth / Mathf.Max(1, renderHeight);
-            float halfH = orthoSize;
-            float halfW = orthoSize * aspect;
-            float clampX = halfW;
-            float clampY = halfH;
-            _camPos.x = Mathf.Clamp(_camPos.x, clampX, Mathf.Max(clampX, WorldW - clampX));
-            _camPos.y = Mathf.Clamp(_camPos.y, clampY, Mathf.Max(clampY, WorldH - clampY));
+            _camPos = ClampCameraCenter(Vector2.Lerp(_camPos, targetCam, Mathf.Clamp01(camSmooth)), halfSize);
 
             Vector2 springAcc = -_camKickPos * 260f - _camKickVel * 28f;
             _camKickVel += springAcc * dt;

@@ -14,6 +14,8 @@ namespace Modern8bitTanks
             public byte Arcade;
             public sbyte Ammo;
             public float AimX, AimY;
+            public Vector2 ViewCenter;
+            public float ViewRoll;
         }
 
         public struct TankState
@@ -40,11 +42,11 @@ namespace Modern8bitTanks
         private const float ControlHeartbeat = 0.15f;
         private const byte ActionMask = 0xC0;
         private const int TankStateBytes = 48;
-        private const int ControlBytes = 2 * sizeof(byte) + 2 * sizeof(float);
+        private const int ControlBytes = 2 * sizeof(byte) + 5 * sizeof(float);
         private const int ControlStateBytes = 3 * sizeof(float) + sizeof(sbyte) + 2 * sizeof(bool);
         private const int RoundBytes = sizeof(ushort);
 
-        private const string ControlMessage = "m8t.control.v3";
+        private const string ControlMessage = "m8t.control.v4";
         private const string ActionMessage = "m8t.actions.v2";
         private const string StateMessage = "m8t.state.v4";
         private const string PropMessage = "m8t.prop.v1";
@@ -124,7 +126,9 @@ namespace Modern8bitTanks
 
             float dx = control.AimX - _lastSentControl.AimX;
             float dy = control.AimY - _lastSentControl.AimY;
-            if (buttonsChanged || dx * dx + dy * dy >= 0.0004f || now - _lastSendTime >= ControlHeartbeat)
+            bool viewChanged = (control.ViewCenter - _lastSentControl.ViewCenter).sqrMagnitude >= 0.0004f ||
+                Mathf.Abs(Mathf.DeltaAngle(control.ViewRoll, _lastSentControl.ViewRoll)) >= 0.5f;
+            if (buttonsChanged || viewChanged || dx * dx + dy * dy >= 0.0004f || now - _lastSendTime >= ControlHeartbeat)
             {
                 SendContinuousControl(control);
                 _lastSendTime = now;
@@ -158,6 +162,8 @@ namespace Modern8bitTanks
             writer.WriteValueSafe(control.Arcade);
             writer.WriteValueSafe(control.AimX);
             writer.WriteValueSafe(control.AimY);
+            writer.WriteValueSafe(control.ViewCenter);
+            writer.WriteValueSafe(control.ViewRoll);
             _network.CustomMessagingManager.SendNamedMessage(ControlMessage, NetworkManager.ServerClientId, writer, NetworkDelivery.UnreliableSequenced);
         }
 
@@ -255,10 +261,14 @@ namespace Modern8bitTanks
             reader.ReadValueSafe(out byte arcade);
             reader.ReadValueSafe(out float aimX);
             reader.ReadValueSafe(out float aimY);
-            if (!float.IsFinite(aimX) || !float.IsFinite(aimY)) return;
+            reader.ReadValueSafe(out Vector2 viewCenter);
+            reader.ReadValueSafe(out float viewRoll);
+            if (!float.IsFinite(aimX) || !float.IsFinite(aimY) ||
+                !float.IsFinite(viewCenter.x) || !float.IsFinite(viewCenter.y) || !float.IsFinite(viewRoll)) return;
             _controls[slot] = new Control
             {
-                Buttons = (byte)(buttons & ~ActionMask), Arcade = arcade, Ammo = -1, AimX = aimX, AimY = aimY
+                Buttons = (byte)(buttons & ~ActionMask), Arcade = arcade, Ammo = -1, AimX = aimX, AimY = aimY,
+                ViewCenter = viewCenter, ViewRoll = Mathf.Repeat(viewRoll, 360f)
             };
             _lastControl[slot] = Time.unscaledTime;
         }
