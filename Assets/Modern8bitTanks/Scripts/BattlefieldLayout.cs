@@ -1,0 +1,323 @@
+using UnityEngine;
+
+namespace Modern8bitTanks
+{
+    /// <summary>Shared coordinates for terrain, deployment, AI and the tactical radar.</summary>
+    internal sealed class BattlefieldLayout
+    {
+        public const int Width = 1280;
+        public const int Height = 832;
+        private const int WestBase = 0;
+        private const int EastBase = 1;
+        private const int Center = 2;
+        private static readonly BattlefieldLayout Desert = new(BattleMap.Desert);
+        private static readonly BattlefieldLayout City = new(BattleMap.City);
+        private static readonly BattlefieldLayout Forest = new(BattleMap.Forest);
+        private static readonly Vector2[] DeploymentOffsets =
+        {
+            new(-28, 0), new(0, 54), new(25, 25), new(25, -25), new(-5, -53)
+        };
+
+        private readonly BattleMap _map;
+        private readonly Vector2[] _nodes;
+        private readonly Road[] _roads;
+        private readonly float[] _distanceToCenter;
+        private Color32[] _ground;
+
+        private readonly struct Road
+        {
+            public readonly int Start, End;
+            public readonly float Length, HalfWidth, StartDistance;
+            public readonly Vector2 Direction;
+
+            public Road(int start, int end, Vector2 delta, float halfWidth, float startDistance)
+            {
+                Start = start;
+                End = end;
+                Length = delta.magnitude;
+                Direction = delta / Length;
+                HalfWidth = halfWidth;
+                StartDistance = startDistance;
+            }
+        }
+
+        private BattlefieldLayout(BattleMap map)
+        {
+            _map = map;
+            _nodes = new Vector2[]
+            {
+                new(126, 365), new(1154, 455), new(640, 416),  // deployment pads and capture plaza
+                new(327, 454), new(478, 463), new(802, 375), new(981, 384), // middle
+                new(195, 570), new(316, 688), new(486, 716), new(686, 672), new(910, 700), new(1044, 590), // north
+                new(220, 247), new(330, 206), new(473, 115), new(659, 151), new(816, 195), new(998, 268), new(1088, 350), // south
+                new(754, 565), new(422, 288), new(824, 485), new(420, 396) // staggered links to the middle
+            };
+            if (map == BattleMap.City)
+            {
+                _nodes[7] = new(166, 583); _nodes[8] = new(310, 678); _nodes[9] = new(519, 682);
+                _nodes[11] = new(941, 660); _nodes[13] = new(263, 266); _nodes[16] = new(662, 133);
+                _nodes[17] = new(844, 145); _nodes[20] = new(778, 584);
+            }
+            else if (map == BattleMap.Forest)
+            {
+                _nodes[8] = new(280, 720); _nodes[9] = new(507, 735); _nodes[11] = new(913, 723);
+                _nodes[12] = new(1091, 633); _nodes[14] = new(323, 170); _nodes[16] = new(666, 120);
+                _nodes[18] = new(977, 291); _nodes[21] = new(439, 280);
+            }
+
+            var roads = new System.Collections.Generic.List<Road>();
+            AddRoute(roads, map == BattleMap.City ? 43 : 38, WestBase, 3, 4, Center, 5, 6, EastBase);
+            AddRoute(roads, map == BattleMap.Forest ? 35 : 39, WestBase, 7, 8, 9, 10, 11, 12, EastBase);
+            AddRoute(roads, map == BattleMap.Forest ? 36 : 40, WestBase, 13, 14, 15, 16, 17, 18, 19, EastBase);
+            AddRoute(roads, 30, 10, 20, 22, 5);
+            AddRoute(roads, 29, 15, 21, 23, 4);
+            _roads = roads.ToArray();
+
+            _distanceToCenter = new float[_nodes.Length];
+            System.Array.Fill(_distanceToCenter, float.PositiveInfinity);
+            _distanceToCenter[Center] = 0f;
+            // Every pass propagates the shortest path over at least one more connection.
+            for (int pass = 1; pass < _nodes.Length; pass++)
+            {
+                foreach (var road in _roads)
+                {
+                    _distanceToCenter[road.Start] = Mathf.Min(_distanceToCenter[road.Start], _distanceToCenter[road.End] + road.Length);
+                    _distanceToCenter[road.End] = Mathf.Min(_distanceToCenter[road.End], _distanceToCenter[road.Start] + road.Length);
+                }
+            }
+        }
+
+        public static BattlefieldLayout For(BattleMap map) => map switch
+        {
+            BattleMap.City => City,
+            BattleMap.Forest => Forest,
+            _ => Desert
+        };
+
+        public Vector2 ControlPoint => _nodes[Center];
+
+        public Vector2 Spawn(bool west, int index)
+        {
+            Vector2 offset = DeploymentOffsets[index];
+            if (!west) offset.x = -offset.x;
+            return _nodes[west ? WestBase : EastBase] + offset;
+        }
+
+        private void AddRoute(System.Collections.Generic.List<Road> roads, float halfWidth, params int[] points)
+        {
+            float distance = 0f;
+            for (int i = 1; i < points.Length; i++)
+            {
+                int a = points[i - 1], b = points[i];
+                var road = new Road(a, b, _nodes[b] - _nodes[a], halfWidth, distance);
+                roads.Add(road);
+                distance += road.Length;
+            }
+        }
+
+        private float RoadOffset(Road road, Vector2 point, out float along)
+        {
+            Vector2 relative = point - _nodes[road.Start];
+            along = Mathf.Clamp(Vector2.Dot(relative, road.Direction), 0, road.Length);
+            return (relative - road.Direction * along).magnitude;
+        }
+
+        public bool IsRoad(Vector2 point, float margin = 0f)
+        {
+            foreach (var road in _roads)
+                if (RoadOffset(road, point, out _) < road.HalfWidth + margin) return true;
+            return false;
+        }
+
+        public bool CanPlaceCover(Vector2 position, float radius)
+        {
+            float edge = BattleSceneController.BorderPadPx + radius;
+            return position.x > edge && position.x < Width - edge && position.y > edge && position.y < Height - edge
+                && Vector2.Distance(position, ControlPoint) > 74f + radius
+                && Vector2.Distance(position, _nodes[WestBase]) > 100f + radius
+                && Vector2.Distance(position, _nodes[EastBase]) > 100f + radius
+                && !IsRoad(position, radius + 7f);
+        }
+
+        internal BattleLaneRoute CreateFlankRoute(bool west, int deploymentSlot)
+        {
+            // The northern and southern roads rejoin the center at their own junctions.
+            bool north = deploymentSlot is 1 or 2;
+            int[] checkpoints = (west, north) switch
+            {
+                (true, true) => new[] { 7, 8, 9, 10, 20, 22, 5, Center },
+                (false, true) => new[] { 12, 11, 10, 20, 22, 5, Center },
+                (true, false) => new[] { 13, 14, 15, 21, 23, 4, Center },
+                _ => new[] { 19, 18, 17, 16, 15, 21, 23, 4, Center }
+            };
+
+            var waypoints = new Vector2[checkpoints.Length];
+            for (int i = 0; i < checkpoints.Length; i++)
+                waypoints[i] = _nodes[checkpoints[i]] / BattleSceneController.PPU;
+
+            return new BattleLaneRoute(waypoints);
+        }
+
+        public Vector2 StepTowardControl(Vector2 position)
+        {
+            Road nearest = _roads[0];
+            float nearestDistance = float.PositiveInfinity, along = 0f;
+            foreach (var road in _roads)
+            {
+                float distance = RoadOffset(road, position, out float projection);
+                if (distance >= nearestDistance) continue;
+                nearestDistance = distance;
+                nearest = road;
+                along = projection;
+            }
+
+            bool towardEnd = _distanceToCenter[nearest.End] + nearest.Length - along <= _distanceToCenter[nearest.Start] + along;
+            int next = towardEnd ? nearest.End : nearest.Start;
+            float remaining = towardEnd ? nearest.Length - along : along;
+            const float lookAhead = 30f;
+            if (remaining > lookAhead)
+                return _nodes[nearest.Start] + nearest.Direction * (along + (towardEnd ? lookAhead : -lookAhead));
+            if (next == Center || Vector2.Distance(position, _nodes[next]) > lookAhead + 6f)
+                return _nodes[next];
+
+            // Advance into the next road before reaching a junction so tanks can keep turning.
+            foreach (var road in _roads)
+            {
+                int other = road.Start == next ? road.End : road.End == next ? road.Start : -1;
+                if (other < 0 || _distanceToCenter[other] + road.Length > _distanceToCenter[next] + 0.1f) continue;
+                return Vector2.MoveTowards(_nodes[next], _nodes[other], lookAhead - remaining + 12f);
+            }
+            return _nodes[next];
+        }
+
+        public Color32[] GroundPixels()
+        {
+            if (_ground != null) return _ground;
+            var (earth, dark, roadColor, verge, concrete) = _map switch
+            {
+                BattleMap.City => ((Color32)new Color(0.54f, 0.49f, 0.43f), (Color32)new Color(0.31f, 0.31f, 0.29f),
+                    (Color32)new Color(0.27f, 0.31f, 0.34f), (Color32)new Color(0.69f, 0.64f, 0.54f), (Color32)new Color(0.52f, 0.54f, 0.52f)),
+                BattleMap.Forest => ((Color32)new Color(0.36f, 0.47f, 0.27f), (Color32)new Color(0.15f, 0.23f, 0.15f),
+                    (Color32)new Color(0.48f, 0.39f, 0.26f), (Color32)new Color(0.51f, 0.46f, 0.29f), (Color32)new Color(0.48f, 0.49f, 0.40f)),
+                _ => ((Color32)new Color(0.69f, 0.51f, 0.31f), (Color32)new Color(0.44f, 0.30f, 0.19f),
+                    (Color32)new Color(0.65f, 0.55f, 0.38f), (Color32)new Color(0.73f, 0.61f, 0.40f), (Color32)new Color(0.59f, 0.55f, 0.46f))
+            };
+
+            var pixels = new Color32[Width * Height];
+            float[] roadEdges = new float[pixels.Length];
+            float[] tracks = new float[pixels.Length];
+            float[] roadLengths = new float[pixels.Length];
+            System.Array.Fill(roadEdges, float.PositiveInfinity);
+            foreach (var road in _roads)
+            {
+                Vector2 a = _nodes[road.Start], b = _nodes[road.End];
+                float spread = road.HalfWidth + 15f;
+                int x0 = Mathf.Max(0, Mathf.FloorToInt(Mathf.Min(a.x, b.x) - spread));
+                int y0 = Mathf.Max(0, Mathf.FloorToInt(Mathf.Min(a.y, b.y) - spread));
+                int x1 = Mathf.Min(Width - 1, Mathf.CeilToInt(Mathf.Max(a.x, b.x) + spread));
+                int y1 = Mathf.Min(Height - 1, Mathf.CeilToInt(Mathf.Max(a.y, b.y) + spread));
+                for (int y = y0; y <= y1; y++)
+                for (int x = x0; x <= x1; x++)
+                {
+                    float offset = RoadOffset(road, new Vector2(x, y), out float along);
+                    int i = y * Width + x;
+                    float edge = offset - road.HalfWidth;
+                    if (edge >= roadEdges[i]) continue;
+                    roadEdges[i] = edge;
+                    tracks[i] = offset;
+                    roadLengths[i] = along + road.StartDistance;
+                }
+            }
+
+            for (int y = 0; y < Height; y++)
+            for (int x = 0; x < Width; x++)
+            {
+                int i = y * Width + x;
+                int frame = Mathf.Min(Mathf.Min(x, Width - 1 - x), Mathf.Min(y, Height - 1 - y));
+                float patch = Mathf.PerlinNoise(x * 0.011f + 6f * (int)_map, y * 0.014f);
+                float grain = Grain(x, y);
+                Color32 color = Color32.Lerp(dark, earth, Mathf.Clamp01(patch * 0.88f + grain * 0.18f + 0.08f));
+
+                float edge = roadEdges[i] + (patch - 0.5f) * (_map == BattleMap.City ? 3f : 13f);
+                if (edge < 10f)
+                {
+                    Color32 surface = Color32.Lerp(roadColor, dark, patch * 0.16f + grain * 0.13f);
+                    if (_map == BattleMap.City && tracks[i] < 1.6f && roadLengths[i] % 31f < 14f && grain < 0.90f)
+                        surface = Color32.Lerp(surface, verge, 0.64f);
+                    if (_map != BattleMap.City && Mathf.Abs(tracks[i] - 17f) < 3.4f)
+                        surface = Color32.Lerp(surface, dark, 0.07f + patch * 0.18f);
+                    color = edge < 0f ? surface : Color32.Lerp(verge, color, edge * 0.1f);
+                }
+                else
+                {
+                    color = PaintOffRoad(x, y, color, dark, verge, patch, grain);
+                }
+
+                Vector2 point = new(x, y);
+                float west = PadDistance(point - _nodes[WestBase], 92f, 90f);
+                float east = PadDistance(point - _nodes[EastBase], 83f, 105f);
+                float plaza = (point - ControlPoint).sqrMagnitude;
+                if (west < 1f || east < 1f || plaza < 70f * 70f)
+                {
+                    bool joint = (x + 13) % 27 == 0 || (y + 7) % 27 == 0;
+                    bool rim = (west > 0.92f && west < 1f) || (east > 0.92f && east < 1f)
+                        || (plaza >= 67f * 67f && plaza < 70f * 70f);
+                    color = Color32.Lerp(concrete, dark, 0.12f * grain + 0.17f * patch + (joint ? 0.19f : 0f));
+                    if (rim)
+                    {
+                        Color32 trim = west < 1f ? new Color32(101, 145, 152, 255)
+                            : east < 1f ? new Color32(164, 99, 75, 255) : verge;
+                        color = Color32.Lerp(color, trim, 0.66f);
+                    }
+                }
+                if (frame < BattleSceneController.BorderPadPx)
+                    color = Color32.Lerp(dark, color, frame < 9 ? 0.10f : 0.20f + grain * 0.18f);
+                pixels[i] = color;
+            }
+            _ground = pixels;
+            return _ground;
+        }
+
+        private Color32 PaintOffRoad(int x, int y, Color32 surface, Color32 low, Color32 high, float patch, float grain)
+        {
+            float cluster = Grain(x / 4, y / 4);
+            switch (_map)
+            {
+                case BattleMap.City:
+                    bool paved = Grain(x / 157, y / 137) > 0.36f;
+                    bool seam = y % 31 == 0 || (x + (y / 31 & 1) * 21) % 44 == 0;
+                    if (paved) surface = Color32.Lerp(surface, high, seam ? 0.02f : 0.13f);
+                    if (paved && seam && grain > 0.18f) return Color32.Lerp(surface, low, 0.27f);
+                    break;
+                case BattleMap.Forest:
+                    if (cluster > 0.71f && grain > 0.37f)
+                        return Color32.Lerp(surface, high, (cluster - 0.70f) * 0.93f * patch);
+                    if (cluster < 0.14f)
+                        return Color32.Lerp(surface, low, (0.18f - cluster) * 1.3f);
+                    break;
+                default:
+                    float ripple = Mathf.Sin(x * 0.039f + y * 0.30f + patch * 12f);
+                    if (ripple > 0.65f && patch > 0.43f)
+                        return Color32.Lerp(surface, high, (ripple - 0.65f) * patch * 0.64f);
+                    break;
+            }
+            return grain > 0.96f && cluster < 0.18f ? Color32.Lerp(surface, low, 0.42f) : surface;
+        }
+
+        private static float PadDistance(Vector2 point, float halfWidth, float halfHeight)
+        {
+            float x = Mathf.Abs(point.x) / halfWidth, y = Mathf.Abs(point.y) / halfHeight;
+            return Mathf.Max(Mathf.Max(x, y), (x + y) * 0.61f);
+        }
+
+        internal static float Grain(int x, int y)
+        {
+            unchecked
+            {
+                uint n = (uint)(x * 374761393 + y * 668265263);
+                n = (n ^ (n >> 13)) * 1274126177u;
+                return ((n ^ (n >> 16)) & 255u) / 255f;
+            }
+        }
+    }
+}

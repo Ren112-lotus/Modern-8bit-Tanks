@@ -24,8 +24,10 @@ namespace Modern8bitTanks
         public const int BorderPadPx = 24;
         public const float PPU = 16f;
 
-        private float WorldW => WorldWidthPx / PPU;
-        private float WorldH => WorldHeightPx / PPU;
+        private int MapWidthPx => UsesControlPoints ? BattlefieldLayout.Width : WorldWidthPx;
+        private int MapHeightPx => UsesControlPoints ? BattlefieldLayout.Height : WorldHeightPx;
+        private float WorldW => MapWidthPx / PPU;
+        private float WorldH => MapHeightPx / PPU;
         private float BorderPad => BorderPadPx / PPU;
 
         [Header("Scene & Prefab References (Pre-placed in Battle.unity)")]
@@ -95,6 +97,7 @@ namespace Modern8bitTanks
 
         // Runtime terrain texture
         private Texture2D _runtimeGroundTex;
+        private Sprite _runtimeGroundSprite;
         private Color32[] _cleanGroundPixels;
         private Color32[] _groundPixels;
         private bool _groundDirty;
@@ -122,11 +125,12 @@ namespace Modern8bitTanks
         private GameSceneLoader _sceneLoader;
         private MultiplayerSessionState _multiplayer;
         private BattleVisibility _visibility;
+        private ControlPointSystem _controlPoints;
         private System.Func<TankEntity, TankEntity, bool> _hasTankSight;
 
         [Inject]
         private void Construct(Camera worldCamera, BattleSessionState sessionState, GameSceneLoader sceneLoader,
-            MultiplayerSessionState multiplayer, BattleVisibility visibility,
+            MultiplayerSessionState multiplayer, BattleVisibility visibility, ControlPointSystem controlPoints,
             PixelWindowbox windowbox, BattlePostProcess postProcess, MapAtmosphere atmosphere)
         {
             _cam = worldCamera;
@@ -134,6 +138,7 @@ namespace Modern8bitTanks
             _sceneLoader = sceneLoader;
             _multiplayer = multiplayer;
             _visibility = visibility;
+            _controlPoints = controlPoints;
             _hasTankSight = HasTankSight;
             _windowbox = windowbox;
             _postProcess = postProcess;
@@ -295,7 +300,6 @@ namespace Modern8bitTanks
             _atmosphere.Initialize(WorldW, WorldH, _whitePxSprite, _emissiveFxMat);
             _atmosphere.ApplyMapTheme(battleMap);
 
-            PrepareRuntimeGround();
             _props.AddRange(FindObjectsByType<DestructibleProp>(FindObjectsInactive.Include));
             _reticleTf = _reticleSr.transform;
             _reticleSr.sprite = _whitePxSprite;
@@ -461,26 +465,36 @@ namespace Modern8bitTanks
 
         private void PrepareRuntimeGround()
         {
+            if (_runtimeGroundTex != null &&
+                _runtimeGroundTex.width == MapWidthPx && _runtimeGroundTex.height == MapHeightPx)
+                return;
 
-            _runtimeGroundTex = new Texture2D(WorldWidthPx, WorldHeightPx, TextureFormat.RGBA32, false)
+            ReleaseRuntimeGround();
+            _runtimeGroundTex = new Texture2D(MapWidthPx, MapHeightPx, TextureFormat.RGBA32, false)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp
             };
 
-            _cleanGroundPixels = GenerateMapPixels(battleMap, WorldWidthPx, WorldHeightPx);
-            _groundPixels = new Color32[_cleanGroundPixels.Length];
+            _groundPixels = new Color32[MapWidthPx * MapHeightPx];
 
             terrainRenderer.enabled = true;
             terrainRenderer.transform.position = new Vector3(WorldW * 0.5f, WorldH * 0.5f, 5f);
             terrainRenderer.sortingOrder = -30000;
             if (_groundHd2dMat != null) terrainRenderer.sharedMaterial = _groundHd2dMat;
-            terrainRenderer.sprite = Sprite.Create(
+            _runtimeGroundSprite = Sprite.Create(
                 _runtimeGroundTex,
-                new Rect(0, 0, WorldWidthPx, WorldHeightPx),
+                new Rect(0, 0, MapWidthPx, MapHeightPx),
                 new Vector2(0.5f, 0.5f),
                 PPU
             );
+            terrainRenderer.sprite = _runtimeGroundSprite;
+        }
+
+        private void ReleaseRuntimeGround()
+        {
+            if (_runtimeGroundSprite != null) Destroy(_runtimeGroundSprite);
+            if (_runtimeGroundTex != null) Destroy(_runtimeGroundTex);
         }
 
         public void CycleCameraMode()
@@ -603,6 +617,7 @@ namespace Modern8bitTanks
             _aftermathTimer = 0f;
             _resultBannerShown = false;
             _pendingWinner = null;
+            _wonByControl = false;
             _killZoomBoost = 0f;
             _hitStop = 0f;
             _shake = 0f;
@@ -618,11 +633,15 @@ namespace Modern8bitTanks
 
             ClearDynamicFXAndExtraTanks();
             battleMap = _multiplayer.IsInBattle ? BattleMap.Desert : _sessionState.SelectedBattleMap;
-            _cleanGroundPixels = GenerateMapPixels(battleMap, WorldWidthPx, WorldHeightPx);
+            PrepareRuntimeGround();
+            _cleanGroundPixels = UsesControlPoints
+                ? CurrentLayout.GroundPixels()
+                : GenerateMapPixels(battleMap, MapWidthPx, MapHeightPx);
             RestoreCleanGround();
             _postProcess?.ApplyMapTheme(battleMap);
             _atmosphere?.ApplyMapTheme(battleMap);
             ClearAndSpawnMapProps(battleMap);
+            ResetControlPoint();
 
             SpawnModeTanks();
 
@@ -705,44 +724,31 @@ namespace Modern8bitTanks
             float eastX = WorldW * 0.92f;
 
             TryDeployTank(_playerTank, playerDef, "ally",
-                new Vector2(westX, WorldH * 0.50f), 90f, isPlayerTank: true);
+                UsesControlPoints ? LaneSpawn(true, 0) : new Vector2(westX, WorldH * 0.50f), 90f, isPlayerTank: true);
             TryDeployTank(_primaryEnemyTank, enemyDef, "enemy",
-                new Vector2(eastX, WorldH * 0.50f), -90f, isPlayerTank: false);
+                UsesControlPoints ? LaneSpawn(false, 0) : new Vector2(eastX, WorldH * 0.50f), -90f, isPlayerTank: false);
 
             if (battleMode == BattleMode.Squad2v2)
             {
                 VehicleDef allyWing = BattleSessionState.PickRandomSameTierAlly(_allVehicles, playerDef);
                 VehicleDef enemyWing = BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: enemyDef != null ? enemyDef.id : null);
-                SpawnTankFromPrefab(allyWing, "ally", new Vector2(westX + 1.2f, WorldH * 0.28f), 90f, isPlayerTank: false);
-                SpawnTankFromPrefab(enemyWing, "enemy", new Vector2(eastX - 1.2f, WorldH * 0.72f), -90f, isPlayerTank: false);
+                SpawnTankFromPrefab(allyWing, "ally", LaneSpawn(true, 3), 90f, isPlayerTank: false);
+                SpawnTankFromPrefab(enemyWing, "enemy", LaneSpawn(false, 3), -90f, isPlayerTank: false);
             }
             else if (battleMode == BattleMode.Battle5v5)
             {
-                // 5v5 Armored Company Clash across North / Mid / Center / South-Mid / Oasis lanes!
-                Vector2[] allySpawns =
-                {
-                    new Vector2(westX + 1.5f, WorldH * 0.80f),
-                    new Vector2(westX + 3.2f, WorldH * 0.65f),
-                    new Vector2(westX + 3.2f, WorldH * 0.35f),
-                    new Vector2(westX + 1.5f, WorldH * 0.18f),
-                };
-                Vector2[] enemySpawns =
-                {
-                    new Vector2(eastX - 1.5f, WorldH * 0.80f),
-                    new Vector2(eastX - 3.2f, WorldH * 0.65f),
-                    new Vector2(eastX - 3.2f, WorldH * 0.35f),
-                    new Vector2(eastX - 1.5f, WorldH * 0.18f),
-                };
-
                 string prevEnemyId = enemyDef != null ? enemyDef.id : null;
                 for (int k = 0; k < 4; k++)
                 {
                     VehicleDef allyMate = BattleSessionState.PickRandomSameTierAlly(_allVehicles, playerDef);
-                    SpawnTankFromPrefab(allyMate, "ally", allySpawns[k], 90f, isPlayerTank: false);
+                    int deploymentSlot = k + 1;
+                    var ally = SpawnTankFromPrefab(allyMate, "ally", LaneSpawn(true, deploymentSlot), 90f, isPlayerTank: false);
+                    AssignFlankRoute(ally, west: true, deploymentSlot);
 
                     VehicleDef foe = BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: prevEnemyId);
                     if (foe != null) prevEnemyId = foe.id;
-                    SpawnTankFromPrefab(foe, "enemy", enemySpawns[k], -90f, isPlayerTank: false);
+                    var enemy = SpawnTankFromPrefab(foe, "enemy", LaneSpawn(false, deploymentSlot), -90f, isPlayerTank: false);
+                    AssignFlankRoute(enemy, west: false, deploymentSlot);
                 }
             }
         }
@@ -1023,6 +1029,8 @@ namespace Modern8bitTanks
             }
 
             UpdateProjectiles(dt);
+            if (_phase == GamePhase.Playing && UsesControlPoints)
+                UpdateControlPoint(dt);
             RenderBattleFrame(player, dt);
             if (_multiplayer.IsInBattle) BroadcastMultiplayerState();
         }
@@ -1067,6 +1075,7 @@ namespace Modern8bitTanks
 
         private void RenderBattleFrame(TankEntity player, float dt)
         {
+            if (_controlMarker != null) _controlMarker.color = ControlPointColor();
             _shake = Mathf.Max(0f, _shake - Time.unscaledDeltaTime * 15f);
             UpdateCameraRoll(player, dt);
             _visibility.Refresh(_tanks, _networkTanks, player, UsesTeamVisibility && _phase == GamePhase.Playing,
@@ -1446,13 +1455,25 @@ namespace Modern8bitTanks
 
             Vector2 u = delta / Mathf.Max(0.01f, dist);
             Vector2 move = Vector2.zero;
-            if (dist > 19.5f) move += u;
-            else if (dist < 8.0f) move -= u;
-            move += new Vector2(-u.y, u.x) * (t.aiStrafeDir * 0.95f);
+            bool pursuingControl = UsesControlPoints && (!losClear || dist > 20f)
+                && TryGetControlSteering(t, out move);
+            if (!pursuingControl)
+            {
+                if (dist > 19.5f) move += u;
+                else if (dist < 8.0f) move -= u;
+                move += new Vector2(-u.y, u.x) * (t.aiStrafeDir * 0.95f);
+            }
 
             foreach (var prop in _props)
             {
                 if (prop == null || !prop.alive) continue;
+                if (prop.meta.fixedCover)
+                {
+                    Vector2 avoid = t.Position2D;
+                    prop.ResolveTankPush(ref avoid, 1.35f, squash);
+                    move += (avoid - t.Position2D) * 1.4f;
+                    continue;
+                }
                 Vector2 bDiff = t.Position2D - (Vector2)prop.transform.position;
                 float bd = bDiff.magnitude;
                 if (bd < prop.approxRadiusUnits + 2.0f && bd > 0.01f)
@@ -1477,7 +1498,7 @@ namespace Modern8bitTanks
             t.moveSpeed = 0f;
             if (move.sqrMagnitude > 0.02f)
             {
-                bool aimWithHull = t.vehicleDef?.fixedGunTraverse is > 0 && losClear && dist < 38f;
+                bool aimWithHull = !pursuingControl && t.vehicleDef?.fixedGunTraverse is > 0 && losClear && dist < 38f;
                 float targetHull = TankEntity.TargetDeltaToSliceAngle(aimWithHull ? delta : move.normalized, squash);
                 float initialHullAngle = t.hullAngleDeg;
                 float aiHullDegPerSec = t.hullTurnSpeed * 0.85f * t.TurnFactor;
@@ -1486,7 +1507,8 @@ namespace Modern8bitTanks
                 if (t.HasDisabled(TankModule.Traverse))
                     t.turretAngleDeg += Mathf.DeltaAngle(initialHullAngle, t.hullAngleDeg);
                 t.moveSpeed = ((t.vehicleDef != null ? t.vehicleDef.speed : 60f) * 0.68f) / PPU * t.DriveFactor;
-                if (aimWithHull && dist >= 8f && dist <= 19.5f)
+                if ((aimWithHull && dist >= 8f && dist <= 19.5f)
+                    || (pursuingControl && Mathf.Abs(Mathf.DeltaAngle(t.hullAngleDeg, targetHull)) > 55f))
                     t.moveSpeed = 0f;
                 Vector2 dir = TankEntity.SliceAngleToDir(t.hullAngleDeg) * (aimWithHull && dist < 8f ? -1f : 1f);
                 t.Position2D += SpriteStackCamera.Squash(dir * (t.moveSpeed * dt), squash);
@@ -1790,6 +1812,13 @@ namespace Modern8bitTanks
 
         private void SpawnProjectile(ProjectileKind kind, AmmoType ammo, TankEntity owner, Vector2 visPos, Vector2 gndPos, Vector2 vel, float penetration, int armorBounces, float life)
         {
+            Vector2 pivot = owner.GetTurretPivotWorld(squash);
+            if (UsesControlPoints && FindPropHit(pivot, gndPos, out float muzzleHit) != null)
+            {
+                Vector2 stop = Vector2.Lerp(pivot, gndPos, muzzleHit) - vel.normalized * 0.025f;
+                visPos += stop - gndPos;
+                gndPos = stop;
+            }
             var sr = CreateEffect($"{kind}_{ammo}");
             var go = sr.gameObject;
             go.transform.position = new Vector3(visPos.x, visPos.y, -2f);
@@ -2175,6 +2204,7 @@ namespace Modern8bitTanks
                 if (t.factionTeam == ownerFaction) continue;
                 float dist = Vector2.Distance(t.Position2D, origin);
                 if (dist >= blastRadius) continue;
+                if (UsesControlPoints && FindPropHit(origin, t.Position2D, out _, fixedOnly: true) != null) continue;
                 TankHit splash = t.ApplyBlast(origin, squash, fuel: false, close: dist < blastRadius * 0.55f);
                 if (splash.Modules != TankModule.None || splash.Ignited)
                     ShowTankHit(t, splash);
@@ -2279,6 +2309,8 @@ namespace Modern8bitTanks
 
         private void CheckTeamVictoryOrWave(TankEntity justKilled)
         {
+            if (_phase != GamePhase.Playing) return;
+
             if (battleMode == BattleMode.FiringRange)
             {
                 if (justKilled != null && justKilled.factionTeam == "enemy")
@@ -2325,30 +2357,35 @@ namespace Modern8bitTanks
             bool roundFinished = allyAlive == 0 || enemyAlive == 0 || (battleMode == BattleMode.SurvivalWave && (player == null || !player.alive));
             if (!roundFinished) return;
 
-            // Keep the round-ending camera on the final casualty.
-            _phase = GamePhase.RoundOver;
-            _aftermathTimer = 0f;
-            _resultBannerShown = false;
-            if (!_multiplayer.IsInBattle) _hitStop = 0.09f;
-            _shake = 0.50f;
-            _killFocusPos = justKilled.Position2D;
-
             string winner = (battleMode == BattleMode.SurvivalWave && (player == null || !player.alive))
                 ? "enemy"
                 : (allyAlive > 0 ? "ally" : "enemy");
 
-            _pendingWinner = winner;
-            if (winner == "ally") _winsAlly++; else _winsEnemy++;
-
             string pName = SelectedPlayerVehicle != null ? SelectedPlayerVehicle.name.ToUpper() : "PLAYER";
             string eName = SelectedEnemyVehicle != null ? SelectedEnemyVehicle.name.ToUpper() : "HOSTILE";
-            _pendingSubtitle = _multiplayer.IsInBattle ? "ONLINE BATTLE" : battleMode switch
+            string subtitle = _multiplayer.IsInBattle ? "ONLINE BATTLE" : battleMode switch
             {
                 BattleMode.SurvivalWave => $"{pName} SURVIVED TO WAVE {_currentWave}",
                 BattleMode.Battle5v5 => winner == "ally" ? "5v5 ALLIED VICTORY" : "5v5 ENEMY VICTORY",
                 BattleMode.Squad2v2 => winner == "ally" ? "2v2 SQUAD VICTORY" : "2v2 HOSTILE VICTORY",
                 _ => winner == "ally" ? $"{pName} VICTORY" : $"{eName} VICTORY"
             };
+            FinishRound(winner, subtitle, justKilled.Position2D);
+        }
+
+        private void FinishRound(string winner, string subtitle, Vector2 focus, bool wonByControl = false)
+        {
+            if (_phase != GamePhase.Playing) return;
+            _phase = GamePhase.RoundOver;
+            _aftermathTimer = 0f;
+            _resultBannerShown = false;
+            if (!_multiplayer.IsInBattle && !wonByControl) _hitStop = 0.09f;
+            _shake = wonByControl ? 0f : 0.50f;
+            _killFocusPos = focus;
+            _pendingWinner = winner;
+            _pendingSubtitle = subtitle;
+            _wonByControl = wonByControl;
+            if (winner == "ally") _winsAlly++; else _winsEnemy++;
         }
 
         // ============================================================
@@ -2577,12 +2614,12 @@ namespace Modern8bitTanks
             for (int dy = 0; dy < h; dy++)
             {
                 int py = cy + dy;
-                if (py < BorderPadPx || py >= WorldHeightPx - BorderPadPx) continue;
+                if (py < BorderPadPx || py >= MapHeightPx - BorderPadPx) continue;
                 for (int dx = 0; dx < w; dx++)
                 {
                     int px = cx + dx;
-                    if (px < BorderPadPx || px >= WorldWidthPx - BorderPadPx) continue;
-                    int idx = py * WorldWidthPx + px;
+                    if (px < BorderPadPx || px >= MapWidthPx - BorderPadPx) continue;
+                    int idx = py * MapWidthPx + px;
                     _groundPixels[idx] = alpha >= 0.99f ? col : Color32.Lerp(_groundPixels[idx], col, alpha);
                 }
             }
@@ -2602,14 +2639,14 @@ namespace Modern8bitTanks
             for (int dy = -radiusPx; dy <= radiusPx; dy++)
             {
                 int py = cy + dy;
-                if (py < BorderPadPx || py >= WorldHeightPx - BorderPadPx) continue;
+                if (py < BorderPadPx || py >= MapHeightPx - BorderPadPx) continue;
                 for (int dx = -radiusPx; dx <= radiusPx; dx++)
                 {
                     int px = cx + dx;
-                    if (px < BorderPadPx || px >= WorldWidthPx - BorderPadPx) continue;
+                    if (px < BorderPadPx || px >= MapWidthPx - BorderPadPx) continue;
                     if (dx * dx + dy * dy <= radiusPx * radiusPx)
                     {
-                        int idx = py * WorldWidthPx + px;
+                        int idx = py * MapWidthPx + px;
                         _groundPixels[idx] = Color32.Lerp(_groundPixels[idx], dark, alpha);
                     }
                 }
@@ -2881,18 +2918,17 @@ namespace Modern8bitTanks
                 Vector2 dir = SpriteStackCamera.Squash(td, squash).normalized;
                 Vector2 zLiftVec = visMuz - gndMuz;
 
-                Vector2 endGnd = gndMuz;
-                for (int i = 0; i < 90; i++)
-                {
-                    Vector2 next = endGnd + dir * 0.22f;
-                    if (next.x <= BorderPad || next.x >= WorldW - BorderPad || next.y <= BorderPad || next.y >= WorldH - BorderPad)
-                        break;
-                    bool blocked = false;
-                    for (int pi = 0; pi < _props.Count; pi++)
-                        if (_props[pi] != null && _props[pi].IsSolidAt(next)) { blocked = true; break; }
-                    if (blocked) break;
-                    endGnd = next;
-                }
+                float rangeX = Mathf.Abs(dir.x) < 0.00001f ? float.PositiveInfinity
+                    : ((dir.x > 0f ? WorldW - BorderPad : BorderPad) - gndMuz.x) / dir.x;
+                float rangeY = Mathf.Abs(dir.y) < 0.00001f ? float.PositiveInfinity
+                    : ((dir.y > 0f ? WorldH - BorderPad : BorderPad) - gndMuz.y) / dir.y;
+                float range = Mathf.Max(0f, Mathf.Min(19.8f, Mathf.Min(rangeX, rangeY)));
+                Vector2 endGnd = gndMuz + dir * range;
+                Vector2 pivot = player.GetTurretPivotWorld(squash);
+                if (UsesControlPoints && FindPropHit(pivot, gndMuz, out _) != null)
+                    endGnd = gndMuz;
+                else if (FindPropHit(gndMuz, endGnd, out float hit) != null)
+                    endGnd = Vector2.Lerp(gndMuz, endGnd, hit);
 
                 _aimLine.SetPosition(0, new Vector3(visMuz.x, visMuz.y, -4f));
                 _aimLine.SetPosition(1, new Vector3(endGnd.x + zLiftVec.x, endGnd.y + zLiftVec.y, -4f));
@@ -2949,6 +2985,7 @@ namespace Modern8bitTanks
         private void OnDestroy()
         {
             CleanupMultiplayerBattle();
+            ReleaseRuntimeGround();
             Time.timeScale = 1f;
         }
     }

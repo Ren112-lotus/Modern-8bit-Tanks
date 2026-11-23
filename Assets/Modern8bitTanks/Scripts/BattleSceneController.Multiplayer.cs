@@ -100,7 +100,7 @@ namespace Modern8bitTanks
                 if (vehicleId == null) continue;
                 var alpha = slot < 4;
                 var row = slot % 4;
-                var spawn = new Vector2(WorldW * (alpha ? 0.08f : 0.92f), WorldH * (0.2f + row * 0.2f));
+                var spawn = LaneSpawn(alpha, row);
                 _networkSpawns[slot] = spawn;
                 var tank = SpawnTankFromPrefab(GetVehicleDef(vehicleId),
                     alpha ? "ally" : "enemy", spawn, alpha ? 90f : -90f, slot == _multiplayer.LocalSlot);
@@ -211,14 +211,16 @@ namespace Modern8bitTanks
             }
             byte result = _phase == GamePhase.RoundOver ? (_pendingWinner == "ally" ? (byte)1 : (byte)2) : _networkBattleStarted ? (byte)3 : (byte)0;
             UpdateRadarContacts(transport);
-            transport.Broadcast(states, shots, count, result, _visibility.NetworkContacts, _killFocusPos);
+            transport.Broadcast(states, shots, count, result, _visibility.NetworkContacts, _killFocusPos, ControlPoint, ControlScores, _wonByControl);
         }
 
         private void ApplyMultiplayerState(MultiplayerMatchTransport.TankState[] states, MultiplayerMatchTransport.ShotState[] shots,
-            int shotCount, byte result, float hostTime, byte[] spots, Vector2 focus)
+            int shotCount, byte result, float hostTime, byte[] spots, Vector2 focus,
+            ControlPointState controlPoint, Vector2 controlScores, bool wonByControl)
         {
             if (_networkTanks == null || states.Length != _networkTanks.Length) return;
             System.Array.Copy(spots, _visibility.NetworkContacts, _visibility.NetworkContacts.Length);
+            _controlPoints.ApplySnapshot(controlPoint, controlScores);
             float now = Time.unscaledTime;
             float sampleOffset = now - hostTime;
             _clockOffset = _poseCount == 0 ? sampleOffset : Mathf.Min(sampleOffset, _clockOffset + MultiplayerMatchTransport.SnapshotInterval * .02f);
@@ -264,10 +266,8 @@ namespace Modern8bitTanks
             if ((result == 1 || result == 2) && !_networkResultShown)
             {
                 _networkResultShown = true;
-                _phase = GamePhase.RoundOver;
-                _killFocusPos = focus;
-                _pendingWinner = result == 1 ? "ally" : "enemy";
-                _pendingSubtitle = "ONLINE BATTLE";
+                FinishRound(result == 1 ? "ally" : "enemy", wonByControl ? ControlVictorySubtitle : "ONLINE BATTLE",
+                    focus, wonByControl);
             }
         }
 

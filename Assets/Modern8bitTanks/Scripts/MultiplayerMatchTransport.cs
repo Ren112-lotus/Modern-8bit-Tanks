@@ -43,11 +43,12 @@ namespace Modern8bitTanks
         private const byte ActionMask = 0xC0;
         private const int TankStateBytes = 48;
         private const int ControlBytes = 22;
+        private const int ControlStateBytes = 3 * sizeof(float) + sizeof(sbyte) + 2 * sizeof(bool);
         private const int RoundBytes = sizeof(ushort);
 
         private const string ControlMessage = "m8t.control.v2";
         private const string ActionMessage = "m8t.actions.v2";
-        private const string StateMessage = "m8t.state.v3";
+        private const string StateMessage = "m8t.state.v4";
         private const string PropMessage = "m8t.prop.v1";
         private const string SmokeMessage = "m8t.smoke.v1";
         private const string WeaponMessage = "m8t.weapon.v1";
@@ -83,7 +84,7 @@ namespace Modern8bitTanks
                 return true;
             }
         }
-        public event Action<TankState[], ShotState[], int, byte, float, byte[], Vector2> StateReceived;
+        internal event Action<TankState[], ShotState[], int, byte, float, byte[], Vector2, ControlPointState, Vector2, bool> StateReceived;
         internal event Action<BattleEffect> EffectReceived;
         public event Action<int, Vector2, float, bool, int> PropImpactReceived;
         public event Action<int> SmokeReceived;
@@ -204,8 +205,8 @@ namespace Modern8bitTanks
             return true;
         }
 
-        public void Broadcast(TankState[] tanks, ShotState[] projectiles, int projectileCount, byte result,
-            byte[] spots, Vector2 focus)
+        internal void Broadcast(TankState[] tanks, ShotState[] projectiles, int projectileCount, byte result,
+            byte[] spots, Vector2 focus, ControlPointState controlPoint, Vector2 controlScores, bool wonByControl)
         {
             if (!Ready || !IsHost) return;
             byte presentMask = 0;
@@ -217,6 +218,11 @@ namespace Modern8bitTanks
             writer.WriteValueSafe(result);
             foreach (byte observerSpots in spots) writer.WriteValueSafe(observerSpots);
             writer.WriteValueSafe(focus);
+            writer.WriteValueSafe(controlScores);
+            writer.WriteValueSafe(wonByControl);
+            writer.WriteValueSafe(controlPoint.Progress);
+            writer.WriteValueSafe(controlPoint.Owner);
+            writer.WriteValueSafe(controlPoint.Contested);
             writer.WriteValueSafe(presentMask);
             foreach (var tank in tanks)
             {
@@ -278,12 +284,19 @@ namespace Modern8bitTanks
 
         private void OnState(ulong sender, FastBufferReader reader)
         {
-            if (_network == null || _network.IsServer || sender != NetworkManager.ServerClientId || !ReadRound(ref reader, 15 + _receivedSpots.Length)) return;
+            if (_network == null || _network.IsServer || sender != NetworkManager.ServerClientId
+                || !ReadRound(ref reader, 15 + _receivedSpots.Length + ControlStateBytes)) return;
             reader.ReadValueSafe(out float hostTime);
             reader.ReadValueSafe(out byte result);
             for (int observer = 0; observer < _receivedSpots.Length; observer++)
                 reader.ReadValueSafe(out _receivedSpots[observer]);
             reader.ReadValueSafe(out Vector2 focus);
+            reader.ReadValueSafe(out Vector2 controlScores);
+            reader.ReadValueSafe(out bool wonByControl);
+            reader.ReadValueSafe(out float progress);
+            reader.ReadValueSafe(out sbyte owner);
+            reader.ReadValueSafe(out bool contested);
+            var controlPoint = new ControlPointState { Progress = progress, Owner = owner, Contested = contested };
             reader.ReadValueSafe(out byte presentMask);
             var tanks = _receivedTanks;
             for (int i = 0; i < tanks.Length; i++)
@@ -316,7 +329,8 @@ namespace Modern8bitTanks
                 _receivedProjectiles[i] = new ShotState { Id = id, Position = new Vector2(x, y), Velocity = new Vector2(vx, vy) / 256f,
                     Kind = (ProjectileKind)kind, Ammo = (AmmoType)ammo };
             }
-            StateReceived?.Invoke(tanks, _receivedProjectiles, count, result, hostTime, _receivedSpots, focus);
+            StateReceived?.Invoke(tanks, _receivedProjectiles, count, result, hostTime, _receivedSpots, focus,
+                controlPoint, controlScores, wonByControl);
         }
 
         public void BroadcastPropImpact(int index, Vector2 position, float radius, bool heavy, int seed)

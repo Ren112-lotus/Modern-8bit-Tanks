@@ -8,7 +8,6 @@ namespace Modern8bitTanks
         private readonly Dictionary<string, Texture2D> _propTexCache = new();
         private PropsMetaFile _propsMeta;
         [SerializeField] private Transform _mapPropsRoot;
-        private BattleMap _loadedMap = BattleMap.Desert;
 
         public static string GetMapDisplayName(BattleMap map) => map switch
         {
@@ -295,6 +294,8 @@ namespace Modern8bitTanks
             if (_propTexCache.TryGetValue(kind, out Texture2D tex))
                 return tex;
             tex = Resources.Load<Texture2D>($"Props/{kind}_slices");
+            if (tex == null)
+                tex = Resources.Load<Texture2D>($"Props/prop_{kind}_slices");
             _propTexCache[kind] = tex;
             return tex;
         }
@@ -302,9 +303,8 @@ namespace Modern8bitTanks
         private void ClearAndSpawnMapProps(BattleMap map)
         {
             LoadPropsMetaIfNeeded();
-            _loadedMap = map;
 
-            // Hide any legacy pre-placed scene props so each biome builds its full expanded 2048x1360 layout cleanly!
+            // The runtime layout supplies all combat cover.
             foreach (var prop in _props)
             {
                 if (prop == null) continue;
@@ -313,10 +313,15 @@ namespace Modern8bitTanks
             }
             _props.Clear();
 
-
             if (battleMode == BattleMode.FiringRange)
             {
                 BuildFiringRangeLayout(map);
+                return;
+            }
+
+            if (UsesControlPoints)
+            {
+                BuildLaneLayout(map);
                 return;
             }
 
@@ -500,10 +505,15 @@ namespace Modern8bitTanks
             PropMetaEntry meta = _propsMeta != null ? _propsMeta.GetByKind(kind) : null;
             Texture2D sheet = GetPropSheet(kind);
             if (meta == null || sheet == null) return;
+            SpawnMapProp(kind, new Vector2(normX * WorldW, normY * WorldH), meta, sheet, angleDeg);
+        }
 
-            var prop = Instantiate(spawnAssets.GetCover(kind), _mapPropsRoot, false);
+        private void SpawnMapProp(string kind, Vector2 position, PropMetaEntry meta, Texture2D sheet, float angleDeg,
+            DestructibleProp prefab = null)
+        {
+            var prop = Instantiate(prefab != null ? prefab : spawnAssets.GetCover(kind), _mapPropsRoot, false);
             prop.name = $"Prop_{kind}_{_props.Count:00}";
-            prop.transform.position = new Vector3(normX * WorldW, normY * WorldH, 0f);
+            prop.transform.position = position;
             prop.ConfigureRuntime(kind, meta, sheet, angleDeg, PPU, _stackFlashMat);
             _props.Add(prop);
         }

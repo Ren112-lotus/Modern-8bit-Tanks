@@ -29,7 +29,7 @@ Unity Cloud multiplayer and anonymous authentication must be enabled for the gam
 
 ## Guest rendering and input
 
-The host sends battle snapshots at 20 Hz and maintains authority over combat and vehicle positions. Guests buffer other vehicles' snapshots for interpolation. Their own movement and turret aim respond locally each frame and reconcile with the host in the background. Continuous aim is sent at up to 30 Hz with a slower heartbeat while input is unchanged, and changes to held buttons are sent immediately. Smoke, repair and ammunition selection are queued separately and sent reliably.
+The host sends battle snapshots at 20 Hz and maintains authority over combat, vehicle positions, and control-point scoring. Online rounds use the three-lane Desert layout. An uncontested team can capture the center point, and holding it for 25 scoring seconds wins the round. Snapshot protocol `m8t.state.v4` carries the point's ownership, progress, scores, and victory type. Clients must use a compatible build (NGO protocol 7). Guests buffer other vehicles' snapshots for interpolation. Their own movement and turret aim respond locally each frame and reconcile with the host in the background. Continuous aim is sent at up to 30 Hz with a slower heartbeat while input is unchanged, and changes to held buttons are sent immediately. Smoke, repair and ammunition selection are queued separately and sent reliably.
 
 Both roles use the same dust, muzzle flash, recoil, sound and projectile appearance code. Guests animate projectiles between snapshots and reuse their renderers. Online track marks recycle small sprites so that each tread does not upload the full ground texture. The lobby replicates vehicle choices in the roster and locks them when the match starts.
 

@@ -86,6 +86,8 @@ namespace Modern8bitTanks
         private float _nextOnlineRadarUpdate;
         private const int RadarW = 68;
         private const int RadarH = 44;
+        private bool[] _laneRadarMask;
+        private BattleMap _laneRadarMap;
 
         // Result Overlay (smooth fade-in after kill aftermath)
         private GameObject _resultOverlay;
@@ -151,6 +153,7 @@ namespace Modern8bitTanks
             Font.textureRebuilt += OnFontTextureRebuilt;
 
             InitializeLayout();
+            _controlPointHud.SetVisible(_mgr.UsesControlPoints);
         }
 
         private void OnFontTextureRebuilt(Font f)
@@ -336,6 +339,7 @@ namespace Modern8bitTanks
 
             _allyWinsText.text = winsAlly.ToString();
             _enemyWinsText.text = winsEnemy.ToString();
+            UpdateControlHud();
 
             _centerBadgeText.text = mode switch
             {
@@ -532,6 +536,15 @@ namespace Modern8bitTanks
             }
         }
 
+        private void UpdateControlHud()
+        {
+            bool visible = _mgr.UsesControlPoints;
+            _controlPointHud.SetVisible(visible);
+            if (visible)
+                _controlPointHud.Render(_mgr.ControlPoint, _mgr.ControlScores,
+                    _mgr.ControlTeamColor(1), _mgr.ControlTeamColor(-1), _mgr.ControlPointColor());
+        }
+
         private void UpdateRadarTexture(TankEntity player, List<DestructibleProp> props, List<TankEntity> tanks,
             List<RadarSmokeInfo> smokes, float worldW, float worldH)
         {
@@ -554,11 +567,22 @@ namespace Modern8bitTanks
                 BattleMap.Forest => new Color32(32, 48, 30, 255),
                 _ => new Color32(50, 43, 30, 255)
             };
+            bool hasControlPoints = _mgr.UsesControlPoints;
+            if (hasControlPoints && (_laneRadarMask == null || _laneRadarMap != curMap))
+            {
+                _laneRadarMap = curMap;
+                _laneRadarMask ??= new bool[RadarW * RadarH];
+                for (int y = 0; y < RadarH; y++)
+                for (int x = 0; x < RadarW; x++)
+                    _laneRadarMask[y * RadarW + x] = _mgr.IsLaneRoute(x / (float)(RadarW - 1), y / (float)(RadarH - 1));
+            }
             for (int y = 0; y < RadarH; y++)
             {
                 for (int x = 0; x < RadarW; x++)
                 {
-                    bool line = (x % 17 == 0) || (y % 14 == 0);
+                    bool line = hasControlPoints
+                        ? _laneRadarMask[y * RadarW + x]
+                        : (x % 17 == 0) || (y % 14 == 0);
                     _radarPixels[y * RadarW + x] = line ? grid : bg;
                 }
             }
@@ -573,6 +597,13 @@ namespace Modern8bitTanks
                 if (prop == null || !prop.alive) continue;
                 int px = Mathf.Clamp(Mathf.RoundToInt((prop.transform.position.x / worldW) * (RadarW - 1)), 1, RadarW - 2);
                 int py = Mathf.Clamp(Mathf.RoundToInt((prop.transform.position.y / worldH) * (RadarH - 1)), 1, RadarH - 2);
+                if (prop.meta != null && prop.meta.fixedCover)
+                {
+                    int halfWidth = Mathf.FloorToInt(prop.meta.width / prop.pixelsPerUnit * (RadarW - 1) / (2f * worldW));
+                    int halfHeight = Mathf.FloorToInt(prop.meta.length * prop.stack.squash / prop.pixelsPerUnit * (RadarH - 1) / (2f * worldH));
+                    PlotRadarRect(px, py, halfWidth, halfHeight, bldgCol);
+                    continue;
+                }
                 bool isHuge = prop.meta != null && prop.meta.heavyStructure;
                 Color32 pCol = (prop.kind == "supply_crate" || prop.kind == "fuel_tank") ? explosiveCol
                     : (prop.kind == "palm_tree" || prop.kind == "pine_cluster" ? treeCol
@@ -593,6 +624,15 @@ namespace Modern8bitTanks
                 }
             }
 
+            if (hasControlPoints)
+            {
+                Vector2 position = _mgr.ControlPointPosition;
+                int x = Mathf.RoundToInt(position.x / worldW * (RadarW - 1));
+                int y = Mathf.RoundToInt(position.y / worldH * (RadarH - 1));
+                PlotDot(x, y, 3, _mgr.ControlPointColor());
+                PlotDot(x, y, 2, bg);
+            }
+
             foreach (var t in tanks)
             {
                 if (t == null || !t.alive || !_mgr.IsTankVisible(t)) continue;
@@ -610,13 +650,15 @@ namespace Modern8bitTanks
             _radarTex.Apply(false, false);
         }
 
-        private void PlotDot(int cx, int cy, int r, Color32 col)
+        private void PlotDot(int cx, int cy, int r, Color32 col) => PlotRadarRect(cx, cy, r, r, col);
+
+        private void PlotRadarRect(int cx, int cy, int halfWidth, int halfHeight, Color32 col)
         {
-            for (int dy = -r; dy <= r; dy++)
+            for (int dy = -halfHeight; dy <= halfHeight; dy++)
             {
                 int y = cy + dy;
                 if (y < 0 || y >= RadarH) continue;
-                for (int dx = -r; dx <= r; dx++)
+                for (int dx = -halfWidth; dx <= halfWidth; dx++)
                 {
                     int x = cx + dx;
                     if (x < 0 || x >= RadarW) continue;
@@ -657,9 +699,6 @@ namespace Modern8bitTanks
             return up.Length <= maxLen ? up : up.Substring(0, maxLen);
         }
 
-        // ============================================================
-        // Exact Integer-Pixel uGUI Helpers (Strictly 8px / 16px!)
-        // ============================================================
         private static void SetPixelRect(RectTransform rt, int x, int y, int w, int h)
         {
             rt.anchorMin = Vector2.zero;
