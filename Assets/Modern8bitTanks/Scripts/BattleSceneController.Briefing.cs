@@ -5,7 +5,7 @@ namespace Modern8bitTanks
 {
     public partial class BattleSceneController
     {
-        internal const int BriefingMapScale = 4;
+        internal const int BriefingMapScale = 6;
         private bool _briefingConfirmed;
 
         internal void ConfirmBriefing()

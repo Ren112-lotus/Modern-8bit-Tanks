@@ -114,6 +114,23 @@ MonoBehaviour:
       - kind: 3
         offset: {x: -81, y: -50}
         angle: 24
+    - center: {x: 171, y: 356}
+      groundSize: {x: 151, y: 132}
+      angle: -28
+      cover:
+      - kind: 1
+        offset: {x: 7, y: -13}
+        angle: 12
+      - kind: 3
+        offset: {x: 42, y: 29}
+        angle: -21
+    - center: {x: 574, y: 373}
+      groundSize: {x: 132, y: 105}
+      angle: -37
+      cover:
+      - kind: 3
+        offset: {x: 0, y: 0}
+        angle: 9
     - center: {x: 227, y: 475}
       groundSize: {x: 217, y: 68}
       angle: 30
@@ -187,6 +204,23 @@ MonoBehaviour:
       - kind: 3
         offset: {x: 48, y: -19}
         angle: -16
+    - center: {x: 167, y: 516}
+      groundSize: {x: 162, y: 149}
+      angle: 20
+      cover:
+      - kind: 2
+        offset: {x: 14, y: -12}
+        angle: 48
+      - kind: 3
+        offset: {x: -51, y: 30}
+        angle: -11
+    - center: {x: 567, y: 463}
+      groundSize: {x: 138, y: 112}
+      angle: 22
+      cover:
+      - kind: 1
+        offset: {x: 0, y: 0}
+        angle: -9
     - center: {x: 221, y: 413}
       groundSize: {x: 225, y: 61}
       angle: -28
@@ -259,6 +293,23 @@ MonoBehaviour:
       - kind: 3
         offset: {x: 9, y: -90}
         angle: -16
+    - center: {x: 165, y: 498}
+      groundSize: {x: 188, y: 154}
+      angle: -19
+      cover:
+      - kind: 1
+        offset: {x: -22, y: 5}
+        angle: 9
+      - kind: 3
+        offset: {x: 54, y: -41}
+        angle: -22
+    - center: {x: 579, y: 460}
+      groundSize: {x: 122, y: 106}
+      angle: 27
+      cover:
+      - kind: 3
+        offset: {x: 0, y: 0}
+        angle: 5
     - center: {x: 227, y: 358}
       groundSize: {x: 217, y: 58}
       angle: -28

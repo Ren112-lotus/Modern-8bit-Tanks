@@ -6,8 +6,9 @@ namespace Modern8bitTanks
     /// <summary>Shared coordinates for terrain, deployment, AI and the tactical radar.</summary>
     internal sealed class BattlefieldLayout
     {
-        public const int Width = 1280;
-        public const int Height = 832;
+        public const int Width = 1920;
+        public const int Height = 1248;
+        private const float PlanScale = 1.5f;
         private static readonly Vector2 MapSize = new(Width, Height);
         private static readonly Vector2[] DeploymentOffsets =
         {
@@ -31,12 +32,13 @@ namespace Modern8bitTanks
 
             foreach (var district in plan.Districts)
             {
-                Vector2 center = district.Center + new Vector2(random.Next(-10, 11), random.Next(-12, 13));
+                Vector2 center = district.Center * PlanScale + new Vector2(random.Next(-10, 11), random.Next(-12, 13));
                 float angle = district.Angle + random.Next(-6, 7);
                 Vector2 right = Direction(angle);
                 center.y = ControlPoint.y + (center.y - ControlPoint.y) * reflection;
-                _districtGround.Add(new DistrictGround(center, district.GroundSize, Direction(angle * reflection),
-                    district.Cover.Length == 0));
+                bool isConnector = district.Cover.Length == 0;
+                Vector2 groundSize = isConnector ? district.GroundSize * PlanScale : district.GroundSize;
+                _districtGround.Add(new DistrictGround(center, groundSize, Direction(angle * reflection), isConnector));
 
                 foreach (var piece in district.Cover)
                 {
