@@ -5,8 +5,8 @@ namespace Modern8bitTanks
 {
     public sealed class ControlPointHud : MonoBehaviour
     {
-        [SerializeField] private Text _allyScore;
-        [SerializeField] private Text _enemyScore;
+        [SerializeField] private UnityEngine.UI.Image _allyScoreFill;
+        [SerializeField] private UnityEngine.UI.Image _enemyScoreFill;
         [SerializeField] private Text _objective;
         [SerializeField] private Text _status;
         [SerializeField] private RectTransform _waveToast;
@@ -25,10 +25,10 @@ namespace Modern8bitTanks
 
         internal void Render(ControlPointState state, Vector2 scores, Color ally, Color enemy, Color status)
         {
-            _allyScore.text = Mathf.FloorToInt(scores.x).ToString();
-            _enemyScore.text = Mathf.FloorToInt(scores.y).ToString();
-            _allyScore.color = ally;
-            _enemyScore.color = enemy;
+            _allyScoreFill.fillAmount = scores.x / ControlPointSystem.ScoreToWin;
+            _enemyScoreFill.fillAmount = scores.y / ControlPointSystem.ScoreToWin;
+            _allyScoreFill.color = ally;
+            _enemyScoreFill.color = enemy;
             _status.text = state.Contested ? UiText.Get("CONTESTED")
                 : state.Owner == 0 ? UiText.Get("POINT NEUTRAL") : UiText.Get("POINT HELD");
             _status.color = status;
