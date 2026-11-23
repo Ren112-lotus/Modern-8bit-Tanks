@@ -2926,19 +2926,17 @@ namespace Modern8bitTanks
                 Vector2 dir = SpriteStackCamera.Squash(td, squash).normalized;
                 Vector2 zLiftVec = visMuz - gndMuz;
 
-                float rangeX = Mathf.Abs(dir.x) < 0.00001f ? float.PositiveInfinity
-                    : ((dir.x > 0f ? WorldW - BorderPad : BorderPad) - gndMuz.x) / dir.x;
-                float rangeY = Mathf.Abs(dir.y) < 0.00001f ? float.PositiveInfinity
-                    : ((dir.y > 0f ? WorldH - BorderPad : BorderPad) - gndMuz.y) / dir.y;
-                float range = Mathf.Max(0f, Mathf.Min(19.8f, Mathf.Min(rangeX, rangeY)));
-                Vector2 endGnd = gndMuz + dir * range;
+                float mapDistance = AimDistanceToBoundary(gndMuz, dir, 0f);
+                Vector2 mapEnd = gndMuz + dir * mapDistance;
                 Vector2 pivot = player.GetTurretPivotWorld(squash);
                 if (UsesControlPoints && FindPropHit(pivot, gndMuz, out _) != null)
-                    endGnd = gndMuz;
-                else if (FindPropHit(gndMuz, endGnd, out float hit) != null)
-                    endGnd = Vector2.Lerp(gndMuz, endGnd, hit);
+                    mapDistance = 0f;
+                else if (FindPropHit(gndMuz, mapEnd, out float hit) != null)
+                    mapDistance *= hit;
 
-                PlayerGroundAim = (gndMuz, endGnd, dir);
+                float range = Mathf.Min(19.8f, Mathf.Min(AimDistanceToBoundary(gndMuz, dir, BorderPad), mapDistance));
+                Vector2 endGnd = gndMuz + dir * range;
+                PlayerGroundAim = (gndMuz, gndMuz + dir * mapDistance);
                 _aimLine.SetPosition(0, new Vector3(visMuz.x, visMuz.y, -4f));
                 _aimLine.SetPosition(1, new Vector3(endGnd.x + zLiftVec.x, endGnd.y + zLiftVec.y, -4f));
 
@@ -2953,6 +2951,15 @@ namespace Modern8bitTanks
                 _aimLine.enabled = false;
                 _reticleSr.enabled = false;
             }
+        }
+
+        private float AimDistanceToBoundary(Vector2 origin, Vector2 direction, float padding)
+        {
+            float x = Mathf.Abs(direction.x) < 0.00001f ? float.PositiveInfinity
+                : ((direction.x > 0f ? WorldW - padding : padding) - origin.x) / direction.x;
+            float y = Mathf.Abs(direction.y) < 0.00001f ? float.PositiveInfinity
+                : ((direction.y > 0f ? WorldH - padding : padding) - origin.y) / direction.y;
+            return Mathf.Max(0f, Mathf.Min(x, y));
         }
 
         private void PlaySFXAt(

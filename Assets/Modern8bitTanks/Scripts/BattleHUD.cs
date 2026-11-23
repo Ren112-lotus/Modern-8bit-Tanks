@@ -628,16 +628,19 @@ namespace Modern8bitTanks
             }
 
             if (player != null && player.alive && _mgr.PlayerGroundAim is { } aim)
-                PlotRadarAim(Vector2.Scale(aim.Start, mapScale), Vector2.Scale(aim.End, mapScale),
-                    Vector2.Scale(aim.Direction, mapScale));
+                PlotRadarAim(Vector2.Scale(aim.Start, mapScale), Vector2.Scale(aim.End, mapScale));
 
             if (hasControlPoints)
             {
                 Vector2Int position = Vector2Int.RoundToInt(Vector2.Scale(_mgr.ControlPointPosition, mapScale));
-                int x = position.x;
-                int y = position.y;
-                PlotDot(x, y, 3, _mgr.ControlPointColor());
-                PlotDot(x, y, 2, bg);
+                Color32 color = _mgr.ControlPointColor();
+                for (int y = -3; y <= 3; y++)
+                for (int x = -3; x <= 3; x++)
+                {
+                    int distanceSquared = x * x + y * y;
+                    if (distanceSquared >= 6 && distanceSquared <= 12)
+                        PlotRadarPixel(position.x + x, position.y + y, color);
+                }
             }
 
             foreach (var t in tanks)
@@ -662,34 +665,17 @@ namespace Modern8bitTanks
             _radarTex.Apply(false, false);
         }
 
-        private void PlotRadarAim(Vector2 start, Vector2 end, Vector2 direction)
-        {
-            float toX = Mathf.Abs(direction.x) < 0.00001f ? float.PositiveInfinity
-                : ((direction.x > 0f ? _radarWidth - 1 : 0f) - start.x) / direction.x;
-            float toY = Mathf.Abs(direction.y) < 0.00001f ? float.PositiveInfinity
-                : ((direction.y > 0f ? _radarHeight - 1 : 0f) - start.y) / direction.y;
-            float distance = Mathf.Min(toX, toY);
-            if (distance > 0f && float.IsFinite(distance))
-            {
-                Vector2 edge = start + direction * distance;
-                var headingColor = new Color32(160, 131, 74, 255);
-                PlotRadarSegment(end, edge, headingColor);
-                PlotRadarPixel(Mathf.RoundToInt(edge.x), Mathf.RoundToInt(edge.y), headingColor);
-            }
-
-            PlotRadarSegment(start, end, new Color32(218, 166, 74, 255));
-            PlotRadarPixel(Mathf.RoundToInt(end.x), Mathf.RoundToInt(end.y), new Color32(255, 230, 138, 255));
-        }
-
-        private void PlotRadarSegment(Vector2 start, Vector2 end, Color32 color)
+        private void PlotRadarAim(Vector2 start, Vector2 end)
         {
             Vector2 delta = end - start;
             int steps = Mathf.CeilToInt(Mathf.Max(Mathf.Abs(delta.x), Mathf.Abs(delta.y)));
+            var color = new Color32(218, 166, 74, 255);
             for (int i = 0; i < steps; i++)
             {
                 Vector2 point = start + delta * (i / (float)steps);
                 PlotRadarPixel(Mathf.RoundToInt(point.x), Mathf.RoundToInt(point.y), color);
             }
+            PlotRadarPixel(Mathf.RoundToInt(end.x), Mathf.RoundToInt(end.y), new Color32(255, 230, 138, 255));
         }
 
         private void PlotRadarPlayer(Vector2Int center, Vector2 forward)
