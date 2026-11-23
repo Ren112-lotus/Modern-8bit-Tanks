@@ -334,9 +334,17 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 718499539072819592, guid: ec72e8bc73785eb418d63575a322af2d, type: 3}
+      propertyPath: _buildOnEnableInPlayMode
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1112755542675948389, guid: ec72e8bc73785eb418d63575a322af2d, type: 3}
       propertyPath: initialAngleDeg
       value: 35
+      objectReference: {fileID: 0}
+    - target: {fileID: 6307636583036998382, guid: ec72e8bc73785eb418d63575a322af2d, type: 3}
+      propertyPath: _buildOnEnableInPlayMode
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6594723311117287422, guid: ec72e8bc73785eb418d63575a322af2d, type: 3}
       propertyPath: m_Name

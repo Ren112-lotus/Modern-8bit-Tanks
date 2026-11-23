@@ -1,0 +1,260 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &797411114151693949
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6105404670482576899}
+  - component: {fileID: 4488576896494475125}
+  m_Layer: 0
+  m_Name: TurretStack
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6105404670482576899
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 797411114151693949}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5840308588060312511}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4488576896494475125
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 797411114151693949}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+  sourceSheet: {fileID: 0}
+  sliceCount: 0
+  pixelsPerUnit: 16
+  squash: 0.75
+  spacingPx: 1
+  baseZOffsetSlices: 0
+  baseSortingOrder: 0
+  sliceMaterial: {fileID: 2100000, guid: b53d8785100743345b06df30af2e71d1, type: 2}
+  addGroundShadow: 0
+  _buildOnEnableInPlayMode: 0
+  angleDeg: 0
+  hitFlash: 0
+  charred: 0
+  metallicWear: 0.2
+  dropProgress: 1
+  dropHeightPx: 44
+--- !u!1 &3058130534234454337
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5840308588060312511}
+  - component: {fileID: 2192162909529950704}
+  - component: {fileID: 1073552176552975900}
+  m_Layer: 0
+  m_Name: BattleTank
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5840308588060312511
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3058130534234454337}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 3755447929925064223}
+  - {fileID: 6105404670482576899}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!210 &2192162909529950704
+SortingGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3058130534234454337}
+  m_Enabled: 1
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_SortAtRoot: 0
+  m_Sort3DAs2D: 0
+--- !u!114 &1073552176552975900
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3058130534234454337}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd9898d7c788da441a75fd321975c129, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.TankEntity
+  tankType:
+  factionTeam:
+  vehicleDef:
+    id:
+    name:
+    nation:
+    tier: 0
+    tab:
+    role:
+    weapon:
+    engine:
+    year: 0
+    historyColumn: 0
+    historyRow: 0
+    treeFrom:
+    fixedGunTraverse: 0
+    wheelAxles: 0
+    frontEngine: 0
+    speed: 0
+    hullTurnSpeed: 0
+    turretTurnSpeed: 0
+    penetration: 0
+    crewCount: 0
+    reload: 0
+    armorFront: 0
+    hullSlices: 0
+    hullBaseHeight: 0
+    hullWidth: 0
+    hullLength: 0
+    hullPivotOffsetY: 0
+    turretSlices: 0
+    turretWidth: 0
+    turretLength: 0
+    muzzleDist: 0
+    muzzleHeight: 0
+  meta:
+    name:
+    hullSlices: 0
+    hullBaseHeight: 0
+    hullWidth: 0
+    hullLength: 0
+    hullPivotOffsetY: 0
+    turretSlices: 0
+    turretWidth: 0
+    turretLength: 0
+    muzzleDist: 0
+    muzzleHeight: 0
+  hullStack: {fileID: 8253441068380792521}
+  turretStack: {fileID: 4488576896494475125}
+  pixelsPerUnit: 16
+  initialAngleDeg: 0
+  reloadDuration: 1.15
+  smokeDuration: 9
+  atgmDuration: 3.5
+  hullTurnSpeed: 145
+  turretTurnSpeed: 240
+  isPlayer: 0
+  isExtraSpawned: 0
+  hullAngleDeg: 0
+  turretAngleDeg: 0
+  moveSpeed: 0
+  recoilPx: 0
+  suspensionOffset: 1
+  reloadTimer: 0
+  mgCooldown: 0
+  atgmCooldown: 0
+  smokeCooldown: 0
+  twinBarrelToggle: 0
+  selectedAmmoSlot: 0
+  alive: 1
+  treadAccum: 0
+  dustTimer: 0
+  smokeTimer: 0
+  turretTossed: 0
+  aiStrafeDir: 1
+  aiStrafeTimer: 2
+  aiFireDelay: 0.45
+  sortingGroup: {fileID: 2192162909529950704}
+--- !u!1 &4350115159448413826
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3755447929925064223}
+  - component: {fileID: 8253441068380792521}
+  m_Layer: 0
+  m_Name: HullStack
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3755447929925064223
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4350115159448413826}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5840308588060312511}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8253441068380792521
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4350115159448413826}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+  sourceSheet: {fileID: 0}
+  sliceCount: 0
+  pixelsPerUnit: 16
+  squash: 0.75
+  spacingPx: 1
+  baseZOffsetSlices: 0
+  baseSortingOrder: 0
+  sliceMaterial: {fileID: 2100000, guid: b53d8785100743345b06df30af2e71d1, type: 2}
+  addGroundShadow: 1
+  _buildOnEnableInPlayMode: 0
+  angleDeg: 0
+  hitFlash: 0
+  charred: 0
+  metallicWear: 0.2
+  dropProgress: 1
+  dropHeightPx: 44

@@ -88,8 +88,8 @@ namespace Modern8bitTanks
 
         private void SpawnMultiplayerTanks()
         {
-            if (_sceneAbrams != null) _sceneAbrams.gameObject.SetActive(false);
-            if (_sceneT90 != null) _sceneT90.gameObject.SetActive(false);
+            if (_playerTank != null) _playerTank.gameObject.SetActive(false);
+            if (_primaryEnemyTank != null) _primaryEnemyTank.gameObject.SetActive(false);
             var room = MultiplayerSessionConnection.Active.Room;
             _networkTanks = new TankEntity[MultiplayerSessionConnection.MaxPlayers];
             _networkSpawns = new Vector2[_networkTanks.Length];
@@ -101,7 +101,7 @@ namespace Modern8bitTanks
                 var row = slot % 4;
                 var spawn = new Vector2(WorldW * (alpha ? 0.08f : 0.92f), WorldH * (0.2f + row * 0.2f));
                 _networkSpawns[slot] = spawn;
-                var tank = SpawnExtraTank(GetVehicleDef(vehicleId),
+                var tank = SpawnTankFromPrefab(GetVehicleDef(vehicleId),
                     alpha ? "ally" : "enemy", spawn, alpha ? 90f : -90f, slot == MultiplayerSessionConnection.LocalSlot);
                 _networkTanks[slot] = tank;
                 if (tank == null) continue;

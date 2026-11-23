@@ -53,6 +53,7 @@ MonoBehaviour:
   baseSortingOrder: 0
   sliceMaterial: {fileID: 2100000, guid: b53d8785100743345b06df30af2e71d1, type: 2}
   addGroundShadow: 1
+  _buildOnEnableInPlayMode: 0
   angleDeg: 90
   hitFlash: 0
   charred: 0
@@ -227,6 +228,7 @@ MonoBehaviour:
   baseSortingOrder: 22
   sliceMaterial: {fileID: 2100000, guid: b53d8785100743345b06df30af2e71d1, type: 2}
   addGroundShadow: 0
+  _buildOnEnableInPlayMode: 0
   angleDeg: 90
   hitFlash: 0
   charred: 0
@@ -716,6 +718,7 @@ MonoBehaviour:
   baseSortingOrder: 0
   sliceMaterial: {fileID: 2100000, guid: b53d8785100743345b06df30af2e71d1, type: 2}
   addGroundShadow: 1
+  _buildOnEnableInPlayMode: 0
   angleDeg: 90
   hitFlash: 0
   charred: 0
@@ -1205,6 +1208,7 @@ MonoBehaviour:
   baseSortingOrder: 26
   sliceMaterial: {fileID: 2100000, guid: b53d8785100743345b06df30af2e71d1, type: 2}
   addGroundShadow: 0
+  _buildOnEnableInPlayMode: 0
   angleDeg: 90
   hitFlash: 0
   charred: 0

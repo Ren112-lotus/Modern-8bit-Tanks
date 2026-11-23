@@ -35,11 +35,12 @@ namespace Modern8bitTanks
 
         [Header("Scene & Prefab References (Pre-placed in DesertBattle.unity)")]
         public SpriteRenderer desertGroundRenderer;
-        public TankEntity abramsPrefab;
-        public TankEntity t90Prefab;
+        [SerializeField] private TankEntity _tankPrefab;
+        [SerializeField] private Transform _tanksRoot;
+        [SerializeField] private TankEntity _playerTank;
+        [SerializeField] private TankEntity _primaryEnemyTank;
 
         [Header("Battle Settings")]
-        public string playerTeam = "abrams"; // Legacy Inspector field (kept for scene compatibility)
         public string selectedPlayerVehicleId = "us_m1a2_sep2";
         public string selectedEnemyVehicleId = "ru_t90a";
         public BattleMode battleMode = BattleMode.Duel1v1;
@@ -111,8 +112,6 @@ namespace Modern8bitTanks
         private bool _enemyManuallySelected;
 
         // Scene & dynamic entities
-        private TankEntity _sceneAbrams; // Reused as Player / Left Showcase slot
-        private TankEntity _sceneT90;    // Reused as Enemy / Right Showcase slot
         private readonly List<TankEntity> _tanks = new();
         private readonly List<DestructibleProp> _props = new();
         private readonly List<ProjectileData> _projectiles = new();
@@ -294,7 +293,7 @@ namespace Modern8bitTanks
             _atmosphere.ApplyMapTheme(battleMap);
 
             PrepareRuntimeGround();
-            DiscoverBaseSceneEntities();
+            _props.AddRange(FindObjectsByType<DestructibleProp>(FindObjectsInactive.Include));
             _reticleTf = _reticleSr.transform;
             _reticleSr.sprite = _whitePxSprite;
 
@@ -394,9 +393,16 @@ namespace Modern8bitTanks
             return best ?? playerDef;
         }
 
-        private bool TrySpawnVehicle(TankEntity tank, VehicleDef def, Vector2 position, float angleDeg)
+        private bool TryDeployTank(TankEntity tank, VehicleDef def, string faction, Vector2 position, float angleDeg,
+            bool isPlayerTank)
         {
-            if (tank == null || def == null) return false;
+            if (tank == null) return false;
+            if (def == null)
+            {
+                tank.gameObject.SetActive(false);
+                return false;
+            }
+
             if (!_hullTexCache.TryGetValue(def.id, out Texture2D hullTex))
             {
                 hullTex = Resources.Load<Texture2D>($"Vehicles/{def.id}_hull_slices");
@@ -407,7 +413,17 @@ namespace Modern8bitTanks
                 turretTex = Resources.Load<Texture2D>($"Vehicles/{def.id}_turret_slices");
                 _turretTexCache[def.id] = turretTex;
             }
-            return tank.TrySpawnAsVehicle(def, hullTex, turretTex, position, angleDeg, _stackFlashMat);
+            if (!tank.TrySpawnAsVehicle(def, hullTex, turretTex, position, angleDeg, _stackFlashMat))
+            {
+                tank.gameObject.SetActive(false);
+                return false;
+            }
+
+            tank.isPlayer = isPlayerTank;
+            tank.factionTeam = faction;
+            tank.gameObject.SetActive(true);
+            if (!_tanks.Contains(tank)) _tanks.Add(tank);
+            return true;
         }
 
         private void LoadRuntimeResources()
@@ -464,38 +480,6 @@ namespace Modern8bitTanks
             );
         }
 
-        private void DiscoverBaseSceneEntities()
-        {
-            var found = FindObjectsByType<TankEntity>(FindObjectsInactive.Include);
-            foreach (var t in found)
-            {
-                if (t.tankType == "abrams" && _sceneAbrams == null) _sceneAbrams = t;
-                else if (t.tankType == "t90" && _sceneT90 == null) _sceneT90 = t;
-            }
-
-            if (_sceneAbrams == null && abramsPrefab != null)
-            {
-                _sceneAbrams = Instantiate(abramsPrefab, new Vector3(92f / PPU, WorldH * 0.5f, 0f), Quaternion.identity);
-                _sceneAbrams.name = "M1A2_Abrams";
-            }
-            if (_sceneT90 == null && t90Prefab != null)
-            {
-                _sceneT90 = Instantiate(t90Prefab, new Vector3((WorldWidthPx - 92f) / PPU, WorldH * 0.5f, 0f), Quaternion.identity);
-                _sceneT90.name = "T90_Tank";
-            }
-
-            if (_sceneAbrams != null && _sceneAbrams.hullStack != null && _sceneAbrams.hullStack.sliceMaterial != null)
-                _stackFlashMat = _sceneAbrams.hullStack.sliceMaterial;
-            else if (_sceneT90 != null && _sceneT90.hullStack != null && _sceneT90.hullStack.sliceMaterial != null)
-                _stackFlashMat = _sceneT90.hullStack.sliceMaterial;
-
-            _props.Clear();
-            _props.AddRange(FindObjectsByType<DestructibleProp>(FindObjectsInactive.Include));
-        }
-
-        // ============================================================
-        // Title Screen / Hangar Showcase & Round Initialization
-        // ============================================================
         public void CycleCameraMode()
         {
             cameraMode = cameraMode switch
@@ -717,30 +701,17 @@ namespace Modern8bitTanks
             float westX = WorldW * 0.08f;
             float eastX = WorldW * 0.92f;
 
-            // Player vehicle starts on West desert approach; Primary Enemy rival on East approach
-            if (_sceneAbrams != null)
-            {
-                _sceneAbrams.gameObject.SetActive(true);
-                _sceneAbrams.isPlayer = true;
-                _sceneAbrams.factionTeam = "ally";
-                if (TrySpawnVehicle(_sceneAbrams, playerDef, new Vector2(westX, WorldH * 0.50f), 90f))
-                    _tanks.Add(_sceneAbrams);
-            }
-            if (_sceneT90 != null)
-            {
-                _sceneT90.gameObject.SetActive(true);
-                _sceneT90.isPlayer = false;
-                _sceneT90.factionTeam = "enemy";
-                if (TrySpawnVehicle(_sceneT90, enemyDef, new Vector2(eastX, WorldH * 0.50f), -90f))
-                    _tanks.Add(_sceneT90);
-            }
+            TryDeployTank(_playerTank, playerDef, "ally",
+                new Vector2(westX, WorldH * 0.50f), 90f, isPlayerTank: true);
+            TryDeployTank(_primaryEnemyTank, enemyDef, "enemy",
+                new Vector2(eastX, WorldH * 0.50f), -90f, isPlayerTank: false);
 
             if (battleMode == BattleMode.Squad2v2)
             {
                 VehicleDef allyWing = BattleSessionState.PickRandomSameTierAlly(_allVehicles, playerDef);
                 VehicleDef enemyWing = BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: enemyDef != null ? enemyDef.id : null);
-                SpawnExtraTank(allyWing, "ally", new Vector2(westX + 1.2f, WorldH * 0.28f), 90f, isPlayerTank: false);
-                SpawnExtraTank(enemyWing, "enemy", new Vector2(eastX - 1.2f, WorldH * 0.72f), -90f, isPlayerTank: false);
+                SpawnTankFromPrefab(allyWing, "ally", new Vector2(westX + 1.2f, WorldH * 0.28f), 90f, isPlayerTank: false);
+                SpawnTankFromPrefab(enemyWing, "enemy", new Vector2(eastX - 1.2f, WorldH * 0.72f), -90f, isPlayerTank: false);
             }
             else if (battleMode == BattleMode.Battle5v5)
             {
@@ -764,33 +735,27 @@ namespace Modern8bitTanks
                 for (int k = 0; k < 4; k++)
                 {
                     VehicleDef allyMate = BattleSessionState.PickRandomSameTierAlly(_allVehicles, playerDef);
-                    SpawnExtraTank(allyMate, "ally", allySpawns[k], 90f, isPlayerTank: false);
+                    SpawnTankFromPrefab(allyMate, "ally", allySpawns[k], 90f, isPlayerTank: false);
 
                     VehicleDef foe = BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: prevEnemyId);
                     if (foe != null) prevEnemyId = foe.id;
-                    SpawnExtraTank(foe, "enemy", enemySpawns[k], -90f, isPlayerTank: false);
+                    SpawnTankFromPrefab(foe, "enemy", enemySpawns[k], -90f, isPlayerTank: false);
                 }
             }
         }
 
-        private TankEntity SpawnExtraTank(VehicleDef def, string faction, Vector2 pos, float angleDeg, bool isPlayerTank)
+        private TankEntity SpawnTankFromPrefab(VehicleDef def, string faction, Vector2 position, float angleDeg, bool isPlayerTank)
         {
-            TankEntity prefab = faction == "ally" ? abramsPrefab : t90Prefab;
-            if (prefab == null) prefab = faction == "ally" ? _sceneAbrams : _sceneT90;
-            if (prefab == null) return null;
+            if (_tankPrefab == null || def == null) return null;
 
-            TankEntity inst = Instantiate(prefab, new Vector3(pos.x, pos.y, 0f), Quaternion.identity);
-            inst.name = $"Extra_{(def != null ? def.id : faction)}_{_tanks.Count}";
-            inst.isExtraSpawned = true;
-            inst.isPlayer = isPlayerTank;
-            inst.factionTeam = faction;
-            if (!TrySpawnVehicle(inst, def, pos, angleDeg))
-            {
-                Destroy(inst.gameObject);
-                return null;
-            }
-            _tanks.Add(inst);
-            return inst;
+            TankEntity tank = Instantiate(_tankPrefab, new Vector3(position.x, position.y, 0f), Quaternion.identity, _tanksRoot);
+            tank.name = $"{faction}_{def.id}_{_tanks.Count}";
+            tank.isExtraSpawned = true;
+            if (TryDeployTank(tank, def, faction, position, angleDeg, isPlayerTank))
+                return tank;
+
+            Destroy(tank.gameObject);
+            return null;
         }
 
         private VehicleDef PickSurvivalWaveEnemy(int wave, int slotIndex)
@@ -845,19 +810,12 @@ namespace Modern8bitTanks
                 new Vector2(WorldW * 0.50f, WorldH - 3.6f),
             };
 
-            if (_sceneT90 != null)
-            {
-                _sceneT90.gameObject.SetActive(true);
-                _sceneT90.isPlayer = false;
-                _sceneT90.factionTeam = "enemy";
-                if (TrySpawnVehicle(_sceneT90, PickSurvivalWaveEnemy(_currentWave, 0), spawnPts[0], -90f) &&
-                    !_tanks.Contains(_sceneT90))
-                    _tanks.Add(_sceneT90);
-            }
+            TryDeployTank(_primaryEnemyTank, PickSurvivalWaveEnemy(_currentWave, 0), "enemy",
+                spawnPts[0], -90f, isPlayerTank: false);
 
             for (int k = 1; k < enemyCount; k++)
             {
-                SpawnExtraTank(PickSurvivalWaveEnemy(_currentWave, k), "enemy", spawnPts[k % spawnPts.Length], -90f, isPlayerTank: false);
+                SpawnTankFromPrefab(PickSurvivalWaveEnemy(_currentWave, k), "enemy", spawnPts[k % spawnPts.Length], -90f, isPlayerTank: false);
             }
 
             _hud.ShowWaveToast($"WAVE {_currentWave} — {enemyCount} HOSTILES!", 2.2f);
@@ -1129,31 +1087,6 @@ namespace Modern8bitTanks
                 _runtimeGroundTex.SetPixels32(_groundPixels);
                 _runtimeGroundTex.Apply(false, false);
             }
-        }
-
-        private void UpdateTitleTurntable(float dt)
-        {
-            if (_aimLine != null) _aimLine.enabled = false;
-            if (_reticleSr != null) _reticleSr.enabled = false;
-
-            float tNow = Time.time;
-            if (_sceneAbrams != null)
-            {
-                _sceneAbrams.hullAngleDeg = Mathf.Repeat(_sceneAbrams.hullAngleDeg + 26f * dt, 360f);
-                _sceneAbrams.turretAngleDeg = _sceneAbrams.hullAngleDeg + Mathf.Sin(tNow * 1.1f) * 32f;
-                _sceneAbrams.SyncVisuals(squash, spacingPx);
-            }
-            if (_sceneT90 != null)
-            {
-                _sceneT90.hullAngleDeg = Mathf.Repeat(_sceneT90.hullAngleDeg - 26f * dt, 360f);
-                _sceneT90.turretAngleDeg = _sceneT90.hullAngleDeg + Mathf.Cos(tNow * 1.1f) * 32f;
-                _sceneT90.SyncVisuals(squash, spacingPx);
-            }
-
-            float orthoSize = ((renderHeight / PPU) * 0.5f) / 1.45f;
-            _cam.orthographicSize = orthoSize;
-            Vector2 center = new Vector2(WorldW * 0.5f, WorldH * 0.5f);
-            _cam.transform.position = new Vector3(center.x, center.y, -20f);
         }
 
         private void OnTurretGroundBounce(Vector2 worldPos)

@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 namespace Modern8bitTanks
 {
     /// <summary>
-    /// Prefab-ready M1A2 Abrams / T-90 tank entity with:
+    /// Catalog-driven tank entity with:
     /// - Independent Hull & Turret SpriteStackRenderers
     /// - Hydraulic gun recoil + torsion-bar suspension dip
     /// - Smoke Grenade cooldown
@@ -34,7 +34,7 @@ namespace Modern8bitTanks
 
         [Header("Runtime State")]
         public bool isPlayer;
-        public bool isExtraSpawned; // True for dynamically spawned 2v2 / Survival wave tanks
+        public bool isExtraSpawned; // True for tanks instantiated for the current battle or wave
         public float hullAngleDeg;
         public float turretAngleDeg;
         public float moveSpeed;

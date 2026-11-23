@@ -22,6 +22,8 @@ namespace Modern8bitTanks
         public int baseSortingOrder = 0;
         public Material sliceMaterial;
         public bool addGroundShadow = true;
+        [SerializeField, Tooltip("Build the authored stack on enable in Play Mode. Catalog tanks build when deployed.")]
+        private bool _buildOnEnableInPlayMode = true;
 
         public float angleDeg;
         public float hitFlash;
@@ -64,10 +66,12 @@ namespace Modern8bitTanks
         public int SliceHeight => _sliceH;
         public int SliceCount => _sliceTextures.Count;
 
+        private bool BuildOnEnable => !Application.isPlaying || _buildOnEnableInPlayMode;
+
         private void OnEnable()
         {
             _mpb ??= new MaterialPropertyBlock();
-            if (sourceSheet != null && sourceSheet.isReadable && _renderers.Count == 0)
+            if (BuildOnEnable && sourceSheet != null && sourceSheet.isReadable && _renderers.Count == 0)
             {
                 RebuildStack();
             }
@@ -80,11 +84,9 @@ namespace Modern8bitTanks
 
         private void Update()
         {
-            if (_dirtyRebuild)
+            if (_dirtyRebuild && (BuildOnEnable || _visualRoot != null))
             {
-                _dirtyRebuild = false;
-                if (sourceSheet != null && sourceSheet.isReadable)
-                    RebuildStack();
+                RebuildStack();
             }
             else if (!Application.isPlaying && _renderers.Count > 0)
             {

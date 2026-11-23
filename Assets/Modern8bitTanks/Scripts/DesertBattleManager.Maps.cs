@@ -412,15 +412,8 @@ namespace Modern8bitTanks
         {
             _rangeKills = 0;
 
-            // Player spawns on the wide-open West firing bay facing East (90 deg)
-            if (_sceneAbrams != null)
-            {
-                _sceneAbrams.gameObject.SetActive(true);
-                _sceneAbrams.isPlayer = true;
-                _sceneAbrams.factionTeam = "ally";
-                if (TrySpawnVehicle(_sceneAbrams, playerDef, new Vector2(WorldW * 0.14f, WorldH * 0.50f), 90f))
-                    _tanks.Add(_sceneAbrams);
-            }
+            TryDeployTank(_playerTank, playerDef, "ally",
+                new Vector2(WorldW * 0.14f, WorldH * 0.50f), 90f, isPlayerTank: true);
 
             // 6 Graduated Proving-Ground Targets (Close Light, Frontal MBT, Broadside MBT, Rear Engine MBT, Long-Range Heavy, Moving Patrol!)
             var specs = new (VehicleDef def, Vector2 pos, float angle, bool moving)[]
@@ -436,19 +429,9 @@ namespace Modern8bitTanks
             for (int i = 0; i < specs.Length; i++)
             {
                 var sp = specs[i];
-                TankEntity t;
-                if (i == 0 && _sceneT90 != null)
-                {
-                    _sceneT90.gameObject.SetActive(true);
-                    _sceneT90.isPlayer = false;
-                    _sceneT90.factionTeam = "enemy";
-                    t = TrySpawnVehicle(_sceneT90, sp.def, sp.pos, sp.angle) ? _sceneT90 : null;
-                    if (t != null) _tanks.Add(t);
-                }
-                else
-                {
-                    t = SpawnExtraTank(sp.def, "enemy", sp.pos, sp.angle, isPlayerTank: false);
-                }
+                TankEntity t = i == 0 && TryDeployTank(_primaryEnemyTank, sp.def, "enemy", sp.pos, sp.angle, isPlayerTank: false)
+                    ? _primaryEnemyTank
+                    : SpawnTankFromPrefab(sp.def, "enemy", sp.pos, sp.angle, isPlayerTank: false);
 
                 if (t != null)
                 {
