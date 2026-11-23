@@ -35,6 +35,243 @@ MonoBehaviour:
   - {fileID: 8741653659015714409, guid: bd83e40b5741f344cb4dbd72970d58d6, type: 3}
   - {fileID: 6479742757975973121, guid: 14818cec514b6c342aee1bc6abf86fd4, type: 3}
   controlPointMarker: {fileID: 4511322257720004527, guid: f5d957221f4d8024ea82f0e8fe724326, type: 3}
-  proceduralCover:
-  - {fileID: 4521758367598110041, guid: 7ddd93239b2138a4a9054c8c571a4788, type: 3}
-  - {fileID: 6674498746651925588, guid: d1874502fcc97e147afd469e0c3a726f, type: 3}
+  desertTheme:
+    landmark: {fileID: 6479742757975973121, guid: 14818cec514b6c342aee1bc6abf86fd4, type: 3}
+    building: {fileID: 8741653659015714409, guid: bd83e40b5741f344cb4dbd72970d58d6, type: 3}
+    wall: {fileID: 5364198847046659650, guid: 888639b43b51af942a22a066ce2b2551, type: 3}
+    barricade: {fileID: 763103126743302232, guid: e5672a7d7c7c9f94bb138fb563484f7a, type: 3}
+  cityTheme:
+    landmark: {fileID: 98349446767452748, guid: 090c6b84c1e57164ab0acb4b0d40df9b, type: 3}
+    building: {fileID: 140199888111989486, guid: d67ddc42894f9064c8fcd007401926f9, type: 3}
+    wall: {fileID: 6620415479156953579, guid: 910498c385ca377409c64567abe85761, type: 3}
+    barricade: {fileID: 68822172909720721, guid: 55418cf9d6de25548813f3a6e117634e, type: 3}
+  forestTheme:
+    landmark: {fileID: 9128976682460911620, guid: 26841c92c24621c4a912de0bf09f4836, type: 3}
+    building: {fileID: 5638426172291757326, guid: ff8f24c9389d9cb4eab66e80df5ba6bb, type: 3}
+    wall: {fileID: 683538298334002162, guid: 63763cf46375ada4cbe6eb4431fc4560, type: 3}
+    barricade: {fileID: 5658683921761215895, guid: 9238da582c823be479af92fc638f8407, type: 3}
+  battlefieldPlans:
+  - name: Freight Junction
+    districts:
+    - center: {x: 281, y: 574}
+      groundSize: {x: 254, y: 207}
+      angle: 27
+      cover:
+      - kind: 0
+        offset: {x: -37, y: 25}
+        angle: -8
+      - kind: 1
+        offset: {x: 5, y: 75}
+        angle: 25
+      - kind: 2
+        offset: {x: 72, y: -26}
+        angle: 48
+      - kind: 3
+        offset: {x: -58, y: -59}
+        angle: -14
+    - center: {x: 475, y: 638}
+      groundSize: {x: 255, y: 179}
+      angle: -23
+      cover:
+      - kind: 1
+        offset: {x: 41, y: 19}
+        angle: -5
+      - kind: 0
+        offset: {x: -47, y: -11}
+        angle: 6
+      - kind: 3
+        offset: {x: 8, y: -59}
+        angle: -13
+    - center: {x: 346, y: 223}
+      groundSize: {x: 293, y: 203}
+      angle: -23
+      cover:
+      - kind: 2
+        offset: {x: 2, y: 63}
+        angle: 35
+      - kind: 0
+        offset: {x: -65, y: -8}
+        angle: 10
+      - kind: 1
+        offset: {x: 51, y: -28}
+        angle: -8
+      - kind: 3
+        offset: {x: 90, y: 46}
+        angle: 5
+    - center: {x: 505, y: 418}
+      groundSize: {x: 193, y: 223}
+      angle: 32
+      cover:
+      - kind: 2
+        offset: {x: -24, y: 16}
+        angle: 40
+      - kind: 1
+        offset: {x: 17, y: -79}
+        angle: 7
+      - kind: 3
+        offset: {x: 13, y: 73}
+        angle: 8
+      - kind: 3
+        offset: {x: -81, y: -50}
+        angle: 24
+    - center: {x: 227, y: 475}
+      groundSize: {x: 217, y: 68}
+      angle: 30
+      cover: []
+    - center: {x: 410, y: 519}
+      groundSize: {x: 243, y: 65}
+      angle: 39
+      cover: []
+    - center: {x: 429, y: 322}
+      groundSize: {x: 240, y: 71}
+      angle: 36
+      cover: []
+    - center: {x: 547, y: 553}
+      groundSize: {x: 208, y: 62}
+      angle: 61
+      cover: []
+  - name: Terraced Approach
+    districts:
+    - center: {x: 298, y: 675}
+      groundSize: {x: 287, y: 166}
+      angle: -26
+      cover:
+      - kind: 0
+        offset: {x: -37, y: 8}
+        angle: -12
+      - kind: 1
+        offset: {x: 64, y: -9}
+        angle: 8
+      - kind: 3
+        offset: {x: 41, y: -54}
+        angle: -9
+    - center: {x: 268, y: 325}
+      groundSize: {x: 215, y: 240}
+      angle: 18
+      cover:
+      - kind: 2
+        offset: {x: -3, y: 9}
+        angle: 51
+      - kind: 1
+        offset: {x: -62, y: -66}
+        angle: -10
+      - kind: 1
+        offset: {x: 63, y: -42}
+        angle: -11
+      - kind: 3
+        offset: {x: 45, y: 73}
+        angle: 8
+    - center: {x: 455, y: 224}
+      groundSize: {x: 270, y: 192}
+      angle: 24
+      cover:
+      - kind: 0
+        offset: {x: -37, y: -23}
+        angle: 6
+      - kind: 2
+        offset: {x: 53, y: 25}
+        angle: -34
+      - kind: 3
+        offset: {x: -81, y: 66}
+        angle: 11
+    - center: {x: 498, y: 459}
+      groundSize: {x: 233, y: 194}
+      angle: -32
+      cover:
+      - kind: 2
+        offset: {x: -17, y: 15}
+        angle: -31
+      - kind: 1
+        offset: {x: -37, y: 65}
+        angle: 8
+      - kind: 3
+        offset: {x: 48, y: -19}
+        angle: -16
+    - center: {x: 221, y: 413}
+      groundSize: {x: 225, y: 61}
+      angle: -28
+      cover: []
+    - center: {x: 366, y: 512}
+      groundSize: {x: 255, y: 65}
+      angle: 38
+      cover: []
+    - center: {x: 394, y: 346}
+      groundSize: {x: 212, y: 76}
+      angle: 18
+      cover: []
+  - name: Split Courtyards
+    districts:
+    - center: {x: 253, y: 263}
+      groundSize: {x: 240, y: 214}
+      angle: 34
+      cover:
+      - kind: 0
+        offset: {x: -31, y: -26}
+        angle: -4
+      - kind: 2
+        offset: {x: 48, y: 39}
+        angle: 7
+      - kind: 3
+        offset: {x: 51, y: -69}
+        angle: -15
+    - center: {x: 479, y: 168}
+      groundSize: {x: 224, y: 186}
+      angle: -27
+      cover:
+      - kind: 1
+        offset: {x: -49, y: 18}
+        angle: 2
+      - kind: 0
+        offset: {x: 50, y: 28}
+        angle: 12
+      - kind: 3
+        offset: {x: 0, y: -55}
+        angle: 8
+    - center: {x: 344, y: 593}
+      groundSize: {x: 310, y: 217}
+      angle: -33
+      cover:
+      - kind: 2
+        offset: {x: -63, y: -45}
+        angle: -12
+      - kind: 2
+        offset: {x: 58, y: -50}
+        angle: 65
+      - kind: 0
+        offset: {x: -14, y: 38}
+        angle: 8
+      - kind: 1
+        offset: {x: 91, y: 5}
+        angle: 28
+      - kind: 3
+        offset: {x: 16, y: -75}
+        angle: 7
+    - center: {x: 518, y: 390}
+      groundSize: {x: 184, y: 236}
+      angle: -21
+      cover:
+      - kind: 2
+        offset: {x: -24, y: -18}
+        angle: 83
+      - kind: 1
+        offset: {x: -19, y: 77}
+        angle: -8
+      - kind: 3
+        offset: {x: 9, y: -90}
+        angle: -16
+    - center: {x: 227, y: 358}
+      groundSize: {x: 217, y: 58}
+      angle: -28
+      cover: []
+    - center: {x: 382, y: 392}
+      groundSize: {x: 280, y: 72}
+      angle: 19
+      cover: []
+    - center: {x: 451, y: 488}
+      groundSize: {x: 239, y: 64}
+      angle: -38
+      cover: []
+    - center: {x: 348, y: 199}
+      groundSize: {x: 228, y: 52}
+      angle: -22
+      cover: []

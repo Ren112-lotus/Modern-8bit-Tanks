@@ -16,10 +16,15 @@ namespace Modern8bitTanks
             int seed = _multiplayer.IsInBattle
                 ? _multiplayer.Connection.Room.BattlefieldSeed
                 : Random.Range(1, int.MaxValue);
-            var palette = spawnAssets.ProceduralCover;
+            var theme = spawnAssets.GetBattlefieldTheme(battleMap);
+            var plans = spawnAssets.BattlefieldPlans;
+            var random = new System.Random(seed);
+            string lastPlan = null;
             for (int attempt = 0; attempt < 12; attempt++)
             {
-                var layout = new BattlefieldLayout(battleMap, unchecked(seed + attempt), palette[0], palette[1]);
+                var plan = plans[random.Next(plans.Length)];
+                lastPlan = plan.Name;
+                var layout = new BattlefieldLayout(battleMap, random.Next(), plan, theme);
                 var navigation = new BattlefieldNavigation(layout);
                 navigation.Rebuild();
                 if (!HasConnectedDeployment(layout, navigation)) continue;
@@ -29,7 +34,7 @@ namespace Modern8bitTanks
                 return;
             }
 
-            throw new System.InvalidOperationException("Generated cover does not leave a reachable capture point.");
+            throw new System.InvalidOperationException($"No connected deployment could be generated for {battleMap} ({lastPlan}).");
         }
 
         private static bool HasConnectedDeployment(BattlefieldLayout layout, BattlefieldNavigation navigation)

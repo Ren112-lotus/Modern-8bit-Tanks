@@ -53,7 +53,8 @@ namespace Modern8bitTanks
             Vector2 opposingSpawn = CurrentLayout.Spawn(!west, 0);
             var background = new Color32(17, 23, 22, 255);
             var wall = new Color32(220, 214, 186, 255);
-            var block = new Color32(170, 161, 132, 255);
+            var structure = new Color32(183, 178, 154, 255);
+            var block = new Color32(145, 139, 115, 255);
             var own = new Color32(111, 208, 239, 255);
             var opposing = new Color32(240, 119, 100, 255);
             var objective = new Color32(250, 213, 117, 255);
@@ -66,14 +67,14 @@ namespace Modern8bitTanks
                 Vector2 position = new(groundX, groundY);
                 Vector2 world = position / PPU;
                 Color32 terrain = _cleanGroundPixels[groundY * BattlefieldLayout.Width + groundX];
-                Color32 color = Color32.Lerp(terrain, background, 0.50f);
+                Color32 color = Color32.Lerp(terrain, background, 0.42f);
                 if (x % 32 == 0 || y % 32 == 0)
                     color = Color32.Lerp(color, background, 0.21f);
 
                 foreach (var prop in _props)
                 {
                     if (!prop.IsSolidAt(world)) continue;
-                    color = prop.meta.fixedCover ? wall : block;
+                    color = prop.meta.fixedCover ? wall : prop.meta.heavyStructure ? structure : block;
                     break;
                 }
 

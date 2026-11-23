@@ -18,33 +18,43 @@ namespace Modern8bitTanks
         private readonly int _seed;
         private readonly Vector2 _westBase;
         private readonly List<CoverPlacement> _cover = new();
+        private readonly List<DistrictGround> _districtGround = new();
         private Color32[] _ground;
 
-        internal BattlefieldLayout(BattleMap map, int seed, DestructibleProp block, DestructibleProp wall)
+        internal BattlefieldLayout(BattleMap map, int seed, BattlefieldPlan plan, BattlefieldTheme theme)
         {
             _map = map;
             _seed = seed;
             var random = new System.Random(seed);
-            _westBase = new Vector2(128, ControlPoint.y + random.Next(-29, 30));
+            _westBase = new Vector2(128, ControlPoint.y + random.Next(-17, 18));
+            float reflection = random.Next(2) == 0 ? 1f : -1f;
 
-            int outer = random.Next(245, 275);
-            int inner = random.Next(463, 497);
-            AddWallSections(random, wall, outer);
-            AddWallSections(random, wall, inner);
-
-            // Short dividers create corners between openings and near the objective.
-            int crosswalls = random.Next(2, 4);
-            for (int i = 0; i < crosswalls; i++)
+            foreach (var district in plan.Districts)
             {
-                float y = (i + 1) * Height / (crosswalls + 1f) + random.Next(-53, 54);
-                int x = random.Next(2) == 0 ? outer + 36 : inner - 36;
-                AddPair(wall, new Vector2(x, y), 0f);
-            }
-            float side = random.Next(2) == 0 ? -1 : 1;
-            AddPair(wall, new Vector2(553 + random.Next(-9, 10), ControlPoint.y + side * random.Next(74, 99)), 90f);
-            AddPair(wall, new Vector2(568 + random.Next(-9, 10), ControlPoint.y - side * random.Next(98, 127)), 0f);
+                Vector2 center = district.Center + new Vector2(random.Next(-10, 11), random.Next(-12, 13));
+                float angle = district.Angle + random.Next(-6, 7);
+                Vector2 right = Direction(angle);
+                center.y = ControlPoint.y + (center.y - ControlPoint.y) * reflection;
+                _districtGround.Add(new DistrictGround(center, district.GroundSize, Direction(angle * reflection),
+                    district.Cover.Length == 0));
 
-            AddLooseCover(random, block);
+                foreach (var piece in district.Cover)
+                {
+                    Vector2 offset = right * piece.Offset.x + Vector2.Perpendicular(right) * piece.Offset.y;
+                    offset.y *= reflection;
+                    Vector2 position = Vector2Int.RoundToInt(center + offset);
+                    float rotation = (angle + piece.Angle) * reflection;
+                    var prefab = theme.GetCover(piece.Kind);
+                    _cover.Add(new CoverPlacement(prefab, position, rotation));
+                    _cover.Add(new CoverPlacement(prefab, Mirror(position), rotation + 180f));
+                }
+            }
+        }
+
+        private static Vector2 Direction(float angle)
+        {
+            float radians = angle * Mathf.Deg2Rad;
+            return new Vector2(Mathf.Cos(radians), Mathf.Sin(radians));
         }
 
         internal Vector2 ControlPoint => MapSize * 0.5f;
@@ -64,91 +74,49 @@ namespace Modern8bitTanks
             internal readonly DestructibleProp Prefab;
             internal readonly Vector2 Position;
             internal readonly float Angle;
-            internal readonly Vector2 HalfSize;
+            private readonly Vector2 _right;
+            private readonly Vector2 _halfSize;
 
             internal CoverPlacement(DestructibleProp prefab, Vector2 position, float angle)
             {
                 Prefab = prefab;
                 Position = position;
                 Angle = angle;
-                HalfSize = angle % 180f == 0f
-                    ? new Vector2(prefab.meta.width, prefab.meta.length) * 0.5f
-                    : new Vector2(prefab.meta.length, prefab.meta.width) * 0.5f;
+                _right = Direction(Mathf.Repeat(angle, 180f));
+                _halfSize = new Vector2(prefab.meta.width, prefab.meta.length) * 0.5f;
             }
 
             internal bool Contains(Vector2 point, float clearance)
             {
                 Vector2 delta = point - Position;
-                return Mathf.Abs(delta.x) < HalfSize.x + clearance && Mathf.Abs(delta.y) < HalfSize.y + clearance;
+                float x = Vector2.Dot(delta, _right);
+                float y = Vector2.Dot(delta, Vector2.Perpendicular(_right));
+                return Mathf.Abs(x) < _halfSize.x + clearance && Mathf.Abs(y) < _halfSize.y + clearance;
             }
         }
 
-        private void AddPair(DestructibleProp prefab, Vector2 position, float angle)
+        private readonly struct DistrictGround
         {
-            _cover.Add(new CoverPlacement(prefab, position, angle));
-            _cover.Add(new CoverPlacement(prefab, Mirror(position), angle + 180f));
-        }
+            internal readonly Vector2 Center;
+            internal readonly Vector2 HalfSize;
+            internal readonly Vector2 Right;
+            internal readonly float RadiusSquared;
+            internal readonly bool IsConnector;
 
-        private void AddWallSections(System.Random random, DestructibleProp wall, int x)
-        {
-            const int slots = 11;
-            const int firstY = 56;
-            const int stride = 72;
-
-            // Leave two to four openings, with independent positions in successive walls.
-            int gates = random.Next(2, 5);
-            int gateMask = 0;
-            var candidates = new List<int>();
-            for (int i = 0; i < gates; i++)
+            internal DistrictGround(Vector2 center, Vector2 size, Vector2 right, bool isConnector)
             {
-                candidates.Clear();
-                for (int slot = 1; slot < slots - 1; slot++)
-                    if ((gateMask & (7 << (slot - 1))) == 0) candidates.Add(slot);
-                if (candidates.Count == 0) break;
-                gateMask |= 1 << candidates[random.Next(candidates.Count)];
+                Center = center;
+                HalfSize = size * 0.5f;
+                Right = right;
+                RadiusSquared = HalfSize.sqrMagnitude;
+                IsConnector = isConnector;
             }
 
-            int column = x;
-            for (int i = 0; i < slots; i++)
+            internal float Sample(Vector2 point, out Vector2 local)
             {
-                if ((gateMask & (1 << i)) != 0)
-                {
-                    column = x + random.Next(-16, 17);
-                    continue;
-                }
-
-                // Pull the wall ends back from each opening to leave turning room.
-                int y = firstY + stride * i;
-                if (i > 0 && (gateMask & (1 << (i - 1))) != 0) y += 10;
-                if ((gateMask & (1 << (i + 1))) != 0) y -= 10;
-                AddPair(wall, new Vector2(column, y), 90f);
-            }
-        }
-
-        private void AddLooseCover(System.Random random, DestructibleProp block)
-        {
-            const float spawnClearance = 112f;
-            const float objectiveClearance = 93f;
-            int pairs = 0;
-            for (int attempt = 0; attempt < 220 && pairs < 8; attempt++)
-            {
-                var position = new Vector2(random.Next(94, 584), random.Next(71, Height - 71));
-                if ((position - _westBase).sqrMagnitude < spawnClearance * spawnClearance ||
-                    (position - ControlPoint).sqrMagnitude < objectiveClearance * objectiveClearance)
-                    continue;
-
-                // Keep the openings and spaces alongside walls wide enough to turn through.
-                bool clear = true;
-                foreach (var cover in _cover)
-                {
-                    if (!cover.Contains(position, 72f)) continue;
-                    clear = false;
-                    break;
-                }
-                if (!clear) continue;
-
-                AddPair(block, position, random.Next(2) * 90f);
-                pairs++;
+                Vector2 delta = point - Center;
+                local = new Vector2(Vector2.Dot(delta, Right), Vector2.Dot(delta, Vector2.Perpendicular(Right)));
+                return PadDistance(local, HalfSize.x, HalfSize.y);
             }
         }
 
@@ -186,6 +154,7 @@ namespace Modern8bitTanks
                 color = PaintTerrain(x, y, color, dark, verge, patch, grain);
 
                 Vector2 point = new(x + 0.5f, y + 0.5f);
+                color = PaintDistrict(point, color, concrete, dark, verge, patch, grain);
                 float west = PadDistance(point - _westBase, 92f, 90f);
                 float east = PadDistance(point - Mirror(_westBase), 92f, 90f);
                 float plaza = (point - ControlPoint).sqrMagnitude;
@@ -204,6 +173,34 @@ namespace Modern8bitTanks
             }
             _ground = pixels;
             return _ground;
+        }
+
+        private Color32 PaintDistrict(Vector2 point, Color32 terrain, Color32 concrete, Color32 dark,
+            Color32 border, float patch, float grain)
+        {
+            foreach (var district in _districtGround)
+            {
+                if ((point - district.Center).sqrMagnitude > district.RadiusSquared) continue;
+                float edge = district.Sample(point, out Vector2 local);
+                if (edge >= 1f) continue;
+
+                bool seam = Mathf.Repeat(local.x + 12f, 34f) < 1.15f ||
+                    Mathf.Repeat(local.y + 8f, 30f) < 1.15f;
+                float weathering = grain * 0.06f + patch * 0.19f;
+                if (_map == BattleMap.City && seam) weathering += 0.14f;
+                Color32 floor = Color32.Lerp(concrete, dark, weathering);
+                if (_map == BattleMap.City && !district.IsConnector &&
+                    Mathf.Abs(local.x) < district.HalfSize.x * 0.72f &&
+                    Mathf.Abs(Mathf.Abs(local.y) - district.HalfSize.y * 0.76f) < 1.4f &&
+                    Mathf.Repeat(local.x, 22f) < 13f)
+                    floor = Color32.Lerp(floor, border, 0.53f);
+
+                float strength = _map == BattleMap.City ? 0.83f : 0.68f;
+                if (district.IsConnector) strength *= 0.74f;
+                return Color32.Lerp(terrain, floor, Mathf.Clamp01((1f - edge) * 9f) * strength);
+            }
+
+            return terrain;
         }
 
         private Color32 PaintTerrain(int x, int y, Color32 surface, Color32 low, Color32 high, float patch, float grain)
