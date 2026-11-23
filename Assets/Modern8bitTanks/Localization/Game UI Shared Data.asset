@@ -735,6 +735,10 @@ MonoBehaviour:
     m_Key: SUPPORT / ATGM
     m_Metadata:
       m_Items: []
+  - m_Id: 6830360092672
+    m_Key: VIEW
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

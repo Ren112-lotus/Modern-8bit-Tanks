@@ -80,6 +80,7 @@ namespace Modern8bitTanks
 
         private VehicleDef[] _allVehicles = Array.Empty<VehicleDef>();
         private readonly Dictionary<string, VehicleDef> _vehicleMap = new();
+        private int _maxViewWidthPixels;
         private readonly Dictionary<string, Texture2D> _hullTexCache = new();
         private readonly Dictionary<string, Texture2D> _turretTexCache = new();
 
@@ -161,6 +162,7 @@ namespace Modern8bitTanks
         [SerializeField] private StatBarSlot _statSpd;
         [SerializeField] private StatBarSlot _statTrn;
         [SerializeField] private StatBarSlot _statTur;
+        [SerializeField] private StatBarSlot _statView;
 
         // Tech Tree UI
         private static readonly (string Code, string Label)[] TreeNations =
@@ -284,10 +286,12 @@ namespace Modern8bitTanks
             VehicleCatalog cat = MetaLoader.LoadVehicleCatalog();
             _allVehicles = cat != null && cat.vehicles != null ? cat.vehicles : Array.Empty<VehicleDef>();
             _vehicleMap.Clear();
+            _maxViewWidthPixels = 1;
             foreach (var v in _allVehicles)
             {
-                if (v != null && !string.IsNullOrEmpty(v.id))
-                    _vehicleMap[v.id] = v;
+                if (v == null || string.IsNullOrEmpty(v.id)) continue;
+                _vehicleMap[v.id] = v;
+                _maxViewWidthPixels = Mathf.Max(_maxViewWidthPixels, v.EffectiveCameraWidthPixels);
             }
             if (!_vehicleMap.ContainsKey(_sessionState.SelectedPlayerVehicleId) && _allVehicles.Length > 0)
                 _sessionState.SelectedPlayerVehicleId = _allVehicles[0].id;
@@ -776,7 +780,6 @@ namespace Modern8bitTanks
                     _garageIndexBadge.text = UiText.Format("UNIT {0:00}/{1:00}", idx >= 0 ? idx + 1 : 1, nationList.Length);
                 }
 
-                // 6 Segmented Pixel Stat Bars
                 UpdateStatBar(_statArm, sel.armorFront / 1.25f, $"{Mathf.RoundToInt(sel.armorFront * 100f)}");
                 UpdateStatBar(_statPen, sel.penetration / 155f, $"{Mathf.RoundToInt(sel.penetration)}");
                 float rldScore = 1f - Mathf.Clamp01((sel.reload - 0.16f) / 2.04f);
@@ -784,6 +787,9 @@ namespace Modern8bitTanks
                 UpdateStatBar(_statSpd, sel.speed / 84f, $"{Mathf.RoundToInt(sel.speed)}");
                 UpdateStatBar(_statTrn, sel.EffectiveHullTurnSpeed / 210f, $"{Mathf.RoundToInt(sel.EffectiveHullTurnSpeed)}");
                 UpdateStatBar(_statTur, sel.EffectiveTurretTurnSpeed / 355f, $"{Mathf.RoundToInt(sel.EffectiveTurretTurnSpeed)}");
+                int viewWidth = sel.EffectiveCameraWidthPixels;
+                int viewHeight = Mathf.RoundToInt(viewWidth * (float)PixelWindowbox.AspectHeight / PixelWindowbox.AspectWidth);
+                UpdateStatBar(_statView, viewWidth / (float)_maxViewWidthPixels, $"{viewWidth}×{viewHeight}");
 
                 // Hull & Drivetrain mini telemetry
                 string gearStr = sel.IsWheeled ? UiText.Format("{0}x{0} WHEEL", sel.WheelAxleCount * 2) : UiText.Get("TRACKED");
