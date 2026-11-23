@@ -131,9 +131,12 @@ namespace Modern8bitTanks
         private static readonly Color ReadyGreen = new Color(0.56f, 0.94f, 0.42f, 1f);
         private static readonly Color TextMuted = new Color(0.70f, 0.70f, 0.60f, 1f);
 
-        public void Initialize(DesertBattleManager manager, PixelWindowbox windowbox)
+        private MultiplayerSessionState _multiplayer;
+
+        public void Initialize(DesertBattleManager manager, PixelWindowbox windowbox, MultiplayerSessionState multiplayer)
         {
             _mgr = manager;
+            _multiplayer = multiplayer;
             _windowbox = windowbox;
             _W = windowbox.renderWidth;
             _H = windowbox.renderHeight;
@@ -532,7 +535,7 @@ namespace Modern8bitTanks
             List<RadarSmokeInfo> smokes, float worldW, float worldH)
         {
             if (_radarTex == null) return;
-            if (MultiplayerSessionConnection.Online)
+            if (_multiplayer.IsInBattle)
             {
                 if (Time.unscaledTime < _nextOnlineRadarUpdate) return;
                 _nextOnlineRadarUpdate = Time.unscaledTime + MultiplayerMatchTransport.SnapshotInterval;
@@ -596,7 +599,7 @@ namespace Modern8bitTanks
                 int ty = Mathf.Clamp(Mathf.RoundToInt((t.Position2D.y / worldH) * (RadarH - 1)), 1, RadarH - 2);
                 Color32 tc = t.isPlayer
                     ? new Color32(255, 232, 118, 255)
-                    : (player != null && MultiplayerSessionConnection.Online ? t.factionTeam == player.factionTeam : t.factionTeam == "ally")
+                    : (player != null && _multiplayer.IsInBattle ? t.factionTeam == player.factionTeam : t.factionTeam == "ally")
                         ? new Color32(82, 214, 255, 255)
                         : new Color32(255, 92, 74, 255);
                 PlotDot(tx, ty, 1, tc);

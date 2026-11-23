@@ -68,7 +68,6 @@ namespace Modern8bitTanks
         private ushort _round;
         private NetworkManager _network;
         private MultiplayerRoom _room;
-        public static MultiplayerMatchTransport Instance { get; private set; }
         public bool IsHost => _network != null && _network.IsServer;
         public bool Ready => _network != null && _network.IsListening;
         public float RoundTripSeconds => Ready ? _network.NetworkConfig.NetworkTransport.GetCurrentRtt(NetworkManager.ServerClientId) * .001f : 0f;
@@ -92,10 +91,10 @@ namespace Modern8bitTanks
 
         public void Initialize(NetworkManager network, MultiplayerRoom room)
         {
-            if (Instance != null && Instance != this) throw new InvalidOperationException("A match transport already exists.");
             if (network == null || !network.IsListening || room == null)
                 throw new InvalidOperationException("The session is not ready for gameplay.");
-            Instance = this;
+            if (_network == network && _room == room) return;
+            Shutdown();
             _network = network;
             _room = room;
             Array.Fill(_lastControl, float.NegativeInfinity);
@@ -421,19 +420,22 @@ namespace Modern8bitTanks
             return true;
         }
 
-        private void OnDestroy()
+        private void OnDestroy() => Shutdown();
+
+        internal void Shutdown()
         {
-            if (Instance == this) Instance = null;
-            if (_network == null) return;
-            if (_network.CustomMessagingManager == null) return;
-            _network.CustomMessagingManager.UnregisterNamedMessageHandler(ControlMessage);
-            _network.CustomMessagingManager.UnregisterNamedMessageHandler(ActionMessage);
-            _network.CustomMessagingManager.UnregisterNamedMessageHandler(StateMessage);
-            _network.CustomMessagingManager.UnregisterNamedMessageHandler(PropMessage);
-            _network.CustomMessagingManager.UnregisterNamedMessageHandler(SmokeMessage);
-            _network.CustomMessagingManager.UnregisterNamedMessageHandler(WeaponMessage);
-            _network.CustomMessagingManager.UnregisterNamedMessageHandler(ReadyMessage);
-            _network.CustomMessagingManager.UnregisterNamedMessageHandler(EffectMessage);
+            var messages = _network != null ? _network.CustomMessagingManager : null;
+            _network = null;
+            _room = null;
+            if (messages == null) return;
+            messages.UnregisterNamedMessageHandler(ControlMessage);
+            messages.UnregisterNamedMessageHandler(ActionMessage);
+            messages.UnregisterNamedMessageHandler(StateMessage);
+            messages.UnregisterNamedMessageHandler(PropMessage);
+            messages.UnregisterNamedMessageHandler(SmokeMessage);
+            messages.UnregisterNamedMessageHandler(WeaponMessage);
+            messages.UnregisterNamedMessageHandler(ReadyMessage);
+            messages.UnregisterNamedMessageHandler(EffectMessage);
         }
     }
 }

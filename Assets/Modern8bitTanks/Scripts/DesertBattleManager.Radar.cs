@@ -9,7 +9,7 @@ namespace Modern8bitTanks
 
         private readonly HashSet<TankEntity> _visibleTanks = new();
 
-        private bool UsesTeamVisibility => MultiplayerSessionConnection.Online ||
+        private bool UsesTeamVisibility => _multiplayer.IsInBattle ||
             battleMode is BattleMode.Duel1v1 or BattleMode.Squad2v2 or BattleMode.Battle5v5;
 
         private static bool CanSpot(TankEntity tank) => tank != null && tank.alive && tank.gameObject.activeInHierarchy;
@@ -95,7 +95,7 @@ namespace Modern8bitTanks
             if (_cam != null && CanObserveTank(observer, target, _cam.transform.position, _cam.orthographicSize))
                 return true;
 
-            if (MultiplayerSessionConnection.Online)
+            if (_multiplayer.IsInBattle)
                 return HasSharedNetworkContact(target, player);
 
             if (_cam == null) return false;
@@ -114,7 +114,7 @@ namespace Modern8bitTanks
             int targetSlot = System.Array.IndexOf(_networkTanks, target);
             if (targetSlot < 0) return false;
 
-            int localSlot = MultiplayerSessionConnection.LocalSlot;
+            int localSlot = _multiplayer.LocalSlot;
             for (int slot = 0; slot < _networkTanks.Length; slot++)
             {
                 var teammate = _networkTanks[slot];

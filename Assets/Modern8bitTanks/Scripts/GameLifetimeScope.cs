@@ -9,6 +9,7 @@ namespace Modern8bitTanks
         {
             builder.Register<BattleSessionState>(Lifetime.Singleton);
             builder.Register<GameSceneLoader>(Lifetime.Singleton);
+            builder.Register<MultiplayerSessionState>(Lifetime.Singleton);
         }
     }
 }

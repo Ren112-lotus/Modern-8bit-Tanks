@@ -77,8 +77,8 @@ namespace Modern8bitTanks
                 NetworkManager.OnClientConnectedCallback += AddClient;
                 NetworkManager.OnClientDisconnectCallback += RemoveClient;
             }
-            var connection = MultiplayerSessionConnection.Active;
-            if (connection != null) connection.AttachRoom(this);
+            if (NetworkManager.TryGetComponent<MultiplayerSessionConnection>(out var connection))
+                connection.AttachRoom(this);
         }
 
         public override void OnNetworkDespawn()
@@ -87,6 +87,8 @@ namespace Modern8bitTanks
             {
                 NetworkManager.OnClientConnectedCallback -= AddClient;
                 NetworkManager.OnClientDisconnectCallback -= RemoveClient;
+                if (NetworkManager.TryGetComponent<MultiplayerSessionConnection>(out var connection))
+                    connection.DetachRoom(this);
             }
         }
 

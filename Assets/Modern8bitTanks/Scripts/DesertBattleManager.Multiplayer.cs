@@ -62,12 +62,13 @@ namespace Modern8bitTanks
         private int _nextTread;
         private bool _networkResultShown;
         private bool _networkBattleStarted;
+        private MultiplayerMatchTransport _subscribedTransport;
 
         private bool MultiplayerBattleReady()
         {
-            if (!_networkBattleStarted && MultiplayerMatchTransport.Instance != null && MultiplayerMatchTransport.Instance.AllExpectedPresent)
+            if (!_networkBattleStarted && _multiplayer.Transport != null && _multiplayer.Transport.AllExpectedPresent)
             {
-                var connection = MultiplayerSessionConnection.Active;
+                var connection = _multiplayer.Connection;
                 if (connection.Room.CountTeam(false) == 0)
                 {
                     _ = connection.ReturnToRoomAsync();
@@ -90,7 +91,7 @@ namespace Modern8bitTanks
         {
             if (_playerTank != null) _playerTank.gameObject.SetActive(false);
             if (_primaryEnemyTank != null) _primaryEnemyTank.gameObject.SetActive(false);
-            var room = MultiplayerSessionConnection.Active.Room;
+            var room = _multiplayer.Connection.Room;
             _networkTanks = new TankEntity[MultiplayerSessionConnection.MaxPlayers];
             _networkSpawns = new Vector2[_networkTanks.Length];
             for (var slot = 0; slot < _networkTanks.Length; slot++)
@@ -102,7 +103,7 @@ namespace Modern8bitTanks
                 var spawn = new Vector2(WorldW * (alpha ? 0.08f : 0.92f), WorldH * (0.2f + row * 0.2f));
                 _networkSpawns[slot] = spawn;
                 var tank = SpawnTankFromPrefab(GetVehicleDef(vehicleId),
-                    alpha ? "ally" : "enemy", spawn, alpha ? 90f : -90f, slot == MultiplayerSessionConnection.LocalSlot);
+                    alpha ? "ally" : "enemy", spawn, alpha ? 90f : -90f, slot == _multiplayer.LocalSlot);
                 _networkTanks[slot] = tank;
                 if (tank == null) continue;
                 tank.alive = false;
@@ -112,8 +113,9 @@ namespace Modern8bitTanks
 
         private void InitializeMultiplayerBattle()
         {
-            var transport = MultiplayerMatchTransport.Instance;
-            if (!MultiplayerSessionConnection.Online || transport == null) return;
+            var transport = _multiplayer.Transport;
+            if (!_multiplayer.IsInBattle || transport == null) return;
+            _subscribedTransport = transport;
             transport.StateReceived += ApplyMultiplayerState;
             transport.PropImpactReceived += ApplyMultiplayerPropImpact;
             transport.SmokeReceived += ApplyMultiplayerSmoke;
@@ -126,7 +128,7 @@ namespace Modern8bitTanks
 
         private void UpdateMultiplayerRoster()
         {
-            var transport = MultiplayerMatchTransport.Instance;
+            var transport = _multiplayer.Transport;
             if (_networkTanks == null || transport == null || !transport.IsHost) return;
             for (var i = 0; i < _networkTanks.Length; i++)
             {
@@ -168,16 +170,16 @@ namespace Modern8bitTanks
 
         private void ApplyMultiplayerControls(float dt)
         {
-            var transport = MultiplayerMatchTransport.Instance;
+            var transport = _multiplayer.Transport;
             if (_networkTanks == null || transport == null || !transport.IsHost) return;
             for (var i = 0; i < _networkTanks.Length; i++)
-                if (i != MultiplayerSessionConnection.LocalSlot && _networkTanks[i] != null && transport.TryConsumeControl(i, out var input))
+                if (i != _multiplayer.LocalSlot && _networkTanks[i] != null && transport.TryConsumeControl(i, out var input))
                     ApplyTankControl(_networkTanks[i], dt, UnpackControl(input));
         }
 
         private void BroadcastMultiplayerState()
         {
-            var transport = MultiplayerMatchTransport.Instance;
+            var transport = _multiplayer.Transport;
             if (_networkTanks == null || transport == null || !transport.IsHost) return;
             _networkSnapshotTimer -= Time.unscaledDeltaTime;
             if (_networkSnapshotTimer > 0f) return;
@@ -396,7 +398,7 @@ namespace Modern8bitTanks
         {
             if (_ownerCount == 0) return;
             // A snapshot reflects input promoted on the host one round trip earlier.
-            float sampleTime = now - Mathf.Clamp(MultiplayerMatchTransport.Instance.RoundTripSeconds + 0.025f, .04f, .45f);
+            float sampleTime = now - Mathf.Clamp(_multiplayer.Transport.RoundTripSeconds + 0.025f, .04f, .45f);
             int newest = (_ownerIndex + _ownerHistory.Length - 1) % _ownerHistory.Length;
             var recent = _ownerHistory[newest];
             var past = recent;
@@ -480,7 +482,7 @@ namespace Modern8bitTanks
 
         private void UpdateMultiplayerClient(float dt)
         {
-            var transport = MultiplayerMatchTransport.Instance;
+            var transport = _multiplayer.Transport;
             var player = GetPlayerTank();
             var keyboard = Keyboard.current;
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) _hud?.HandleEscapeKey();
@@ -518,14 +520,15 @@ namespace Modern8bitTanks
 
         private void CleanupMultiplayerBattle()
         {
-            if (MultiplayerMatchTransport.Instance != null)
-            {
-                MultiplayerMatchTransport.Instance.StateReceived -= ApplyMultiplayerState;
-                MultiplayerMatchTransport.Instance.PropImpactReceived -= ApplyMultiplayerPropImpact;
-                MultiplayerMatchTransport.Instance.SmokeReceived -= ApplyMultiplayerSmoke;
-                MultiplayerMatchTransport.Instance.WeaponFired -= ApplyMultiplayerWeaponEffects;
-                MultiplayerMatchTransport.Instance.EffectReceived -= ReceiveBattleEffect;
-            }
+            var transport = _subscribedTransport;
+            _subscribedTransport = null;
+            if (transport == null) return;
+
+            transport.StateReceived -= ApplyMultiplayerState;
+            transport.PropImpactReceived -= ApplyMultiplayerPropImpact;
+            transport.SmokeReceived -= ApplyMultiplayerSmoke;
+            transport.WeaponFired -= ApplyMultiplayerWeaponEffects;
+            transport.EffectReceived -= ReceiveBattleEffect;
         }
 
         private void ApplyMultiplayerPropImpact(int index, Vector2 position, float radius, bool heavy, int seed)

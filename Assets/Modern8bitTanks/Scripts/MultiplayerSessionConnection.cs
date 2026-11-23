@@ -19,6 +19,7 @@ namespace Modern8bitTanks
         [SerializeField] private MultiplayerRoom _roomPrefab;
 
         private BattleSessionState _sessionState;
+        private MultiplayerSessionState _multiplayer;
         private ISession _session;
         private bool _connecting = true;
         private bool _connectionLost;
@@ -30,10 +31,9 @@ namespace Modern8bitTanks
         private AsyncOperation _sceneLoad;
         private int _localSlot = -1;
 
-        public static MultiplayerSessionConnection Active { get; private set; }
-        public static bool Online => Active != null && Active._loadingBattle;
-        public static int LocalSlot => Active != null ? Active._localSlot : -1;
-        private static string _lastNotice;
+        internal bool IsInBattle => _loadingBattle;
+        internal int LocalSlot => _localSlot;
+        internal MultiplayerMatchTransport Transport => Room != null ? _matchTransport : null;
         public MultiplayerRoom Room { get; private set; }
         public bool IsLeaving => _leaving;
         public bool IsHost => _network != null && _network.IsHost;
@@ -41,16 +41,17 @@ namespace Modern8bitTanks
         public bool IsReturningToLobby => !_loadingBattle && _returnToHangar && !_leaving;
         public string JoinCode => _session?.Code;
 
-        public async UniTask ConnectAsync(BattleSessionState sessionState, string code = null)
+        internal async UniTask ConnectAsync(BattleSessionState sessionState, MultiplayerSessionState multiplayer, string code)
         {
-            if (Active != null || NetworkManager.Singleton != null)
+            if (multiplayer.Connection != null || NetworkManager.Singleton != null)
                 throw new InvalidOperationException("A room is already open.");
 
-            _lastNotice = null;
+            multiplayer.Notice = null;
             var connection = Instantiate(this);
             DontDestroyOnLoad(connection.gameObject);
             connection._sessionState = sessionState;
-            Active = connection;
+            connection._multiplayer = multiplayer;
+            multiplayer.Attach(connection);
             try
             {
                 var network = connection._network;
@@ -97,17 +98,17 @@ namespace Modern8bitTanks
             }
         }
 
-        public static string TakeNotice()
-        {
-            var notice = _lastNotice;
-            _lastNotice = null;
-            return notice;
-        }
-
         internal void AttachRoom(MultiplayerRoom room)
         {
-            Room = room;
             _matchTransport.Initialize(_network, room);
+            Room = room;
+        }
+
+        internal void DetachRoom(MultiplayerRoom room)
+        {
+            if (Room != room) return;
+            Room = null;
+            _matchTransport.Shutdown();
         }
 
         public async UniTask StartMatchAsync()
@@ -186,7 +187,7 @@ namespace Modern8bitTanks
             }
             catch (Exception exception)
             {
-                if (!_leaving) _lastNotice = "ROOM REJOIN MAY REQUIRE A REMATCH.";
+                if (!_leaving) _multiplayer.Notice = "ROOM REJOIN MAY REQUIRE A REMATCH.";
                 Debug.LogWarning($"Could not reopen the room for new players: {exception.Message}");
             }
             finally { _unlockingLobby = false; }
@@ -196,7 +197,7 @@ namespace Modern8bitTanks
         {
             if (_leaving) return;
             _leaving = true;
-            _lastNotice = notice;
+            _multiplayer.Notice = notice;
             var session = _session;
             _session = null;
             if (_network != null && _network.IsListening) _network.Shutdown();
@@ -222,7 +223,7 @@ namespace Modern8bitTanks
             }
             finally
             {
-                if (Active == this) Active = null;
+                _multiplayer?.Detach(this);
                 Destroy(gameObject);
             }
         }
@@ -246,7 +247,7 @@ namespace Modern8bitTanks
 
         private void OnDestroy()
         {
-            if (Active == this) Active = null;
+            _multiplayer?.Detach(this);
         }
     }
 }

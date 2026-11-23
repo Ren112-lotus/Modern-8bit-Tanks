@@ -25,7 +25,7 @@ namespace Modern8bitTanks
 
         private void EmitBattleEffect(BattleEffect effect, TankEntity target = null, TankEntity attacker = null)
         {
-            if (!MultiplayerSessionConnection.Online)
+            if (!_multiplayer.IsInBattle)
             {
                 PresentBattleEffect(effect, target, attacker);
                 return;
@@ -34,7 +34,7 @@ namespace Modern8bitTanks
             effect.Attacker = FindBattleSlot(attacker);
             effect.Victim = FindBattleSlot(target);
             effect.Seed = Random.Range(0, int.MaxValue);
-            MultiplayerMatchTransport.Instance?.PublishEffect(effect);
+            _multiplayer.Transport?.PublishEffect(effect);
             PresentSeededBattleEffect(effect, target, attacker);
         }
 
@@ -120,7 +120,7 @@ namespace Modern8bitTanks
                 if (heavy)
                 {
                     bool big = hit.Ammo == AmmoType.HE || hit.Ammo == AmmoType.APHE;
-                    if (!MultiplayerSessionConnection.Online) _hitStop = 0.030f;
+                    if (!_multiplayer.IsInBattle) _hitStop = 0.030f;
                     PresentExplosion(effect.Visual, effect.Ground, big, big ? SoundBus.HeavyReverb : SoundBus.Reverb,
                         big ? 0.80f : 0.60f, big ? 0.34f : 0.24f);
                 }

@@ -53,14 +53,17 @@ namespace Modern8bitTanks
         private Camera _cam;
         private BattleSessionState _sessionState;
         private GameSceneLoader _sceneLoader;
+        private MultiplayerSessionState _multiplayer;
 
         [Inject]
         private void Construct(Camera worldCamera, BattleSessionState sessionState, GameSceneLoader sceneLoader,
+            MultiplayerSessionState multiplayer,
             PixelWindowbox windowbox, BattlePostProcess postProcess, DesertAtmosphere atmosphere)
         {
             _cam = worldCamera;
             _sessionState = sessionState;
             _sceneLoader = sceneLoader;
+            _multiplayer = multiplayer;
             _windowbox = windowbox;
             _postProcess = postProcess;
             _atmosphere = atmosphere;
@@ -259,9 +262,9 @@ namespace Modern8bitTanks
             SetTechTreeOpen(false);
             // Show the Sprite-Stacking Title Screen on initial launch; return straight to Garage after battles!
             SetTitleOpen(!_sessionState.HasEnteredGarage);
-            var connection = MultiplayerSessionConnection.Active;
+            var connection = _multiplayer.Connection;
             if (connection != null && connection.IsReturningToLobby) connection.ReadyInLobby();
-            _onlineError = MultiplayerSessionConnection.TakeNotice();
+            _onlineError = _multiplayer.TakeNotice();
             if (_onlineError != null || (connection != null && connection.Room != null && !connection.IsLeaving)) SetOnlineRoomOpen(true);
         }
 
@@ -401,7 +404,7 @@ namespace Modern8bitTanks
 
         public void LaunchBattleScene()
         {
-            if (MultiplayerSessionConnection.Active != null) return;
+            if (_multiplayer.Connection != null) return;
             _sceneLoader.LoadAsync(BattleSessionState.BattleSceneName).Forget();
         }
 
@@ -434,7 +437,7 @@ namespace Modern8bitTanks
             if (_windowbox != null)
                 _windowbox.integerScale = _sessionState.IntegerWindowbox;
 
-            if (_choosingOnlineVehicle && (MultiplayerSessionConnection.Active == null || MultiplayerSessionConnection.Active.IsLeaving))
+            if (_choosingOnlineVehicle && (_multiplayer.Connection == null || _multiplayer.Connection.IsLeaving))
                 SetOnlineVehicleSelection(false);
 
             if (_onlineOpen)

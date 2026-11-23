@@ -74,8 +74,8 @@ namespace Modern8bitTanks
 
         private void BindBattleMenu()
         {
-            bool online = MultiplayerSessionConnection.Online;
-            bool isHost = online && MultiplayerSessionConnection.Active.IsHost;
+            bool online = _multiplayer.IsInBattle;
+            bool isHost = online && _multiplayer.Connection.IsHost;
             MenuLayout layout = online ? (isHost ? hostMenu : guestMenu) : offlineMenu;
             _resultOverlay = layout.resultOverlay;
             _resultCanvasGroup = layout.resultCanvasGroup;

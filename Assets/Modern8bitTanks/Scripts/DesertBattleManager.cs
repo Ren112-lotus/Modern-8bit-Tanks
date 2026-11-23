@@ -124,14 +124,17 @@ namespace Modern8bitTanks
         private Camera _cam;
         private BattleSessionState _sessionState;
         private GameSceneLoader _sceneLoader;
+        private MultiplayerSessionState _multiplayer;
 
         [Inject]
         private void Construct(Camera worldCamera, BattleSessionState sessionState, GameSceneLoader sceneLoader,
+            MultiplayerSessionState multiplayer,
             PixelWindowbox windowbox, BattlePostProcess postProcess, DesertAtmosphere atmosphere)
         {
             _cam = worldCamera;
             _sessionState = sessionState;
             _sceneLoader = sceneLoader;
+            _multiplayer = multiplayer;
             _windowbox = windowbox;
             _postProcess = postProcess;
             _atmosphere = atmosphere;
@@ -254,10 +257,10 @@ namespace Modern8bitTanks
             bgmVolume = _sessionState.BgmVolume;
             postProcessEnabled = _sessionState.PostProcessEnabled;
             integerWindowbox = _sessionState.IntegerWindowbox;
-            if (MultiplayerSessionConnection.Online)
+            if (_multiplayer.IsInBattle)
             {
-                var room = MultiplayerSessionConnection.Active.Room;
-                int localSlot = MultiplayerSessionConnection.LocalSlot;
+                var room = _multiplayer.Connection.Room;
+                int localSlot = _multiplayer.LocalSlot;
                 selectedPlayerVehicleId = room.GetVehicleId(localSlot);
                 int firstOpponentSlot = localSlot < MultiplayerSessionConnection.MaxPlayers / 2
                     ? MultiplayerSessionConnection.MaxPlayers / 2 : 0;
@@ -297,7 +300,7 @@ namespace Modern8bitTanks
             _reticleTf = _reticleSr.transform;
             _reticleSr.sprite = _whitePxSprite;
 
-            _hud.Initialize(this, _windowbox);
+            _hud.Initialize(this, _windowbox, _multiplayer);
 
             // Dedicated Battle Scene: launch straight into combat against a random same-Tier rival!
             ResetRound();
@@ -500,7 +503,7 @@ namespace Modern8bitTanks
 
         public void SyncSettingsToSession()
         {
-            if (!MultiplayerSessionConnection.Online)
+            if (!_multiplayer.IsInBattle)
             {
                 _sessionState.SelectedPlayerVehicleId = selectedPlayerVehicleId;
                 _sessionState.SelectedBattleMode = battleMode;
@@ -570,17 +573,17 @@ namespace Modern8bitTanks
 
         public void ReturnToOnlineRoom()
         {
-            if (!MultiplayerSessionConnection.Online) return;
+            if (!_multiplayer.IsInBattle) return;
             SyncSettingsToSession();
-            MultiplayerSessionConnection.Active.ReturnToRoomAsync().Forget();
+            _multiplayer.Connection.ReturnToRoomAsync().Forget();
         }
 
         public void ReturnToHangar()
         {
-            if (MultiplayerSessionConnection.Online)
+            if (_multiplayer.IsInBattle)
             {
                 SyncSettingsToSession();
-                MultiplayerSessionConnection.Active.LeaveAsync().Forget();
+                _multiplayer.Connection.LeaveAsync().Forget();
                 return;
             }
             Time.timeScale = 1f;
@@ -592,7 +595,7 @@ namespace Modern8bitTanks
 
         public void ResetRound()
         {
-            if (MultiplayerSessionConnection.Online && _networkTanks != null) return;
+            if (_multiplayer.IsInBattle && _networkTanks != null) return;
             Time.timeScale = 1f;
             _phase = GamePhase.Playing;
             _currentWave = 1;
@@ -609,12 +612,12 @@ namespace Modern8bitTanks
 
             // Pick a fresh RANDOM same-Tier performance-matched rival every battle!
             VehicleDef playerDef = SelectedPlayerVehicle;
-            VehicleDef randRival = MultiplayerSessionConnection.Online ? null : BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: selectedEnemyVehicleId);
+            VehicleDef randRival = _multiplayer.IsInBattle ? null : BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: selectedEnemyVehicleId);
             if (randRival != null)
                 selectedEnemyVehicleId = randRival.id;
 
             ClearDynamicFXAndExtraTanks();
-            battleMap = MultiplayerSessionConnection.Online ? BattleMap.Desert : _sessionState.SelectedBattleMap;
+            battleMap = _multiplayer.IsInBattle ? BattleMap.Desert : _sessionState.SelectedBattleMap;
             _cleanGroundPixels = GenerateMapPixels(battleMap, WorldWidthPx, WorldHeightPx);
             RestoreCleanGround();
             _postProcess?.ApplyMapTheme(battleMap);
@@ -684,7 +687,7 @@ namespace Modern8bitTanks
         {
             _rangeTargets.Clear();
             _tanks.Clear();
-            if (MultiplayerSessionConnection.Online)
+            if (_multiplayer.IsInBattle)
             {
                 SpawnMultiplayerTanks();
                 return;
@@ -880,16 +883,16 @@ namespace Modern8bitTanks
         // ============================================================
         private void Update()
         {
-            if (MultiplayerSessionConnection.Active != null && MultiplayerSessionConnection.Active.IsReturningToLobby) return;
+            if (_multiplayer.Connection != null && _multiplayer.Connection.IsReturningToLobby) return;
             float dt = Mathf.Min(0.04f, Time.deltaTime);
             var kb = Keyboard.current;
 
             if (_windowbox != null)
                 _windowbox.integerScale = integerWindowbox;
 
-            if (MultiplayerSessionConnection.Online && MultiplayerMatchTransport.Instance != null)
+            if (_multiplayer.IsInBattle && _multiplayer.Transport != null)
             {
-                if (!MultiplayerMatchTransport.Instance.IsHost)
+                if (!_multiplayer.Transport.IsHost)
                 {
                     UpdateMultiplayerClient(dt);
                     return;
@@ -911,14 +914,14 @@ namespace Modern8bitTanks
             bool menuOpen = _hud != null && _hud.IsMenuOpen;
             _audio?.UpdateBgm(active: true, bgmEnabled, bgmVolume, duckForMenu: menuOpen);
 
-            if (menuOpen && !MultiplayerSessionConnection.Online)
+            if (menuOpen && !_multiplayer.IsInBattle)
             {
                 StopLoopingAudio();
                 PushHudUpdate(GetPlayerTank(), 0f);
                 return;
             }
 
-            if (!MultiplayerSessionConnection.Online && kb != null && kb.rKey.wasPressedThisFrame)
+            if (!_multiplayer.IsInBattle && kb != null && kb.rKey.wasPressedThisFrame)
             {
                 ResetRound();
                 return;
@@ -955,7 +958,7 @@ namespace Modern8bitTanks
 
             TankEntity player = GetPlayerTank();
             if (player != null && !menuOpen) UpdatePlayer(player, dt);
-            if (MultiplayerSessionConnection.Online) ApplyMultiplayerControls(dt);
+            if (_multiplayer.IsInBattle) ApplyMultiplayerControls(dt);
 
             if (_phase == GamePhase.Playing)
             {
@@ -972,14 +975,14 @@ namespace Modern8bitTanks
                 }
                 if (burnedOut != null)
                 {
-                    if (MultiplayerSessionConnection.Online || burnedOut.isPlayer || WillRoundEndAfterKill(burnedOut))
+                    if (_multiplayer.IsInBattle || burnedOut.isPlayer || WillRoundEndAfterKill(burnedOut))
                         TriggerSyntheticDecisiveXRay(burnedOut, "FIRE");
                     CheckTeamVictoryOrWave(burnedOut);
                 }
             }
 
             // Multi-tank AI (or non-hostile Firing Range targets & auto-respawn!)
-            if (MultiplayerSessionConnection.Online) { }
+            if (_multiplayer.IsInBattle) { }
             else if (battleMode == BattleMode.FiringRange)
             {
                 UpdateFiringRangeTargets(dt);
@@ -1021,7 +1024,7 @@ namespace Modern8bitTanks
 
             UpdateProjectiles(dt);
             RenderBattleFrame(player, dt);
-            if (MultiplayerSessionConnection.Online) BroadcastMultiplayerState();
+            if (_multiplayer.IsInBattle) BroadcastMultiplayerState();
         }
 
         private void UpdateRoundAftermath()
@@ -1032,16 +1035,16 @@ namespace Modern8bitTanks
                 float udt = Mathf.Min(0.05f, Time.unscaledDeltaTime);
                 _aftermathTimer += udt;
 
-                if (!MultiplayerSessionConnection.Online && _aftermathTimer < 0.78f)
+                if (!_multiplayer.IsInBattle && _aftermathTimer < 0.78f)
                 {
                     Time.timeScale = 0.24f;
                 }
-                else if (!MultiplayerSessionConnection.Online && _aftermathTimer < 1.55f)
+                else if (!_multiplayer.IsInBattle && _aftermathTimer < 1.55f)
                 {
                     float s = (_aftermathTimer - 0.78f) / 0.77f;
                     Time.timeScale = Mathf.Lerp(0.24f, 1.0f, s * s * (3f - 2f * s));
                 }
-                else if (!MultiplayerSessionConnection.Online)
+                else if (!_multiplayer.IsInBattle)
                 {
                     Time.timeScale = 1.0f;
                 }
@@ -1055,8 +1058,8 @@ namespace Modern8bitTanks
                 {
                     _resultBannerShown = true;
                     if (_hud != null && !string.IsNullOrEmpty(_pendingWinner))
-                        _hud.ShowResult(MultiplayerSessionConnection.Online
-                            ? (_pendingWinner == "ally") == (MultiplayerSessionConnection.LocalSlot < 4)
+                        _hud.ShowResult(_multiplayer.IsInBattle
+                            ? (_pendingWinner == "ally") == (_multiplayer.LocalSlot < 4)
                             : _pendingWinner == "ally", _pendingSubtitle);
                 }
             }
@@ -1336,8 +1339,8 @@ namespace Modern8bitTanks
         private void DeploySmokeScreen(TankEntity t)
         {
             if (!t.alive || t.smokeCooldown > 0f || _phase != GamePhase.Playing) return;
-            if (MultiplayerSessionConnection.Online)
-                MultiplayerMatchTransport.Instance?.BroadcastSmoke(System.Array.IndexOf(_networkTanks, t));
+            if (_multiplayer.IsInBattle)
+                _multiplayer.Transport?.BroadcastSmoke(System.Array.IndexOf(_networkTanks, t));
             t.smokeCooldown = t.smokeDuration;
 
             Vector2 td = TankEntity.SliceAngleToDir(t.turretAngleDeg);
@@ -1794,8 +1797,8 @@ namespace Modern8bitTanks
             sr.sprite = _whitePxSprite;
             SetProjectileAppearance(sr, ammo);
             go.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(vel.y, vel.x) * Mathf.Rad2Deg);
-            if (MultiplayerSessionConnection.Online)
-                MultiplayerMatchTransport.Instance?.BroadcastWeaponFired(System.Array.IndexOf(_networkTanks, owner),
+            if (_multiplayer.IsInBattle)
+                _multiplayer.Transport?.BroadcastWeaponFired(System.Array.IndexOf(_networkTanks, owner),
                     kind, ammo, visPos, gndPos, vel.normalized);
 
             _projectiles.Add(new ProjectileData
@@ -1890,10 +1893,10 @@ namespace Modern8bitTanks
                         hasTarget = true;
                         turnRateDeg = p.ammo == AmmoType.TOW ? 225f : 185f;
                     }
-                    else if (!p.playerOwned && MultiplayerSessionConnection.Online && _phase == GamePhase.Playing)
+                    else if (!p.playerOwned && _multiplayer.IsInBattle && _phase == GamePhase.Playing)
                     {
                         int slot = _networkTanks == null ? -1 : System.Array.IndexOf(_networkTanks, p.owner);
-                        if (MultiplayerMatchTransport.Instance != null && MultiplayerMatchTransport.Instance.TryGetControl(slot, out var control))
+                        if (_multiplayer.Transport != null && _multiplayer.Transport.TryGetControl(slot, out var control))
                         {
                             aimTarget = new Vector2(control.AimX, control.AimY);
                             hasTarget = true;
@@ -1982,15 +1985,15 @@ namespace Modern8bitTanks
                             ? (hitProp.meta.ricochetHeavy ? 4.2f : 5.6f)
                             : (p.kind == ProjectileKind.Autocannon ? 2.4f : 1.5f)) * heMul;
                         var randomState = Random.state;
-                        if (MultiplayerSessionConnection.Online)
+                        if (_multiplayer.IsInBattle)
                         {
                             int seed = Random.Range(0, int.MaxValue);
                             randomState = Random.state;
-                            MultiplayerMatchTransport.Instance?.BroadcastPropImpact(_props.IndexOf(hitProp), nextGnd, craterR, p.IsHeavy || p.ammo == AmmoType.HEIBelt, seed);
+                            _multiplayer.Transport?.BroadcastPropImpact(_props.IndexOf(hitProp), nextGnd, craterR, p.IsHeavy || p.ammo == AmmoType.HEIBelt, seed);
                             Random.InitState(seed);
                         }
                         bool collapsed = hitProp.ApplyHit(nextGnd, craterR, p.IsHeavy || p.ammo == AmmoType.HEIBelt, SpawnDebrisParticle);
-                        if (MultiplayerSessionConnection.Online) Random.state = randomState;
+                        if (_multiplayer.IsInBattle) Random.state = randomState;
 
                         if (collapsed && (hitProp.kind == "supply_crate" || hitProp.kind == "fuel_tank"))
                         {
@@ -2009,7 +2012,7 @@ namespace Modern8bitTanks
                                 if (!t.alive)
                                 {
                                     ShowTankLoss(t);
-                                    if (MultiplayerSessionConnection.Online || t.isPlayer || WillRoundEndAfterKill(t))
+                                    if (_multiplayer.IsInBattle || t.isPlayer || WillRoundEndAfterKill(t))
                                         TriggerSyntheticDecisiveXRay(t, isFuel ? "FUEL" : "BLAST");
                                     CheckTeamVictoryOrWave(t);
                                 }
@@ -2186,7 +2189,7 @@ namespace Modern8bitTanks
                 if (!t.alive)
                 {
                     ShowTankLoss(t);
-                    if (MultiplayerSessionConnection.Online || t.isPlayer || WillRoundEndAfterKill(t))
+                    if (_multiplayer.IsInBattle || t.isPlayer || WillRoundEndAfterKill(t))
                         TriggerSyntheticDecisiveXRay(t, "HE");
                     CheckTeamVictoryOrWave(t);
                 }
@@ -2334,7 +2337,7 @@ namespace Modern8bitTanks
             _phase = GamePhase.RoundOver;
             _aftermathTimer = 0f;
             _resultBannerShown = false;
-            if (!MultiplayerSessionConnection.Online) _hitStop = 0.09f;
+            if (!_multiplayer.IsInBattle) _hitStop = 0.09f;
             _shake = 0.50f;
             _killFocusPos = justKilled.Position2D;
 
@@ -2347,7 +2350,7 @@ namespace Modern8bitTanks
 
             string pName = SelectedPlayerVehicle != null ? SelectedPlayerVehicle.name.ToUpper() : "PLAYER";
             string eName = SelectedEnemyVehicle != null ? SelectedEnemyVehicle.name.ToUpper() : "HOSTILE";
-            _pendingSubtitle = MultiplayerSessionConnection.Online ? "ONLINE BATTLE" : battleMode switch
+            _pendingSubtitle = _multiplayer.IsInBattle ? "ONLINE BATTLE" : battleMode switch
             {
                 BattleMode.SurvivalWave => $"{pName} SURVIVED TO WAVE {_currentWave}",
                 BattleMode.Battle5v5 => winner == "ally" ? "5v5 ALLIED VICTORY" : "5v5 ENEMY VICTORY",
@@ -2424,7 +2427,7 @@ namespace Modern8bitTanks
             for (int side = -1; side <= 1; side += 2)
             {
                 Vector2 tp = t.Position2D + SpriteStackCamera.Squash(perp * (trackOff * side), squash);
-                if (MultiplayerSessionConnection.Online)
+                if (_multiplayer.IsInBattle)
                     AddOnlineTread(tp, treadCol);
                 else
                     StampGroundRect(Mathf.RoundToInt(tp.x * PPU), Mathf.RoundToInt(tp.y * PPU), 2, 2, treadCol, 0.36f);
@@ -2596,7 +2599,7 @@ namespace Modern8bitTanks
 
         private void StampScorchMark(Vector2 worldPos, int radiusPx, float alpha)
         {
-            if (MultiplayerSessionConnection.Online)
+            if (_multiplayer.IsInBattle)
             {
                 AddScorchDecal(worldPos, radiusPx / PPU, alpha);
                 return;
