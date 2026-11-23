@@ -125,16 +125,20 @@ namespace Modern8bitTanks
         private BattleSessionState _sessionState;
         private GameSceneLoader _sceneLoader;
         private MultiplayerSessionState _multiplayer;
+        private BattleVisibility _visibility;
+        private System.Func<TankEntity, TankEntity, bool> _hasTankSight;
 
         [Inject]
         private void Construct(Camera worldCamera, BattleSessionState sessionState, GameSceneLoader sceneLoader,
-            MultiplayerSessionState multiplayer,
+            MultiplayerSessionState multiplayer, BattleVisibility visibility,
             PixelWindowbox windowbox, BattlePostProcess postProcess, DesertAtmosphere atmosphere)
         {
             _cam = worldCamera;
             _sessionState = sessionState;
             _sceneLoader = sceneLoader;
             _multiplayer = multiplayer;
+            _visibility = visibility;
+            _hasTankSight = HasTankSight;
             _windowbox = windowbox;
             _postProcess = postProcess;
             _atmosphere = atmosphere;
@@ -1069,13 +1073,13 @@ namespace Modern8bitTanks
         {
             _shake = Mathf.Max(0f, _shake - Time.unscaledDeltaTime * 15f);
             UpdateCameraRoll(player, dt);
-            _visibleTanks.Clear();
-            TankEntity observer = FindLocalObserver(player);
+            _visibility.Refresh(_tanks, _networkTanks, player, UsesTeamVisibility && _phase == GamePhase.Playing,
+                _cam, ViewAspect, _hasTankSight);
             foreach (var tank in _tanks)
             {
                 if (tank == null || !tank.gameObject.activeInHierarchy) continue;
 
-                bool visible = IsVisibleToLocalTeam(tank, player, observer);
+                bool visible = _visibility.IsVisible(tank);
                 tank.hullStack.SetBattleVisibility(visible);
                 tank.turretStack.SetBattleVisibility(visible);
                 tank.SyncVisuals(squash, spacingPx,
@@ -1084,7 +1088,6 @@ namespace Modern8bitTanks
 
                 if (visible)
                 {
-                    _visibleTanks.Add(tank);
                     UpdateTankMovementEffects(tank, dt);
                 }
                 else
@@ -2840,7 +2843,7 @@ namespace Modern8bitTanks
             }
             else
             {
-                TankEntity spec = FindLocalObserver(player);
+                TankEntity spec = BattleVisibility.FindObserver(_tanks, player);
                 if (spec != null) targetCam = spec.Position2D;
                 camSmooth = dt * 3.8f;
             }

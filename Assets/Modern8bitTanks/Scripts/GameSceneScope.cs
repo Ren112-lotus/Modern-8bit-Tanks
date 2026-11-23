@@ -19,7 +19,11 @@ namespace Modern8bitTanks
             builder.RegisterComponent(presentation.GetComponent<BattlePostProcess>());
             builder.RegisterComponent(presentation.GetComponent<DesertAtmosphere>());
             if (hangar != null) builder.RegisterComponent(hangar);
-            if (battle != null) builder.RegisterComponent(battle);
+            if (battle != null)
+            {
+                builder.Register<BattleVisibility>(Lifetime.Scoped);
+                builder.RegisterComponent(battle);
+            }
         }
     }
 }

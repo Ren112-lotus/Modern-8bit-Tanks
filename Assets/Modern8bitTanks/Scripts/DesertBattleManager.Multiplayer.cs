@@ -211,14 +211,14 @@ namespace Modern8bitTanks
             }
             byte result = _phase == GamePhase.RoundOver ? (_pendingWinner == "ally" ? (byte)1 : (byte)2) : _networkBattleStarted ? (byte)3 : (byte)0;
             UpdateRadarContacts(transport);
-            transport.Broadcast(states, shots, count, result, _radarSpots, _killFocusPos);
+            transport.Broadcast(states, shots, count, result, _visibility.NetworkContacts, _killFocusPos);
         }
 
         private void ApplyMultiplayerState(MultiplayerMatchTransport.TankState[] states, MultiplayerMatchTransport.ShotState[] shots,
             int shotCount, byte result, float hostTime, byte[] spots, Vector2 focus)
         {
             if (_networkTanks == null || states.Length != _networkTanks.Length) return;
-            System.Array.Copy(spots, _radarSpots, _radarSpots.Length);
+            System.Array.Copy(spots, _visibility.NetworkContacts, _visibility.NetworkContacts.Length);
             float now = Time.unscaledTime;
             float sampleOffset = now - hostTime;
             _clockOffset = _poseCount == 0 ? sampleOffset : Mathf.Min(sampleOffset, _clockOffset + MultiplayerMatchTransport.SnapshotInterval * .02f);
