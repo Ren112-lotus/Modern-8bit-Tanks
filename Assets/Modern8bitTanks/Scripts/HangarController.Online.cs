@@ -7,6 +7,7 @@ namespace Modern8bitTanks
 {
     public partial class HangarController
     {
+        [SerializeField] private MultiplayerSessionConnection multiplayerSessionPrefab;
         [SerializeField] private GameObject _onlineVisuals;
         [SerializeField] private GameObject _onlineHits;
         [SerializeField] private GameObject _onlineEntryVisuals;
@@ -133,7 +134,7 @@ namespace Modern8bitTanks
 
             _onlineBusy = true;
             _onlineError = null;
-            try { await MultiplayerSessionConnection.ConnectAsync(_sessionState, code); }
+            try { await multiplayerSessionPrefab.ConnectAsync(_sessionState, code); }
             catch (Exception exception)
             {
                 _onlineError = host ? "COULD NOT CREATE ROOM. TRY AGAIN." : "COULD NOT JOIN. CHECK THE CODE AND TRY AGAIN.";

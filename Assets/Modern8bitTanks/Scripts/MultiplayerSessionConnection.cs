@@ -1,7 +1,6 @@
 using System;
 using Cysharp.Threading.Tasks;
 using Unity.Netcode;
-using Unity.Netcode.Transports.UTP;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Multiplayer;
@@ -13,10 +12,12 @@ namespace Modern8bitTanks
     public sealed class MultiplayerSessionConnection : MonoBehaviour
     {
         public const int MaxPlayers = 8;
-        private const string RoomPrefabPath = "MultiplayerRoom";
         private const float RoomSyncTimeout = 15f;
 
-        private NetworkManager _network;
+        [SerializeField] private NetworkManager _network;
+        [SerializeField] private MultiplayerMatchTransport _matchTransport;
+        [SerializeField] private MultiplayerRoom _roomPrefab;
+
         private BattleSessionState _sessionState;
         private ISession _session;
         private bool _connecting = true;
@@ -40,35 +41,21 @@ namespace Modern8bitTanks
         public bool IsReturningToLobby => !_loadingBattle && _returnToHangar && !_leaving;
         public string JoinCode => _session?.Code;
 
-        public static async UniTask ConnectAsync(BattleSessionState sessionState, string code = null)
+        public async UniTask ConnectAsync(BattleSessionState sessionState, string code = null)
         {
             if (Active != null || NetworkManager.Singleton != null)
                 throw new InvalidOperationException("A room is already open.");
 
-            var prefab = Resources.Load<MultiplayerRoom>(RoomPrefabPath);
-            if (prefab == null)
-                throw new InvalidOperationException("The multiplayer room prefab is missing.");
-
             _lastNotice = null;
-            var root = new GameObject("Multiplayer Session");
-            DontDestroyOnLoad(root);
-            var connection = root.AddComponent<MultiplayerSessionConnection>();
+            var connection = Instantiate(this);
+            DontDestroyOnLoad(connection.gameObject);
             connection._sessionState = sessionState;
             Active = connection;
             try
             {
-                var transport = root.AddComponent<UnityTransport>();
-                transport.UseWebSockets = true;
-                var network = root.AddComponent<NetworkManager>();
-                connection._network = network;
-                network.NetworkConfig = new NetworkConfig
-                {
-                    NetworkTransport = transport,
-                    EnableSceneManagement = false,
-                    ConnectionApproval = true,
-                    ProtocolVersion = 4
-                };
-                network.AddNetworkPrefab(prefab.gameObject);
+                var network = connection._network;
+                network.NetworkConfig.ProtocolVersion = 4;
+                network.AddNetworkPrefab(connection._roomPrefab.gameObject);
                 network.ConnectionApprovalCallback = connection.ApproveConnection;
                 network.OnClientDisconnectCallback += connection.OnDisconnected;
                 network.OnTransportFailure += connection.OnTransportFailure;
@@ -85,7 +72,7 @@ namespace Modern8bitTanks
                         .WithRelayNetwork()
                         .WithNetworkOptions(networkOptions);
                     connection._session = await MultiplayerService.Instance.CreateSessionAsync(options);
-                    Instantiate(prefab).NetworkObject.Spawn();
+                    Instantiate(connection._roomPrefab).NetworkObject.Spawn();
                 }
                 else
                 {
@@ -120,7 +107,7 @@ namespace Modern8bitTanks
         internal void AttachRoom(MultiplayerRoom room)
         {
             Room = room;
-            gameObject.AddComponent<MultiplayerMatchTransport>().Initialize(_network, room);
+            _matchTransport.Initialize(_network, room);
         }
 
         public async UniTask StartMatchAsync()

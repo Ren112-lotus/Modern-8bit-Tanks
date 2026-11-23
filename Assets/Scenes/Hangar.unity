@@ -1426,11 +1426,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 8338984126647999909, guid: 6a957e490d7a04e4abaec1c2574005f0, type: 3}
   m_PrefabInstance: {fileID: 803286224}
   m_PrefabAsset: {fileID: 0}
---- !u!224 &803286324 stripped
-RectTransform:
-  m_CorrespondingSourceObject: {fileID: 1865944947665806141, guid: 6a957e490d7a04e4abaec1c2574005f0, type: 3}
-  m_PrefabInstance: {fileID: 803286224}
-  m_PrefabAsset: {fileID: 0}
 --- !u!223 &803286325 stripped
 Canvas:
   m_CorrespondingSourceObject: {fileID: 7155558906418164401, guid: 6a957e490d7a04e4abaec1c2574005f0, type: 3}
@@ -2500,6 +2495,7 @@ MonoBehaviour:
   onlineStartAction: {fileID: 803286361}
   onlineVehicleAction: {fileID: 803286360}
   onlineBackAction: {fileID: 803286359}
+  multiplayerSessionPrefab: {fileID: 8924339082072992355, guid: ba1fdc8bb800e21458c16434e5a33295, type: 3}
   _onlineVisuals: {fileID: 803286358}
   _onlineHits: {fileID: 803286357}
   _onlineEntryVisuals: {fileID: 803286356}
