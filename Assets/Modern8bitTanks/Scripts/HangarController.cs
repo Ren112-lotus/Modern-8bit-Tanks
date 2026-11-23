@@ -157,9 +157,6 @@ namespace Modern8bitTanks
         private StatBarSlot _statSpd;
         private StatBarSlot _statTrn;
         private StatBarSlot _statTur;
-        private Texture2D _hangarBackdropTex;
-        private const int HangarGroundW = 640;
-        private const int HangarGroundH = 400;
 
         // Tech Tree UI
         private static readonly (string Code, string Label)[] TreeNations =
@@ -340,27 +337,11 @@ namespace Modern8bitTanks
             desertGroundRenderer.transform.position = new Vector3(WorldW * 0.5f, WorldH * 0.5f, 5f);
             desertGroundRenderer.sortingOrder = -30000;
             if (_groundHd2dMat != null) desertGroundRenderer.sharedMaterial = _groundHd2dMat;
-
-            _hangarBackdropTex = new Texture2D(HangarGroundW, HangarGroundH, TextureFormat.RGBA32, false)
-            {
-                filterMode = FilterMode.Point,
-                wrapMode = TextureWrapMode.Clamp
-            };
-            desertGroundRenderer.sprite = Sprite.Create(
-                _hangarBackdropTex,
-                new Rect(0, 0, HangarGroundW, HangarGroundH),
-                new Vector2(0.5f, 0.5f),
-                PPU
-            );
         }
 
         private void RefreshMapBackdropTheme(BattleMap map)
         {
-            if (_hangarBackdropTex != null)
-            {
-                _hangarBackdropTex.SetPixels32(DesertBattleManager.GenerateMapPixels(map, HangarGroundW, HangarGroundH));
-                _hangarBackdropTex.Apply(false, false);
-            }
+            desertGroundRenderer.sprite = Resources.Load<Sprite>($"Hangar/{map}Backdrop");
             _postProcess?.ApplyMapTheme(map);
             _atmosphere?.ApplyMapTheme(map);
         }
@@ -1729,9 +1710,7 @@ namespace Modern8bitTanks
         private void OnDestroy()
         {
             Font.textureRebuilt -= OnFontTextureRebuilt;
-            CleanupTitleStage();
             if (_groundHd2dMat != null) Destroy(_groundHd2dMat);
-            if (_hangarBackdropTex != null) Destroy(_hangarBackdropTex);
         }
     }
 }

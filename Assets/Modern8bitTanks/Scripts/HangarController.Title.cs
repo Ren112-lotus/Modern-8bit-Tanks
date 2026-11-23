@@ -42,12 +42,10 @@ namespace Modern8bitTanks
         // 3D Sprite-Stacked Title Stage Objects
         private Transform _titleStageRoot;
         private SpriteStackRenderer _titleLogoStack;
-        private Texture2D _titleLogoSheet;
         private readonly List<TankEntity> _titleWingmen = new();
         private readonly List<TitlePropItem> _titleProps = new();
         private readonly List<TitleDustItem> _titleDusts = new();
         private Sprite _titleDustSprite;
-        private Texture2D _titleDustTex;
         private float _titleDustTimer;
         private PropsMetaFile _titlePropsMeta;
 
@@ -192,19 +190,16 @@ namespace Modern8bitTanks
             rootGo.transform.SetParent(transform, false);
             _titleStageRoot = rootGo.transform;
 
-            // Soft circular pixel-dust sprite for title convoy tracks
-            _titleDustTex = CreateTitleDustTexture(24);
-            _titleDustSprite = Sprite.Create(_titleDustTex, new Rect(0, 0, 24, 24), new Vector2(0.5f, 0.5f), 24f);
-
-            // 1. Procedural 10-layer Sprite-Stacked 3D Logo ("8-BIT TANKS")!
-            _titleLogoSheet = GenerateStackedTitleLogoSheet(out int logoSlices);
+            _titleDustSprite = Resources.Load<Sprite>("Hangar/TitleDust");
+            var logoSheet = Resources.Load<Texture2D>("Hangar/TitleLogo");
+            const int logoSlices = 10;
             var logoGo = new GameObject("TitleStackedLogo");
             logoGo.transform.SetParent(_titleStageRoot, false);
             var logoSg = logoGo.AddComponent<SortingGroup>();
             logoSg.sortingOrder = 18000; // Always floats proudly above the battlefield convoy!
             _titleLogoStack = logoGo.AddComponent<SpriteStackRenderer>();
             _titleLogoStack.metallicWear = 0.92f;
-            _titleLogoStack.Configure(_titleLogoSheet, logoSlices, PPU, _stackFlashMat, 0, 0f, groundShadow: true);
+            _titleLogoStack.Configure(logoSheet, logoSlices, PPU, _stackFlashMat, 0, 0f, groundShadow: true);
             logoGo.transform.localScale = new Vector3(1.62f, 1.62f, 1f);
 
             // 2. Escort Wingmen (2 extra Sprite-Stacked tanks running in echelon formation!)
@@ -657,176 +652,5 @@ namespace Modern8bitTanks
                 if (_titleDusts[i].tf != null) Destroy(_titleDusts[i].tf.gameObject);
             _titleDusts.Clear();
         }
-
-        private void CleanupTitleStage()
-        {
-            ClearTitleDust();
-            if (_titleLogoSheet != null) Destroy(_titleLogoSheet);
-            if (_titleDustTex != null) Destroy(_titleDustTex);
-        }
-
-        // ============================================================
-        // 5. Procedural 10-Layer Sprite-Stacked 3D Logo Generator!
-        // ============================================================
-        private static Texture2D CreateTitleDustTexture(int size)
-        {
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
-            {
-                filterMode = FilterMode.Point,
-                wrapMode = TextureWrapMode.Clamp
-            };
-            var px = new Color32[size * size];
-            float c = (size - 1) * 0.5f;
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    float dx = (x - c) / c;
-                    float dy = (y - c) / c;
-                    float r = Mathf.Sqrt(dx * dx + dy * dy);
-                    float a = Mathf.Pow(Mathf.Clamp01(1f - r), 1.45f);
-                    px[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(a * 255f));
-                }
-            }
-            tex.SetPixels32(px);
-            tex.Apply(false, false);
-            return tex;
-        }
-
-        private static Texture2D GenerateStackedTitleLogoSheet(out int sliceCount)
-        {
-            const string title = "8-BIT TANKS";
-            const int glyphW = 5;
-            const int glyphH = 7;
-            const int padX = 5;
-            const int padY = 4;
-            int textW = title.Length * (glyphW + 1) - 1; // 65px
-            int sliceW = textW + padX * 2;               // 75px
-            int sliceH = glyphH + padY * 2;              // 15px
-            sliceCount = 10;
-
-            bool[,] letterMask = new bool[sliceW, sliceH];
-            for (int i = 0; i < title.Length; i++)
-            {
-                string[] rows = GetPixelGlyph5x7(title[i]);
-                int ox = padX + i * (glyphW + 1);
-                for (int gy = 0; gy < glyphH; gy++)
-                {
-                    // Row 0 is top of glyph -> higher texture Y!
-                    int py = padY + (glyphH - 1 - gy);
-                    string r = rows[gy];
-                    for (int gx = 0; gx < glyphW && gx < r.Length; gx++)
-                    {
-                        if (r[gx] == '#')
-                            letterMask[ox + gx, py] = true;
-                    }
-                }
-            }
-
-            // Dilated 1px outline around letters for bold armor-plate bevel
-            bool[,] letterOutline = new bool[sliceW, sliceH];
-            for (int y = 0; y < sliceH; y++)
-            {
-                for (int x = 0; x < sliceW; x++)
-                {
-                    if (letterMask[x, y]) { letterOutline[x, y] = true; continue; }
-                    for (int dy = -1; dy <= 1; dy++)
-                    {
-                        for (int dx = -1; dx <= 1; dx++)
-                        {
-                            int nx = x + dx, ny = y + dy;
-                            if (nx >= 0 && nx < sliceW && ny >= 0 && ny < sliceH && letterMask[nx, ny])
-                                letterOutline[x, y] = true;
-                        }
-                    }
-                }
-            }
-
-            int sheetW = sliceW * sliceCount;
-            var px = new Color32[sheetW * sliceH];
-
-            Color32 plateEdge   = new Color32(24, 26, 22, 255);
-            Color32 plateDark   = new Color32(46, 52, 42, 255);
-            Color32 plateMid    = new Color32(68, 76, 60, 255);
-            Color32 plateRivet  = new Color32(158, 152, 126, 255);
-            Color32 textShadow  = new Color32(96, 64, 24, 255);
-            Color32 textBronze  = new Color32(158, 110, 38, 255);
-            Color32 textAmber   = new Color32(216, 162, 58, 255);
-            Color32 textGold    = new Color32(248, 206, 94, 255);
-            Color32 textTopSpec = new Color32(255, 242, 178, 255);
-            Color32 trimInk     = new Color32(28, 22, 14, 255);
-
-            for (int z = 0; z < sliceCount; z++)
-            {
-                int xOff = z * sliceW;
-                for (int y = 0; y < sliceH; y++)
-                {
-                    int row = y * sheetW + xOff;
-                    for (int x = 0; x < sliceW; x++)
-                    {
-                        // Chamfered military armor backing plate on bottom slices (z = 0..3)
-                        int cornerDist = Mathf.Min(x, sliceW - 1 - x) + Mathf.Min(y, sliceH - 1 - y);
-                        bool inPlate = cornerDist >= 2;
-                        bool onPlateBorder = inPlate && (x == 0 || x == sliceW - 1 || y == 0 || y == sliceH - 1 || cornerDist == 2);
-                        bool isRivet = (x == 2 || x == sliceW - 3) && (y == 2 || y == sliceH - 3);
-
-                        Color32 col = default;
-                        if (z <= 2)
-                        {
-                            if (inPlate)
-                                col = onPlateBorder ? plateEdge : (isRivet && z == 2 ? plateRivet : (z == 0 ? plateDark : plateMid));
-                        }
-                        else if (z == 3)
-                        {
-                            if (letterOutline[x, y])
-                                col = letterMask[x, y] ? textShadow : trimInk;
-                            else if (inPlate && !onPlateBorder && (y == 1 || y == sliceH - 2))
-                                col = plateDark;
-                        }
-                        else if (z <= 8)
-                        {
-                            if (letterMask[x, y])
-                                col = z <= 5 ? textBronze : (z <= 7 ? textAmber : textGold);
-                            else if (z <= 5 && letterOutline[x, y])
-                                col = trimInk;
-                        }
-                        else // Topmost z == 9: gleaming top gold bevel!
-                        {
-                            if (letterMask[x, y])
-                            {
-                                bool topRim = (y + 1 >= sliceH) || !letterMask[x, y + 1];
-                                col = topRim ? textTopSpec : textGold;
-                            }
-                        }
-
-                        px[row + x] = col;
-                    }
-                }
-            }
-
-            var sheet = new Texture2D(sheetW, sliceH, TextureFormat.RGBA32, false)
-            {
-                name = "Procedural_TitleLogo_Slices",
-                filterMode = FilterMode.Point,
-                wrapMode = TextureWrapMode.Clamp
-            };
-            sheet.SetPixels32(px);
-            sheet.Apply(false, false);
-            return sheet;
-        }
-
-        private static string[] GetPixelGlyph5x7(char c) => c switch
-        {
-            '8' => new[] { ".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###." },
-            '-' => new[] { ".....", ".....", ".....", "#####", ".....", ".....", "....." },
-            'B' => new[] { "####.", "#...#", "#...#", "####.", "#...#", "#...#", "####." },
-            'I' => new[] { ".###.", "..#..", "..#..", "..#..", "..#..", "..#..", ".###." },
-            'T' => new[] { "#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.." },
-            'A' => new[] { ".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#" },
-            'N' => new[] { "#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#", "#...#" },
-            'K' => new[] { "#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#" },
-            'S' => new[] { ".####", "#....", "#....", ".###.", "....#", "....#", "####." },
-            _   => new[] { ".....", ".....", ".....", ".....", ".....", ".....", "....." }
-        };
     }
 }
