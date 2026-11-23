@@ -130,7 +130,7 @@ GameObject:
   - component: {fileID: 3406652}
   - component: {fileID: 3406651}
   m_Layer: 0
-  m_Name: DesertGround
+  m_Name: BattlefieldGround
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4004,7 +4004,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.BattleSceneController
   _mapPropsRoot: {fileID: 969891249}
-  desertGroundRenderer: {fileID: 3406651}
+  terrainRenderer: {fileID: 3406651}
   _tankPrefab: {fileID: 1073552176552975900, guid: c44326c399a2a474682082e67f7efa3e, type: 3}
   _tanksRoot: {fileID: 626381139}
   _playerTank: {fileID: 21504149}

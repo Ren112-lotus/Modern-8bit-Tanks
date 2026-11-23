@@ -29,7 +29,8 @@ namespace Modern8bitTanks
         private float BorderPad => BorderPadPx / PPU;
 
         [Header("Scene & Prefab References (Pre-placed in Battle.unity)")]
-        public SpriteRenderer desertGroundRenderer;
+        [UnityEngine.Serialization.FormerlySerializedAs("desertGroundRenderer")]
+        public SpriteRenderer terrainRenderer;
         [SerializeField] private TankEntity _tankPrefab;
         [SerializeField] private Transform _tanksRoot;
         [SerializeField] private TankEntity _playerTank;
@@ -61,7 +62,7 @@ namespace Modern8bitTanks
 
         private PixelWindowbox _windowbox;
         private BattlePostProcess _postProcess;
-        private DesertAtmosphere _atmosphere;
+        private MapAtmosphere _atmosphere;
         [SerializeField] private BattleHUD _hud;
         private Vector2 _lastValidMouseWorld;
         [SerializeField] private Material _emissiveFxMat;
@@ -92,7 +93,7 @@ namespace Modern8bitTanks
 
         [SerializeField] private Sprite _whitePxSprite;
 
-        // Runtime mutable DesertGround
+        // Runtime terrain texture
         private Texture2D _runtimeGroundTex;
         private Color32[] _cleanGroundPixels;
         private Color32[] _groundPixels;
@@ -126,7 +127,7 @@ namespace Modern8bitTanks
         [Inject]
         private void Construct(Camera worldCamera, BattleSessionState sessionState, GameSceneLoader sceneLoader,
             MultiplayerSessionState multiplayer, BattleVisibility visibility,
-            PixelWindowbox windowbox, BattlePostProcess postProcess, DesertAtmosphere atmosphere)
+            PixelWindowbox windowbox, BattlePostProcess postProcess, MapAtmosphere atmosphere)
         {
             _cam = worldCamera;
             _sessionState = sessionState;
@@ -470,11 +471,11 @@ namespace Modern8bitTanks
             _cleanGroundPixels = GenerateMapPixels(battleMap, WorldWidthPx, WorldHeightPx);
             _groundPixels = new Color32[_cleanGroundPixels.Length];
 
-            desertGroundRenderer.enabled = true;
-            desertGroundRenderer.transform.position = new Vector3(WorldW * 0.5f, WorldH * 0.5f, 5f);
-            desertGroundRenderer.sortingOrder = -30000;
-            if (_groundHd2dMat != null) desertGroundRenderer.sharedMaterial = _groundHd2dMat;
-            desertGroundRenderer.sprite = Sprite.Create(
+            terrainRenderer.enabled = true;
+            terrainRenderer.transform.position = new Vector3(WorldW * 0.5f, WorldH * 0.5f, 5f);
+            terrainRenderer.sortingOrder = -30000;
+            if (_groundHd2dMat != null) terrainRenderer.sharedMaterial = _groundHd2dMat;
+            terrainRenderer.sprite = Sprite.Create(
                 _runtimeGroundTex,
                 new Rect(0, 0, WorldWidthPx, WorldHeightPx),
                 new Vector2(0.5f, 0.5f),
@@ -1618,13 +1619,13 @@ namespace Modern8bitTanks
                 }
             }
 
-            // 3. Desert sand shockwave under barrel
+            // 3. Dust kicked up beneath the gun
             for (int i = 0; i < 6; i++)
             {
                 float ang = Random.Range(-1.35f, 1.35f);
                 Vector2 dustDir = Rotate2D(dir, ang);
-                Color sandCol = i % 2 == 0 ? new Color(0.86f, 0.74f, 0.50f, 0.85f) : new Color(0.75f, 0.62f, 0.40f, 0.75f);
-                SpawnParticle(gndMuz + Random.insideUnitCircle * 0.22f, dustDir * Random.Range(1.0f, 2.6f), 0.15f, Random.Range(0.28f, 0.55f), Random.Range(0.16f, 0.26f), sandCol, 1.0f);
+                Color dustColor = i % 2 == 0 ? new Color(0.86f, 0.74f, 0.50f, 0.85f) : new Color(0.75f, 0.62f, 0.40f, 0.75f);
+                SpawnParticle(gndMuz + Random.insideUnitCircle * 0.22f, dustDir * Random.Range(1.0f, 2.6f), 0.15f, Random.Range(0.28f, 0.55f), Random.Range(0.16f, 0.26f), dustColor, 1.0f);
             }
 
             // 4. Lingering muzzle gunsmoke

@@ -11855,7 +11855,7 @@ GameObject:
   - component: {fileID: 8811059803060790644}
   - component: {fileID: 8840479867802689912}
   m_Layer: 5
-  m_Name: 'Txt_MAP: DESERT'
+  m_Name: MapLabel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

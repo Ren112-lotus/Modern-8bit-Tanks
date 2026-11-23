@@ -4,11 +4,9 @@ using UnityEngine;
 namespace Modern8bitTanks
 {
     /// <summary>
-    /// Subtle natural desert daylight atmosphere (cloud shadows + delicate drifting dust motes):
-    /// Keeps the battlefield crisp & clean so URP Post-Processing (Bloom, Vignette, Tilt-Shift DoF)
-    /// carries the optical HD-2D look without artificial light overlays.
+    /// Cloud shadows and ambient motes for the current map theme.
     /// </summary>
-    public class DesertAtmosphere : MonoBehaviour
+    public class MapAtmosphere : MonoBehaviour
     {
         private float _worldW;
         private float _worldH;

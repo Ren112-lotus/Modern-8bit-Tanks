@@ -3281,7 +3281,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6b7fbe7e471fb85448805adb8106b1ff, type: 3}
   m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.DesertAtmosphere
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.MapAtmosphere
   _cloudTileTransforms:
   - {fileID: 7208476677322527453}
   - {fileID: 7901389610643683365}
@@ -4418,7 +4418,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2210220993561196594}
   m_Layer: 0
-  m_Name: SunlitDustMotes
+  m_Name: AmbientMotes
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5030,7 +5030,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2082371478285603060}
   m_Layer: 0
-  m_Name: DesertCloudShadows
+  m_Name: CloudShadows
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

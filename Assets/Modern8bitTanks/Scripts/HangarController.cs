@@ -12,7 +12,7 @@ namespace Modern8bitTanks
 {
     /// <summary>
     /// Dedicated Garage / Hangar & Horizontal-Scrolling World-of-Tanks Tech Tree Scene (Hangar.unity):
-    /// - Shows ONLY the player's selected tank DEAD-CENTER on a live 360° sunlit desert turntable
+    /// - Shows the selected tank on a rotating turntable with the selected map as its backdrop
     /// - True Horizontal-Scrolling WoT Tech Tree (Tier I -> V trunk forking into VI -> X MBT+SP / LIGHT / SUPPORT)
     ///   with Mouse Wheel, Click-Drag, Arrow Keys, & Pixel Scrollbar
     /// - Supports 1v1, 2v2, 5v5, & Survival Wave modes -> launches into Battle.unity.
@@ -25,7 +25,8 @@ namespace Modern8bitTanks
         private float WorldH => BattleSceneController.WorldHeightPx / PPU;
 
         [Header("Scene References")]
-        public SpriteRenderer desertGroundRenderer;
+        [UnityEngine.Serialization.FormerlySerializedAs("desertGroundRenderer")]
+        public SpriteRenderer mapBackdropRenderer;
         public TankEntity showcaseTank;
 
         [Header("Display Settings")]
@@ -58,7 +59,7 @@ namespace Modern8bitTanks
         [Inject]
         private void Construct(Camera worldCamera, BattleSessionState sessionState, GameSceneLoader sceneLoader,
             MultiplayerSessionState multiplayer,
-            PixelWindowbox windowbox, BattlePostProcess postProcess, DesertAtmosphere atmosphere)
+            PixelWindowbox windowbox, BattlePostProcess postProcess, MapAtmosphere atmosphere)
         {
             _cam = worldCamera;
             _sessionState = sessionState;
@@ -70,7 +71,7 @@ namespace Modern8bitTanks
         }
         private PixelWindowbox _windowbox;
         private BattlePostProcess _postProcess;
-        private DesertAtmosphere _atmosphere;
+        private MapAtmosphere _atmosphere;
 
         private Font _font;
         private Font _titleFont;
@@ -243,7 +244,7 @@ namespace Modern8bitTanks
             _postProcess.Initialize(_windowbox.PresentCamera);
 
             LoadResourcesAndCatalog();
-            SetupDesertBackdrop();
+            SetupMapBackdrop();
             SetupCenterShowcaseTank();
 
             _atmosphere.Initialize(WorldW, WorldH, _whitePxSprite, _emissiveFxMat);
@@ -302,17 +303,17 @@ namespace Modern8bitTanks
                 f.material.mainTexture.filterMode = FilterMode.Point;
         }
 
-        private void SetupDesertBackdrop()
+        private void SetupMapBackdrop()
         {
-            desertGroundRenderer.enabled = true;
-            desertGroundRenderer.transform.position = new Vector3(WorldW * 0.5f, WorldH * 0.5f, 5f);
-            desertGroundRenderer.sortingOrder = -30000;
-            if (_groundHd2dMat != null) desertGroundRenderer.sharedMaterial = _groundHd2dMat;
+            mapBackdropRenderer.enabled = true;
+            mapBackdropRenderer.transform.position = new Vector3(WorldW * 0.5f, WorldH * 0.5f, 5f);
+            mapBackdropRenderer.sortingOrder = -30000;
+            if (_groundHd2dMat != null) mapBackdropRenderer.sharedMaterial = _groundHd2dMat;
         }
 
         private void RefreshMapBackdropTheme(BattleMap map)
         {
-            desertGroundRenderer.sprite = Resources.Load<Sprite>($"Hangar/{map}Backdrop");
+            mapBackdropRenderer.sprite = Resources.Load<Sprite>($"Hangar/{map}Backdrop");
             _postProcess?.ApplyMapTheme(map);
             _atmosphere?.ApplyMapTheme(map);
         }

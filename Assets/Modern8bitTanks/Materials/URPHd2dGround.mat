@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: URPHd2dDesertGround
+  m_Name: URPHd2dGround
   m_Shader: {fileID: 4800000, guid: ac714d1ea3a72e84187754a352cd5015, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0

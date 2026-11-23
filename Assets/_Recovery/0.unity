@@ -322,7 +322,7 @@ GameObject:
   - component: {fileID: 1026104197}
   - component: {fileID: 1026104196}
   m_Layer: 0
-  m_Name: DesertGround
+  m_Name: MapBackdrop
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -431,7 +431,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3d7828f3effa53d4095934194e714ef9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.HangarController
-  desertGroundRenderer: {fileID: 1026104196}
+  mapBackdropRenderer: {fileID: 1026104196}
   showcaseTank: {fileID: 403131395}
   renderWidth: 480
   renderHeight: 270

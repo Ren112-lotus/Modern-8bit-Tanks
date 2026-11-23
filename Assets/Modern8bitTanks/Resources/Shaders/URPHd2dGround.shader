@@ -1,4 +1,4 @@
-Shader "Modern8bitTanks/URPHd2dDesertGround"
+Shader "Modern8bitTanks/URPHd2dGround"
 {
     Properties
     {
@@ -23,7 +23,7 @@ Shader "Modern8bitTanks/URPHd2dDesertGround"
 
         Pass
         {
-            Name "URPHd2dDesertGroundPass"
+            Name "URPHd2dGroundPass"
             Tags { "LightMode" = "SRPDefaultUnlit" }
 
             HLSLPROGRAM
@@ -84,7 +84,7 @@ Shader "Modern8bitTanks/URPHd2dDesertGround"
                 float t = _Hd2dTime;
                 half3 rgb = texCol.rgb;
 
-                // 1. Subtle natural desert dune relief & tactile sand grain
+                // 1. Subtle surface relief and material grain
                 float duneGrad =
                     0.55 * cos(wp.x * 0.24 + wp.y * 0.38) +
                     0.32 * sin(wp.x * 0.51 - wp.y * 0.26 + 1.3) +
@@ -96,7 +96,7 @@ Shader "Modern8bitTanks/URPHd2dDesertGround"
                 float grainTint = (rnd - 0.5) * 0.035;
                 rgb = rgb * duneShade * (1.0h + (half)grainTint);
 
-                // 2. Smooth drifting cloud shadows across the desert terrain
+                // 2. Smooth drifting cloud shadows across the ground
                 float2 cUv = wp * 0.068 + float2(-t * 0.042, t * 0.022);
                 float cloud =
                     0.50 * sin(cUv.x * 1.4 + cUv.y * 0.9) +

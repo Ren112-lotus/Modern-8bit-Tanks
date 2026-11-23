@@ -2489,7 +2489,7 @@ GameObject:
   - component: {fileID: 1026104197}
   - component: {fileID: 1026104196}
   m_Layer: 0
-  m_Name: DesertGround
+  m_Name: MapBackdrop
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3033,7 +3033,7 @@ MonoBehaviour:
   - {fileID: 341577241}
   - {fileID: 341577240}
   _titleDustPrefab: {fileID: 4286751976029668391, guid: e8455ca14bf222949b252642a8c2aa78, type: 3}
-  desertGroundRenderer: {fileID: 1026104196}
+  mapBackdropRenderer: {fileID: 1026104196}
   showcaseTank: {fileID: 403131395}
   renderWidth: 480
   renderHeight: 270

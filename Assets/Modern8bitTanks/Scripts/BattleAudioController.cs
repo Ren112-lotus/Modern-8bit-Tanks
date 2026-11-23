@@ -12,7 +12,7 @@ namespace Modern8bitTanks
     /// <summary>
     /// Position-based 2D stereo spatial audio controller with strict separation between:
     /// - DRY voices (no reverb): cabin reload clank, coaxial MG, smoke pop, engine/tracks/turret servo
-    /// - WET/REVERB voices (outdoor desert canyon AudioReverbFilter + distance air-absorption lowpass):
+    /// - WET/REVERB voices (outdoor reverb with a distance-based low-pass filter):
     ///   main cannon blasts, explosions, ricochets, and heavy turret crash impacts.
     /// Uses dedicated voice pools so overlapping sounds at different positions keep independent stereo pan & pitch!
     /// </summary>
@@ -67,7 +67,7 @@ namespace Modern8bitTanks
             _missileMotorSource.clip = missileMotorClip;
         }
 
-        private static void ConfigureDesertCanyonReverb(AudioReverbFilter rev, bool heavy)
+        private static void ConfigureOutdoorReverb(AudioReverbFilter rev, bool heavy)
         {
             rev.reverbPreset = AudioReverbPreset.User;
             rev.dryLevel = 0f;
@@ -77,7 +77,7 @@ namespace Modern8bitTanks
             rev.decayTime = heavy ? 2.45f : 1.55f;
             rev.decayHFRatio = 0.42f;
             rev.reflectionsLevel = heavy ? -350f : -650f;
-            rev.reflectionsDelay = 0.045f; // Crisp outdoor desert canyon slapback
+            rev.reflectionsDelay = 0.045f; // Short outdoor reflection
             rev.reverbLevel = heavy ? 120f : -180f;
             rev.reverbDelay = 0.080f;
             rev.hfReference = 3600f;
@@ -88,7 +88,7 @@ namespace Modern8bitTanks
 
         /// <summary>
         /// Plays a one-shot sound spatially positioned in stereo relative to listenerPos,
-        /// routed to either the DRY bus (no reverb) or the Desert Canyon REVERB bus.
+        /// routed to either the DRY bus (no reverb) or the outdoor REVERB bus.
         /// Supports per-clip concurrency limiting (voice stealing) and maxDuration fade envelopes
         /// so long clips (e.g. 6s missile roars) never layer into harsh noise.
         /// </summary>
@@ -180,7 +180,7 @@ namespace Modern8bitTanks
             ref Voice voice = ref pool[chosenIdx];
             if (bus != SoundBus.Dry && voice.reverb != null)
             {
-                ConfigureDesertCanyonReverb(voice.reverb, heavy: bus == SoundBus.HeavyReverb);
+                ConfigureOutdoorReverb(voice.reverb, heavy: bus == SoundBus.HeavyReverb);
                 // Distant canyon sounds pick up slightly stronger reverb tail relative to direct signal!
                 if (dist01 > 0.2f)
                 {
