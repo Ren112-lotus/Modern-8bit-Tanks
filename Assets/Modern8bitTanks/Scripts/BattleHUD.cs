@@ -536,13 +536,13 @@ namespace Modern8bitTanks
                     label.color = selected ? AbramsGold : TextMuted;
                     _ammoSlotBgs[i].color = selected ? PanelBgActive : PanelBg;
                 }
-                else if (i == _ammoSlotIcons.Length - 1 && hasSecondary)
+                else if (i == BattleSceneController.SecondaryWeaponSlotIndex && hasSecondary)
                 {
                     bool ready = player.atgmCooldown <= 0f;
                     icon.sprite = _ammoTypeSprites[(int)AmmoType.TOW];
                     icon.enabled = true;
                     icon.color = ready ? Color.white : AmmoIconCooling;
-                    label.text = ready ? "RMB" : $"{Mathf.CeilToInt(player.atgmCooldown)}s";
+                    label.text = ready ? AmmoSlotKeys[i] : $"{Mathf.CeilToInt(player.atgmCooldown)}s";
                     label.color = ready ? SmokeCyan : TextMuted;
                     _ammoSlotBgs[i].color = ready ? PanelBgActive : PanelBg;
                 }

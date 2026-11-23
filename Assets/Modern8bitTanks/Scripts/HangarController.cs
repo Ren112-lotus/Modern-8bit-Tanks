@@ -806,7 +806,7 @@ namespace Modern8bitTanks
                 if (_garageAmmoLine != null) _garageAmmoLine.text = FormatAmmoSummary(sel);
                 if (_garageSpecialLine != null)
                 {
-                    if (sel.HasSecondaryAtgm) _garageSpecialLine.text = UiText.Get("RMB: GUIDED ATGM");
+                    if (sel.HasSecondaryAtgm) _garageSpecialLine.text = UiText.Get("GUIDED ATGM [3]");
                     else if (sel.weapon == "ATGM") _garageSpecialLine.text = UiText.Get("SACLOS MISSILE");
                     else _garageSpecialLine.text = UiText.Get("SMOKE [Q] • COAX MG");
                 }

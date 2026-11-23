@@ -24,6 +24,7 @@ namespace Modern8bitTanks
         public const int WorldHeightPx = 1360;
         public const int BorderPadPx = 24;
         public const float PPU = 16f;
+        internal const int SecondaryWeaponSlotIndex = 2;
         private const float CameraLookAhead = 3.4f;
 
         private int MapWidthPx => UsesControlPoints ? BattlefieldLayout.Width : WorldWidthPx;
@@ -1266,13 +1267,16 @@ namespace Modern8bitTanks
 
             ApplyTankMotion(t, dt, input);
 
+            int wantAmmo = input.AmmoSlot;
+            bool primaryAmmoSlot = wantAmmo >= 0 && wantAmmo < t.AmmoLoadout.Length;
+            bool fireFromSecondarySlot = !primaryAmmoSlot && wantAmmo == SecondaryWeaponSlotIndex
+                && t.vehicleDef?.HasSecondaryAtgm == true;
+
             if (input.FirePrimary) FirePrimaryWeapon(t);
-            if (input.FireSecondary) FireSecondaryWeapon(t);
+            if (input.FireSecondary || fireFromSecondarySlot) FireSecondaryWeapon(t);
             if (input.Smoke) DeploySmokeScreen(t);
 
-            // War Thunder [1] / [2] / [3] Ammunition Switching!
-            int wantAmmo = input.AmmoSlot;
-            if (wantAmmo >= 0 && wantAmmo < t.AmmoLoadout.Length && wantAmmo != t.selectedAmmoSlot)
+            if (primaryAmmoSlot && wantAmmo != t.selectedAmmoSlot)
             {
                 t.selectedAmmoSlot = wantAmmo;
                 if (t.isPlayer) ShowAmmoSelection(t);
