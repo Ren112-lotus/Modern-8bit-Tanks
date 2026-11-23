@@ -100,8 +100,8 @@ namespace Modern8bitTanks
         private float _treeDragStartScreenX;
         private float _treeDragStartScroll;
         private float _treeDragAccumDist;
-        private RectTransform _treeContentRt;
-        private RectTransform _scrollThumbRt;
+        [SerializeField] private RectTransform _treeContentRt;
+        [SerializeField] private RectTransform _scrollThumbRt;
         private const int ScrollTrackX = 32;
         private const int ScrollTrackW = 416;
 
@@ -167,8 +167,8 @@ namespace Modern8bitTanks
         };
         private readonly Dictionary<string, Image> _nationButtons = new();
         private readonly Dictionary<string, GameObject> _nationLinks = new();
-        private Text _treeDetailTitle;
-        private Text _treeDetailStats;
+        [SerializeField] private Text _treeDetailTitle;
+        [SerializeField] private Text _treeDetailStats;
 
         private class TreeNodeSlot
         {
@@ -188,10 +188,7 @@ namespace Modern8bitTanks
         private readonly Dictionary<string, TreeNodeSlot> _treeNodes = new();
 
         // Gritty Military Olive-Drab Steel & Brass Warfare Palette
-        private static readonly Color TreeBackdrop = new Color(0.05f, 0.06f, 0.05f, 0.96f);
-        private static readonly Color BrassDim = new Color(0.48f, 0.41f, 0.25f, 1f);
         private static readonly Color PanelBorder = new Color(0.42f, 0.38f, 0.26f, 1f);
-        private static readonly Color GridLine = new Color(0.24f, 0.23f, 0.18f, 0.55f);
         private static readonly Color PipEmpty = new Color(0.09f, 0.11f, 0.09f, 0.96f);
         private static readonly Color GoldColor = new Color(0.96f, 0.78f, 0.34f, 1f);
         private static readonly Color GoldHi = new Color(1.00f, 0.93f, 0.66f, 1f);
@@ -204,7 +201,6 @@ namespace Modern8bitTanks
         private static readonly Color LightCyan = new Color(0.52f, 0.88f, 0.94f, 1f);
         private static readonly Color SupportAmber = new Color(0.96f, 0.64f, 0.30f, 1f);
         private static readonly Color MbtGreen = new Color(0.58f, 0.88f, 0.44f, 1f);
-        private static readonly Color DarkInk = new Color(0.08f, 0.07f, 0.04f, 1f);
 
         private static Color GetNationAccentColor(string nation) => nation switch
         {
@@ -251,7 +247,7 @@ namespace Modern8bitTanks
             _sessionState.SelectedBattleMapChanged.Subscribe(RefreshMapBackdropTheme).AddTo(this);
 
             InitializeMenus();
-            BuildTechTreeUI();
+            InitializeTechTree();
             InitializeTitleStage();
 
             VehicleDef cur = GetSelectedVehicle();
@@ -698,241 +694,6 @@ namespace Modern8bitTanks
         // ============================================================
         // 100% Pixel-Perfect UI (Strictly 8px / 16px Fonts & EVEN Rects!)
         // ============================================================
-        private void BuildTechTreeUI()
-        {
-            Transform vp = _treeVisualGroup.transform;
-            Transform hp = _treeHitsGroup.transform;
-            int W = renderWidth;
-            int H = renderHeight;
-
-            // Full-screen translucent WoT Tech Tree Backdrop
-            CreatePixelSolid(vp, "TreeBg", 0, 0, W, H, TreeBackdrop);
-            CreatePixelSolid(vp, "TreeTopRule", 0, H - 27, W, 1, PanelBorder);
-            CreatePixelSolid(vp, "TreeBotRule", 0, 54, W, 1, PanelBorder);
-
-            for (int i = 0; i < TreeNations.Length; i++)
-            {
-                var (nation, title) = TreeNations[i];
-                CreatePixelButton(vp, hp, GetNationTabLabel(nation, title), 8 + 89 * i, H - 24, 86, 20,
-                    BtnBg, PanelBorder, TextLight, 8, () =>
-                    {
-                        _treeNation = nation;
-                        RefreshAllUI();
-                        ScrollTreeToSelected();
-                    }, out var background);
-                _nationButtons.Add(nation, background);
-            }
-            CreatePixelButton(vp, hp, "GARAGE [ESC]", W - 112, H - 24, 104, 20,
-                BtnBg, GoldColor, GoldColor, 8, () => SetTechTreeOpen(false));
-
-            // ----------------------------------------------------------
-            // Clipped Horizontal Scroll Viewport (RectMask2D!)
-            // ----------------------------------------------------------
-            var viewGo = new GameObject("TreeViewport") { layer = 5 };
-            viewGo.transform.SetParent(vp, false);
-            var viewRt = viewGo.AddComponent<RectTransform>();
-            SetPixelRect(viewRt, ViewX, ViewY, ViewW, ViewH);
-            viewGo.AddComponent<RectMask2D>();
-
-            var contentGo = new GameObject("TreeContent") { layer = 5 };
-            contentGo.transform.SetParent(viewRt, false);
-            _treeContentRt = contentGo.AddComponent<RectTransform>();
-            SetPixelRect(_treeContentRt, 0, 0, ContentW, ViewH);
-
-            string[] eras = { "FIRST TANKS", "INTERWAR", "1930s", "EARLY WAR",
-                "MID WAR", "1943 / 44", "LATE WAR", "TRANSITION" };
-            for (int col = 0; col < HistoryColumns + VehicleDef.SpecialTier; col++)
-            {
-                int x = PadX + col * ColStep;
-                int tier = col - HistoryColumns + 1;
-                if (col > 0)
-                    CreatePixelSolid(_treeContentRt, $"GridCol_{col}", x - ColGap / 2, 4, 1, ViewH - 8, GridLine);
-                string label = col < HistoryColumns ? eras[col] :
-                    tier == VehicleDef.SpecialTier ? "SPECIAL" : $"TIER {VehicleDef.RomanTier(tier)}";
-                Color color = tier == 1 || tier == VehicleDef.SpecialTier ? GoldColor : TextMuted;
-                CreatePixelText(_treeContentRt, label, 8, color, TextAnchor.MiddleCenter, x, ViewH - 22, NodeW, 16);
-            }
-
-            foreach (var (nation, _) in TreeNations)
-            {
-                var links = new GameObject($"TreeLinks_{nation}", typeof(RectTransform)) { layer = 5 };
-                links.transform.SetParent(_treeContentRt, false);
-                SetPixelRect((RectTransform)links.transform, 0, 0, ContentW, ViewH);
-                _nationLinks.Add(nation, links);
-            }
-            foreach (var vehicle in _allVehicles)
-            {
-                int x = PadX + TreeColumn(vehicle) * ColStep;
-                Color border = TreeLineColor(vehicle);
-                var slot = CreateTreeNodeSlot(_treeContentRt, hp, x, TreeRow(vehicle), border);
-                slot.vehicleId = vehicle.id;
-                _treeNodes.Add(vehicle.id, slot);
-            }
-
-            foreach (var vehicle in _allVehicles)
-            {
-                VehicleDef parent = TreeParent(vehicle);
-                if (parent != null)
-                    ConnectTreeNodes(_nationLinks[vehicle.nation].transform, _treeNodes[parent.id],
-                        _treeNodes[vehicle.id], TreeLineColor(vehicle));
-            }
-
-            // Horizontal Scrollbar & Quick Arrows (y = 56..66)
-            CreatePixelButton(vp, hp, "<", 8, 55, 20, 12, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _targetScrollX = Mathf.Clamp(_targetScrollX - ColStep * 2f, 0f, MaxScrollX);
-            });
-            CreatePixelSolid(vp, "ScrollTrack", ScrollTrackX, 58, ScrollTrackW, 6, new Color(0.14f, 0.14f, 0.12f, 1f));
-            _scrollThumbRt = CreatePixelSolid(vp, "ScrollThumb", ScrollTrackX, 58, 120, 6, GoldColor);
-            CreatePixelButton(vp, hp, ">", W - 28, 55, 20, 12, BtnBg, PanelBorder, TextLight, 8, () =>
-            {
-                _targetScrollX = Mathf.Clamp(_targetScrollX + ColStep * 2f, 0f, MaxScrollX);
-            });
-
-            // Bottom Selected Vehicle Detail Bar (y = 0..54)
-            _treeDetailTitle = CreatePixelText(vp, "", 8, GoldColor, TextAnchor.MiddleLeft, 10, 32, 336, 16);
-            _treeDetailStats = CreatePixelText(vp, "", 8, TextLight, TextAnchor.MiddleLeft, 10, 16, 336, 16);
-            CreatePixelButton(vp, hp, "WWI / WWII", 10, 2, 80, 12, BtnBg, PanelBorder, TextLight, 8, () => JumpTreeTo(0));
-            CreatePixelButton(vp, hp, "I - V", 94, 2, 68, 12, BtnBg, PanelBorder, TextLight, 8, () => JumpTreeTo(HistoryColumns));
-            CreatePixelButton(vp, hp, "VI - VIII", 166, 2, 76, 12, BtnBg, PanelBorder, TextLight, 8, () => JumpTreeTo(HistoryColumns + 5));
-            CreatePixelButton(vp, hp, "IX - XIII", 246, 2, 84, 12, BtnBg, PanelBorder, TextLight, 8,
-                () => JumpTreeTo(HistoryColumns + VehicleDef.ModernTier - 1));
-
-            CreatePixelButton(vp, hp, "VIEW TANK", 352, 28, 118, 20, BtnBg, PanelBorder, TextLight, 8, () => SetTechTreeOpen(false));
-            _treeDeployButton = CreatePrimaryCtaButton(vp, hp, "BATTLE!", 352, 4, 118, 20, () => SetDeployModalOpen(true, fromTree: true));
-        }
-
-        private static int TreeColumn(VehicleDef vehicle) =>
-            vehicle.historyColumn > 0 ? vehicle.historyColumn - 1 : HistoryColumns + vehicle.tier - 1;
-
-        private void JumpTreeTo(int column) => _targetScrollX = Mathf.Clamp(column * ColStep, 0f, MaxScrollX);
-
-        private static int TreeRow(VehicleDef vehicle)
-        {
-            if (vehicle.historyColumn > 0)
-                return vehicle.historyRow == 1 ? 108 : vehicle.historyRow == 2 ? 16 : 62;
-            return vehicle.tab switch
-            {
-                "MBT" => 108,
-                "LIGHT" => vehicle.tier < VehicleDef.ModernTier ? 108 : 62,
-                "SUPPORT" => 16,
-                _ => 62
-            };
-        }
-
-        private static Color TreeLineColor(VehicleDef vehicle)
-        {
-            if (vehicle.IsSpecial) return SpecialBorder;
-            return vehicle.tab switch
-            {
-                "LIGHT" => LightCyan,
-                "SUPPORT" => SupportAmber,
-                "MBT" => MbtGreen,
-                _ => vehicle.role == "TD" ? SupportAmber : vehicle.role == "LIGHT" ? LightCyan : PanelBorder
-            };
-        }
-
-        private VehicleDef TreeParent(VehicleDef vehicle)
-        {
-            if (!string.IsNullOrEmpty(vehicle.treeFrom))
-                return _vehicleMap.TryGetValue(vehicle.treeFrom, out var linked) && linked.nation == vehicle.nation
-                    ? linked : null;
-
-            if (vehicle.historyColumn > 0) return null;
-            VehicleDef previous = null;
-            foreach (var other in _allVehicles)
-            {
-                if (other.nation != vehicle.nation || other.historyColumn > 0 || other.tier >= vehicle.tier)
-                    continue;
-                if (other.tab == vehicle.tab && (previous == null || previous.tier < other.tier))
-                    previous = other;
-            }
-
-            if (previous != null || vehicle.tab == "T1_5") return previous;
-            foreach (var other in _allVehicles)
-                if (other.nation == vehicle.nation && other.tab == "T1_5" && other.tier < vehicle.tier &&
-                    (previous == null || previous.tier < other.tier))
-                    previous = other;
-            return previous;
-        }
-
-        private static void ConnectTreeNodes(Transform parent, TreeNodeSlot source, TreeNodeSlot target, Color color)
-        {
-            int start = source.contentX + NodeW;
-            int end = target.contentX;
-            if (start >= end) return;
-            int y1 = source.contentY + NodeH / 2;
-            int y2 = target.contentY + NodeH / 2;
-            if (y1 == y2)
-            {
-                CreatePixelSolid(parent, "Link", start, y1, end - start, 2, color);
-                return;
-            }
-
-            int elbow = start + ColGap / 2;
-            CreatePixelSolid(parent, "Link", start, y1, elbow - start + 2, 2, color);
-            CreatePixelSolid(parent, "Elbow", elbow, Math.Min(y1, y2), 2, Math.Abs(y2 - y1) + 2, color);
-            CreatePixelSolid(parent, "Link", elbow, y2, end - elbow, 2, color);
-        }
-
-        private TreeNodeSlot CreateTreeNodeSlot(Transform contentParent, Transform hitParent, int contentX, int contentY, Color border)
-        {
-            var box = CreatePixelBox(contentParent, $"Node_{contentX}_{contentY}", contentX, contentY, NodeW, NodeH, BtnBg, border, out Image fillImg);
-            var topTxt = CreatePixelText(box, "", 8, TextMuted, TextAnchor.MiddleLeft, 4, 16, NodeW - 8, 12);
-            var nameTxt = CreatePixelText(box, "", 8, TextLight, TextAnchor.MiddleLeft, 4, 2, NodeW - 8, 12);
-
-            var hitGo = new GameObject($"HitNode_{contentX}_{contentY}");
-            hitGo.transform.SetParent(hitParent, false);
-            var hitRt = hitGo.AddComponent<RectTransform>();
-
-            var hitImg = hitGo.AddComponent<Image>();
-            hitImg.color = new Color(0f, 0f, 0f, 0f);
-            hitImg.raycastTarget = true;
-
-            var slot = new TreeNodeSlot
-            {
-                visualGo = box.gameObject,
-                hitGo = hitGo,
-                hitRt = hitRt,
-                borderImg = box.GetComponent<Image>(),
-                fillImg = fillImg,
-                topText = topTxt,
-                nameText = nameTxt,
-                idleBorder = border,
-                contentX = contentX,
-                contentY = contentY
-            };
-
-            var btn = hitGo.AddComponent<Button>();
-            btn.transition = Selectable.Transition.None;
-            btn.onClick.AddListener(() =>
-            {
-                // Ignore accidental clicks at the end of a horizontal drag
-                if (_treeDragAccumDist > 7f) return;
-                if (!string.IsNullOrEmpty(slot.vehicleId))
-                    SelectVehicle(slot.vehicleId, closeTreeIfSame: true);
-            });
-
-            var trigger = hitGo.AddComponent<EventTrigger>();
-            var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-            enter.callback.AddListener(_ =>
-            {
-                if (slot.fillImg != null && slot.vehicleId != _sessionState.SelectedPlayerVehicleId)
-                    slot.fillImg.color = BtnHover;
-            });
-            trigger.triggers.Add(enter);
-
-            var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
-            exit.callback.AddListener(_ =>
-            {
-                if (slot.fillImg != null && slot.vehicleId != _sessionState.SelectedPlayerVehicleId)
-                    slot.fillImg.color = BtnBg;
-            });
-            trigger.triggers.Add(exit);
-
-            return slot;
-        }
-
         private void SetXRayMode(bool on)
         {
             _xrayMode = on;
@@ -1158,14 +919,6 @@ namespace Modern8bitTanks
         // ============================================================
         // Exact Integer-Pixel uGUI Builders (Strictly 8px / 16px!)
         // ============================================================
-        private static void Stretch(RectTransform rt)
-        {
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.one;
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-        }
-
         private static void SetPixelRect(RectTransform rt, int x, int y, int w, int h)
         {
             rt.anchorMin = Vector2.zero;
@@ -1173,26 +926,6 @@ namespace Modern8bitTanks
             rt.pivot = Vector2.zero;
             rt.anchoredPosition = new Vector2(x, y);
             rt.sizeDelta = new Vector2(w, h);
-        }
-
-        private static RectTransform CreatePixelSolid(Transform parent, string name, int x, int y, int w, int h, Color col)
-        {
-            var go = new GameObject(name) { layer = 5 };
-            go.transform.SetParent(parent, false);
-            var rt = go.AddComponent<RectTransform>();
-            SetPixelRect(rt, x, y, w, h);
-            var img = go.AddComponent<Image>();
-            img.color = col;
-            img.raycastTarget = false;
-            return rt;
-        }
-
-        private static RectTransform CreatePixelBox(Transform parent, string name, int x, int y, int w, int h, Color bg, Color border, out Image fillImg)
-        {
-            var outer = CreatePixelSolid(parent, name, x, y, w, h, border);
-            var inner = CreatePixelSolid(outer, "Inner", 1, 1, Mathf.Max(1, w - 2), Mathf.Max(1, h - 2), bg);
-            fillImg = inner.GetComponent<Image>();
-            return outer;
         }
 
         private static void UpdateStatBar(StatBarSlot slot, float norm01, string formatted)
@@ -1230,112 +963,6 @@ namespace Modern8bitTanks
                 "ATGM" => "TOW / GUIDED",
                 _ => def.tier >= VehicleDef.ModernTier ? "APFS / HEAT / HE" : (def.tier >= 5 ? "APFS / APHE / HE" : "APHE / HEAT / HE")
             };
-        }
-
-        private Text CreatePrimaryCtaButton(
-            Transform visualParent, Transform hitParent, string label,
-            int x, int y, int w, int h, Action onClick)
-        {
-            // Heavy Brass Ordnance Launch Switch with black-and-amber hazard caution end-caps!
-            Color idleTint = new Color(0.92f, 0.90f, 0.85f, 1f);
-            var outer = MilitaryUiSprites.CreateSlicedSprite(visualParent, "Cta_" + label, MilitaryUiSprites.OrdnanceButton, x, y, w, h, idleTint, out Image fillImg);
-            var txt = CreatePixelText(outer, label, 8, DarkInk, TextAnchor.MiddleCenter, 0, 0, w, h, useTitleFont: true);
-            var sh = txt.GetComponent<Shadow>();
-            if (sh != null) sh.effectColor = new Color(1.0f, 0.94f, 0.68f, 0.55f);
-
-            var hitGo = new GameObject("Hit_" + label);
-            hitGo.transform.SetParent(hitParent, false);
-            var hitRt = hitGo.AddComponent<RectTransform>();
-            hitRt.anchorMin = new Vector2((float)x / renderWidth, (float)y / renderHeight);
-            hitRt.anchorMax = new Vector2((float)(x + w) / renderWidth, (float)(y + h) / renderHeight);
-            hitRt.offsetMin = Vector2.zero;
-            hitRt.offsetMax = Vector2.zero;
-
-            var hitImg = hitGo.AddComponent<Image>();
-            hitImg.color = new Color(0f, 0f, 0f, 0f);
-            hitImg.raycastTarget = true;
-
-            var btn = hitGo.AddComponent<Button>();
-            btn.transition = Selectable.Transition.None;
-            var presenter = hitGo.AddComponent<PixelMenuButton>();
-            presenter.SetAppearance(fillImg, idleTint, Color.white);
-            presenter.Bind(onClick);
-
-            return txt;
-        }
-
-        private Text CreatePixelText(Transform parent, string content, int fontSize, Color col, TextAnchor align, int x, int y, int w, int h, bool useTitleFont = false)
-        {
-            int crispSize = fontSize >= 16 ? 16 : 8;
-            var go = new GameObject("Txt_" + content) { layer = 5 };
-            go.transform.SetParent(parent, false);
-            var rt = go.AddComponent<RectTransform>();
-            SetPixelRect(rt, x, y, w, h);
-
-            var t = go.AddComponent<Text>();
-            t.font = (useTitleFont && _titleFont != null) ? _titleFont : _font;
-            t.fontSize = crispSize;
-            t.fontStyle = FontStyle.Normal;
-            t.color = col;
-            t.alignment = align;
-            t.text = content;
-            t.horizontalOverflow = HorizontalWrapMode.Overflow;
-            t.verticalOverflow = VerticalWrapMode.Overflow;
-            t.raycastTarget = false;
-
-            var sh = go.AddComponent<Shadow>();
-            sh.effectColor = new Color(0f, 0f, 0f, 0.90f);
-            sh.effectDistance = new Vector2(1f, -1f);
-            return t;
-        }
-
-        private Text CreatePixelButton(
-            Transform visualParent, Transform hitParent, string label,
-            int x, int y, int w, int h,
-            Color bg, Color border, Color textColor, int fontSize, Action onClick,
-            bool useTitleFont = false)
-        {
-            return CreatePixelButton(visualParent, hitParent, label, x, y, w, h, bg, border, textColor, fontSize, onClick, out _, useTitleFont);
-        }
-
-        private Text CreatePixelButton(
-            Transform visualParent, Transform hitParent, string label,
-            int x, int y, int w, int h,
-            Color bg, Color border, Color textColor, int fontSize, Action onClick,
-            out Image fillImgOut, bool useTitleFont = false)
-        {
-            // Stamped-steel riveted military switch button!
-            var visualBox = MilitaryUiSprites.CreateSlicedSprite(visualParent, "Btn_" + label, MilitaryUiSprites.SteelButton, x, y, w, h, bg, out Image fillImg);
-            fillImgOut = fillImg;
-
-            // Add a crisp 2px military status stripe on the left when button uses a special accent color (Cyan/Gold/Green)
-            bool hasAccent = border.a > 0.5f && border != PanelBorder && border != BrassDim && w >= 40;
-            if (hasAccent)
-                CreatePixelSolid(visualBox, "StatusBar", 2, 3, 2, Mathf.Max(2, h - 6), border);
-
-            var txt = CreatePixelText(visualBox, label, fontSize, textColor, TextAnchor.MiddleCenter, hasAccent ? 2 : 0, 0, hasAccent ? w - 2 : w, h, useTitleFont);
-
-            var hitGo = new GameObject("Hit_" + label);
-            hitGo.transform.SetParent(hitParent, false);
-            var hitRt = hitGo.AddComponent<RectTransform>();
-            hitRt.anchorMin = new Vector2((float)x / renderWidth, (float)y / renderHeight);
-            hitRt.anchorMax = new Vector2((float)(x + w) / renderWidth, (float)(y + h) / renderHeight);
-            hitRt.offsetMin = Vector2.zero;
-            hitRt.offsetMax = Vector2.zero;
-
-            var hitImg = hitGo.AddComponent<Image>();
-            hitImg.color = new Color(0f, 0f, 0f, 0f);
-            hitImg.raycastTarget = true;
-
-            var btn = hitGo.AddComponent<Button>();
-            btn.transition = Selectable.Transition.None;
-            Color idleBg = bg == BtnSelected ? BtnBg : bg;
-            var presenter = hitGo.AddComponent<PixelMenuButton>();
-            presenter.SetAppearance(fillImg, idleBg, idleBg == GoldColor ? Color.Lerp(idleBg, Color.white, 0.2f) : BtnHover,
-                preserve: true, selected: BtnSelected);
-            presenter.Bind(onClick);
-
-            return txt;
         }
 
         private void OnDestroy()

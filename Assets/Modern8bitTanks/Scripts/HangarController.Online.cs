@@ -25,7 +25,7 @@ namespace Modern8bitTanks
         [SerializeField] private Text _onlineBack;
         [SerializeField] private Text _garageTitleButton;
         [SerializeField] private Text _garageDeployButton;
-        private Text _treeDeployButton;
+        [SerializeField] private Text _treeDeployButton;
         private string _onlineError;
         private bool _onlineOpen;
         private bool _onlineBusy;
