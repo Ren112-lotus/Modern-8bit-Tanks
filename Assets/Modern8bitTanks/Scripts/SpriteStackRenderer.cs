@@ -16,8 +16,8 @@ namespace Modern8bitTanks
         public Texture2D sourceSheet;
         public int sliceCount = 10;
         public float pixelsPerUnit = 16f;
-        [Range(0.2f, 1.0f)] public float squash = 0.75f;
-        [Range(0f, 3.0f)] public float spacingPx = 0.65f;
+        [Range(0.2f, 1.0f)] public float squash = 0.80f;
+        [Range(0f, 3.0f)] public float spacingPx = 0.72f;
         public float baseZOffsetSlices = 0f;
         public int baseSortingOrder = 0;
         public Material sliceMaterial;
@@ -27,6 +27,13 @@ namespace Modern8bitTanks
         public float hitFlash;
         public bool charred;
         [Range(0f, 1f)] public float metallicWear = 0.20f;
+        /// <summary>
+        /// 1.0 = fully assembled; 0..1 animates individual slices slowly descending from overhead and stacking cleanly.
+        /// </summary>
+        [Range(0f, 1f)] public float dropProgress = 1f;
+        public float dropHeightPx = 44f;
+
+        private bool _wasDropping;
 
         private const string VisualContainerName = "__StackVisuals";
         private Transform _visualRoot;
@@ -227,12 +234,18 @@ namespace Modern8bitTanks
             Quaternion sliceRot = Quaternion.Euler(0f, 0f, angleDeg - camRoll);
             bool useFill = spacingPx > 1.06f;
 
+            bool dropping = dropProgress < 0.999f;
+            float shadowVis = dropping ? Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(dropProgress * 2.4f)) : 1f;
+
             if (_aoShadowHolder != null && _aoShadowSr != null)
             {
+                float sSpread = Mathf.Lerp(1.16f, 1.03f, shadowVis);
                 _aoShadowHolder.localPosition = new Vector3(0.55f * unitPerPx, -0.55f * unitPerPx, 0.04f);
                 _aoShadowHolder.localRotation = holderRot;
-                _aoShadowHolder.localScale = new Vector3(1.03f, squash * 1.03f, 1f);
+                _aoShadowHolder.localScale = new Vector3(sSpread, squash * sSpread, 1f);
                 _aoShadowSr.transform.localRotation = sliceRot;
+                if (dropping || _wasDropping)
+                    _aoShadowSr.color = new Color(0.11f, 0.09f, 0.14f, 0.34f * shadowVis);
             }
 
             if (_shadowHolder != null && _shadowSr != null)
@@ -243,17 +256,35 @@ namespace Modern8bitTanks
                 _shadowHolder.localRotation = holderRot;
                 _shadowHolder.localScale = new Vector3(1.04f, squash * 0.96f, 1f);
                 _shadowSr.transform.localRotation = sliceRot;
+                if (dropping || _wasDropping)
+                    _shadowSr.color = new Color(0.15f, 0.13f, 0.20f, 0.28f * shadowVis);
             }
 
             for (int z = 0; z < _renderers.Count; z++)
             {
                 if (_renderers[z] == null || _holders[z] == null) continue;
-                float liftY = (baseZOffsetSlices + z) * spacingPx * unitPerPx;
+                float extraDropLift = 0f;
+                float sliceAlpha = 1f;
+                if (dropping)
+                {
+                    float zFrac = _renderers.Count > 1 ? (float)z / (_renderers.Count - 1) : 0f;
+                    float sliceStart = zFrac * 0.56f;
+                    const float sliceDur = 0.44f;
+                    float t = Mathf.Clamp01((dropProgress - sliceStart) / sliceDur);
+                    // Smooth cubic ease-out: glides gently down from the sky and settles softly into place
+                    float ease = 1f - Mathf.Pow(1f - t, 3f);
+                    extraDropLift = (1f - ease) * dropHeightPx * unitPerPx;
+                    sliceAlpha = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t * 2.4f));
+                }
+
+                float liftY = (baseZOffsetSlices + z) * spacingPx * unitPerPx + extraDropLift;
                 float sliceZ = -(baseZOffsetSlices + z) * 0.002f;
                 _holders[z].localPosition = new Vector3(camUp.x * liftY, camUp.y * liftY, sliceZ);
                 _holders[z].localRotation = holderRot;
                 _holders[z].localScale = new Vector3(1f, squash, 1f);
                 _renderers[z].transform.localRotation = sliceRot;
+                if (dropping || _wasDropping)
+                    _renderers[z].color = new Color(1f, 1f, 1f, sliceAlpha);
 
                 float height01 = _renderers.Count > 1 ? (float)z / (_renderers.Count - 1) : 1f;
                 if (_mpb != null)
@@ -268,8 +299,9 @@ namespace Modern8bitTanks
 
                 if (z < _fillRenderers.Count && _fillRenderers[z] != null && _fillHolders[z] != null)
                 {
-                    _fillRenderers[z].enabled = useFill;
-                    if (useFill)
+                    bool fillOn = useFill && !dropping;
+                    _fillRenderers[z].enabled = fillOn;
+                    if (fillOn)
                     {
                         float fillLiftY = (baseZOffsetSlices + z + 0.5f) * spacingPx * unitPerPx;
                         float fillZ = -(baseZOffsetSlices + z + 0.5f) * 0.002f;
@@ -291,6 +323,7 @@ namespace Modern8bitTanks
                     }
                 }
             }
+            _wasDropping = dropping;
         }
 
         public int CountSolidPixels()

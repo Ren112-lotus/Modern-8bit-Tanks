@@ -133,7 +133,7 @@ namespace Modern8bitTanks
             SetVerticesDirty();
         }
 
-        public void StartReplay(TankEntity tank, Vector3[] unusedOutline, TankShotTrace trace, TankHit hit)
+        public void StartReplay(TankEntity tank, Vector3[] unusedOutline, TankShotTrace trace, TankHit hit, TankLoss? confirmedLoss = null)
         {
             if (tank == null || tank.meta == null) return;
             _mode = Mode.Replay;
@@ -141,7 +141,7 @@ namespace Modern8bitTanks
             ReadVehicle(tank);
             _shots.Clear();
             _shots.Add(new ReplayShot { Trace = trace, Hit = hit, StartTime = 0f });
-            _loss = tank.Loss;
+            _loss = confirmedLoss ?? tank.Loss;
             _cookoffStartTime = _loss == TankLoss.Ammo ? 0f : -1f;
             _igniteStartTime = hit.Ignited ? 0f : -1f;
             _elapsed = 0f;

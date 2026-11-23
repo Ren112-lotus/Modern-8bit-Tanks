@@ -118,50 +118,61 @@ Shader "Modern8bitTanks/URPSpriteStackFlash"
                 // Silhouette rim & shadow-side bevel masks
                 half sunRim   = saturate(1.0h - sSun.a);
                 half shdRim   = saturate(1.0h - sShd.a);
-                half sideEdge = saturate((1.0h - sLeft.a) + (1.0h - sRgt.a));
+                half leftRim  = saturate(1.0h - sLeft.a);
+                half rgtRim   = saturate(1.0h - sRgt.a);
+                half sideEdge = saturate(leftRim + rgtRim);
                 half anyEdge  = saturate(sunRim + shdRim + sideEdge * 0.6h);
+
+                // Detect small tank sprites (e.g. 13x23 Wiesel/MS-1) & thin 1-2px gun barrels / cupolas
+                // so edge wear, shadow creases, and grain NEVER crush tiny details into mud!
+                half spriteMinDim = (half)min(_MainTex_TexelSize.z, _MainTex_TexelSize.w);
+                half detailScale = smoothstep(10.0h, 24.0h, spriteMinDim);
+                half isThin = saturate(sunRim * shdRim + leftRim * rgtRim);
 
                 // Micro-relief normal approximation from pixel luminance & silhouette slopes
                 half lumC = luma(texCol.rgb);
                 half lumSun = sSun.a > 0.1h ? luma(sSun.rgb) : lumC * 0.45h;
                 half lumShd = sShd.a > 0.1h ? luma(sShd.rgb) : lumC * 0.45h;
                 // Positive reliefSlope means this pixel faces the upper-left sun (raised hatch, ERA block, barrel crown)
-                half reliefSlope = clamp((lumC - lumSun) * 1.8h + (lumShd - lumC) * 1.4h + sunRim * 0.65h - shdRim * 0.65h, -1.0h, 1.0h);
+                half rimBias = (sunRim - shdRim) * (1.0h - isThin * 0.55h);
+                half reliefSlope = clamp((lumC - lumSun) * 1.65h + (lumShd - lumC) * 1.35h + rimBias * 0.62h, -1.0h, 1.0h);
 
-                // 1. Stable texel-locked cast-steel / matte military paint micro-grain (never shimmers on rotation!)
+                // 1. Stable texel-locked cast-steel micro-grain (gentler on small sprites & thin barrels!)
                 float2 texelId = floor(IN.uv * _MainTex_TexelSize.zw);
                 half grain = (half)(hash21(texelId + floor(h * 16.0h) * 13.7h) - 0.5);
-                half3 albedo = texCol.rgb * (1.0h + grain * lerp(0.055h, 0.085h, metal) * hd);
+                half grainAmp = lerp(0.032h, 0.072h, metal * detailScale) * (1.0h - isThin * 0.65h) * hd;
+                half3 albedo = texCol.rgb * (1.0h + grain * grainAmp);
 
                 // 2. Ground-contact Ambient Occlusion + subtle biome dust weathering on lower hull/tracks!
-                half groundAo = lerp(0.70h, 1.0h, smoothstep(0.0h, 0.34h, h));
+                half groundAo = lerp(0.74h, 1.0h, smoothstep(0.0h, 0.34h, h));
                 half3 dustCol = (_BiomeDustTint.a > 0.01h) ? _BiomeDustTint.rgb : half3(0.76h, 0.64h, 0.44h);
-                half dustMask = (1.0h - smoothstep(0.0h, 0.28h, h)) * metal * (0.22h * hd) * (1.0h - charred);
+                half dustMask = (1.0h - smoothstep(0.0h, 0.28h, h)) * metal * (0.20h * hd) * lerp(0.65h, 1.0h, detailScale) * (1.0h - charred);
                 albedo = lerp(albedo, dustCol, dustMask);
 
                 // 3. Directional Military Daylight (warm sunlight vs deep cool sky-lit shadow side!)
-                half sunFacing = saturate(0.50h + reliefSlope * 0.45h + (h - 0.35h) * 0.38h);
-                half3 shadowTint = lerp(half3(0.76h, 0.81h, 0.92h), half3(0.64h, 0.72h, 0.86h), hd * (0.45h + metal * 0.55h));
-                half3 sunTint    = lerp(half3(1.06h, 1.03h, 0.96h), half3(1.14h, 1.09h, 0.97h), hd);
-                half3 litRgb     = albedo * lerp(shadowTint, sunTint, sunFacing) * lerp(0.88h, groundAo, hd);
+                half sunFacing = saturate(0.50h + reliefSlope * 0.44h + (h - 0.35h) * 0.38h);
+                half3 shadowTint = lerp(half3(0.78h, 0.82h, 0.92h), half3(0.66h, 0.74h, 0.87h), hd * (0.45h + metal * 0.55h));
+                half3 sunTint    = lerp(half3(1.06h, 1.03h, 0.96h), half3(1.13h, 1.08h, 0.97h), hd);
+                half3 litRgb     = albedo * lerp(shadowTint, sunTint, sunFacing) * lerp(0.90h, groundAo, hd);
 
-                // 4. Shadow-side armor depth crease (darkens undersides & away-facing bevels for heavy iron mass!)
-                half shdCrease = shdRim * lerp(0.24h, 0.42h, metal) * hd;
-                litRgb = lerp(litRgb, litRgb * half3(0.66h, 0.72h, 0.84h), shdCrease);
+                // 4. Shadow-side armor depth crease (protected on thin 1-2px barrels & tiny turrets!)
+                half shdCrease = shdRim * (1.0h - isThin * 0.75h) * lerp(0.55h, 1.0h, detailScale) * lerp(0.22h, 0.38h, metal) * hd;
+                litRgb = lerp(litRgb, litRgb * half3(0.68h, 0.74h, 0.86h), shdCrease);
 
-                // 5. Tank-specific Rolled Steel Edge Wear (Tamiya dry-brush!) + Metallic Specular Glint!
+                // 5. Tank-specific Rolled Steel Edge Wear + Metallic Specular Glint (crisp even on small vehicles!)
                 if (hd > 0.5h && metal > 0.05h)
                 {
                     half intact = 1.0h - charred * 0.85h;
 
-                    // Crisp cold steel edge wear along upper armor corners & turret roof edges
-                    half wearMask = anyEdge * smoothstep(0.22h, 0.88h, h) * metal * intact;
-                    half3 steelWearCol = lerp(albedo * 1.34h + half3(0.07h, 0.08h, 0.10h), half3(0.84h, 0.87h, 0.92h), 0.32h);
-                    litRgb = lerp(litRgb, steelWearCol, wearMask * (0.24h + sunRim * 0.22h));
+                    // Crisp cold steel edge wear: on small sprites focus strictly on sun-facing corners to preserve pixel art
+                    half wearEdge = lerp(sunRim * (1.0h - shdRim), anyEdge, detailScale);
+                    half wearMask = wearEdge * (1.0h - isThin * 0.50h) * smoothstep(0.24h, 0.88h, h) * metal * intact;
+                    half3 steelWearCol = lerp(albedo * 1.32h + half3(0.06h, 0.07h, 0.09h), half3(0.84h, 0.87h, 0.92h), 0.28h);
+                    litRgb = lerp(litRgb, steelWearCol, wearMask * (0.22h + sunRim * 0.20h));
 
                     // Dynamic sun-facing metallic specular highlight (glints smoothly as hull/turret rotate!)
-                    half specFactor = pow(saturate(reliefSlope * 0.75h + sunRim * 0.65h), 3.0h) * smoothstep(0.30h, 0.92h, h);
-                    half3 specCol = half3(1.14h, 1.08h, 0.94h) * (specFactor * metal * 0.30h * intact);
+                    half specFactor = pow(saturate(reliefSlope * 0.75h + sunRim * 0.62h), 3.0h) * smoothstep(0.30h, 0.92h, h);
+                    half3 specCol = half3(1.12h, 1.07h, 0.94h) * (specFactor * metal * lerp(0.24h, 0.30h, detailScale) * intact);
                     litRgb += specCol;
 
                     // Cool sky sheen across flat turret roofs / top hull plates

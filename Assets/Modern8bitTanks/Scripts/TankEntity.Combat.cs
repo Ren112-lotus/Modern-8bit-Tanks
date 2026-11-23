@@ -163,6 +163,21 @@ namespace Modern8bitTanks
         public float RepairTime { get; private set; }
         public float ActiveReloadDuration { get; private set; }
         public bool ExtinguisherReady { get; private set; }
+
+        internal void ApplyRemoteCombatState(MultiplayerMatchTransport.TankState state, bool applySpeed)
+        {
+            alive = state.Alive;
+            if (applySpeed) moveSpeed = state.MoveSpeed;
+            reloadTimer = state.Reload;
+            FireTime = state.FireTime;
+            RepairTime = state.RepairTime;
+            ActiveReloadDuration = state.ActiveReload;
+            ActiveCrew = (TankCrew)state.Crew;
+            DisabledModules = (TankModule)state.Modules;
+            selectedAmmoSlot = state.Ammo;
+            Loss = (TankLoss)state.Loss;
+            ExtinguisherReady = state.Extinguisher;
+        }
         public int CrewCapacity => vehicleDef?.CrewCapacity ?? 4;
         public int CrewRemaining => (HasCrew(TankCrew.Driver) ? 1 : 0) + (HasCrew(TankCrew.Gunner) ? 1 : 0)
                                   + (HasCrew(TankCrew.Commander) ? 1 : 0) + (HasCrew(TankCrew.Loader) ? 1 : 0);

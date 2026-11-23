@@ -38,6 +38,10 @@ namespace Modern8bitTanks
             public AudioSource source;
             public AudioLowPassFilter lowPass;
             public AudioReverbFilter reverb;
+            public float startTime;
+            public float fadeStartTime;
+            public float fadeEndTime;
+            public float peakVolume;
         }
 
         private Voice[] _dryPool;
@@ -152,6 +156,8 @@ namespace Modern8bitTanks
         /// <summary>
         /// Plays a one-shot sound spatially positioned in stereo relative to listenerPos,
         /// routed to either the DRY bus (no reverb) or the Desert Canyon REVERB bus.
+        /// Supports per-clip concurrency limiting (voice stealing) and maxDuration fade envelopes
+        /// so long clips (e.g. 6s missile roars) never layer into harsh noise.
         /// </summary>
         public void PlayAt(
             AudioClip clip,
@@ -163,7 +169,10 @@ namespace Modern8bitTanks
             float pitchMin = 0.94f,
             float pitchMax = 1.06f,
             bool centerPan = false,
-            float sfxVolume = 1f)
+            float sfxVolume = 1f,
+            float maxDuration = 0f,
+            int maxConcurrentForClip = 0,
+            float minRetriggerSec = 0f)
         {
             float volScale = Mathf.Clamp01(sfxVolume);
             if (!sfxEnabled || volScale <= 0.001f || clip == null) return;
@@ -184,25 +193,66 @@ namespace Modern8bitTanks
             float dist01 = centerPan ? 0f : Mathf.Clamp01(dist / MaxAudibleDistance);
             float cutoffHz = Mathf.Lerp(22000f, 2400f, dist01 * dist01);
 
-            Voice voice;
-            if (bus == SoundBus.Dry)
+            Voice[] pool = bus == SoundBus.Dry ? _dryPool : _wetPool;
+            if (pool == null || pool.Length == 0) return;
+
+            float now = Time.unscaledTime;
+            int chosenIdx = -1;
+
+            // Enforce per-clip concurrency cap & minimum retrigger spacing to prevent multi-layered audio overload!
+            if (maxConcurrentForClip > 0 || minRetriggerSec > 0f)
             {
-                voice = _dryPool[_dryCursor];
-                _dryCursor = (_dryCursor + 1) % _dryPool.Length;
-            }
-            else
-            {
-                voice = _wetPool[_wetCursor];
-                _wetCursor = (_wetCursor + 1) % _wetPool.Length;
-                if (voice.reverb != null)
+                int activeCount = 0;
+                int oldestIdx = -1;
+                float oldestTime = float.MaxValue;
+                float newestTime = -999f;
+
+                for (int i = 0; i < pool.Length; i++)
                 {
-                    ConfigureDesertCanyonReverb(voice.reverb, heavy: bus == SoundBus.HeavyReverb);
-                    // Distant canyon sounds pick up slightly stronger reverb tail relative to direct signal!
-                    if (dist01 > 0.2f)
+                    var s = pool[i].source;
+                    if (s != null && s.isPlaying && s.clip == clip)
                     {
-                        voice.reverb.reverbLevel += dist01 * 260f;
-                        voice.reverb.decayTime += dist01 * 0.55f;
+                        activeCount++;
+                        if (pool[i].startTime < oldestTime)
+                        {
+                            oldestTime = pool[i].startTime;
+                            oldestIdx = i;
+                        }
+                        if (pool[i].startTime > newestTime)
+                            newestTime = pool[i].startTime;
                     }
+                }
+
+                if (minRetriggerSec > 0f && (now - newestTime) < minRetriggerSec)
+                    return;
+
+                if (maxConcurrentForClip > 0 && activeCount >= maxConcurrentForClip && oldestIdx >= 0)
+                    chosenIdx = oldestIdx;
+            }
+
+            if (chosenIdx < 0)
+            {
+                if (bus == SoundBus.Dry)
+                {
+                    chosenIdx = _dryCursor;
+                    _dryCursor = (_dryCursor + 1) % _dryPool.Length;
+                }
+                else
+                {
+                    chosenIdx = _wetCursor;
+                    _wetCursor = (_wetCursor + 1) % _wetPool.Length;
+                }
+            }
+
+            ref Voice voice = ref pool[chosenIdx];
+            if (bus != SoundBus.Dry && voice.reverb != null)
+            {
+                ConfigureDesertCanyonReverb(voice.reverb, heavy: bus == SoundBus.HeavyReverb);
+                // Distant canyon sounds pick up slightly stronger reverb tail relative to direct signal!
+                if (dist01 > 0.2f)
+                {
+                    voice.reverb.reverbLevel += dist01 * 260f;
+                    voice.reverb.decayTime += dist01 * 0.55f;
                 }
             }
 
@@ -213,6 +263,53 @@ namespace Modern8bitTanks
             voice.source.volume = finalVol;
             voice.source.pitch = Random.Range(pitchMin, pitchMax);
             voice.source.Play();
+
+            voice.startTime = now;
+            voice.peakVolume = finalVol;
+            if (maxDuration > 0.08f)
+            {
+                float fadeLen = Mathf.Min(0.32f, maxDuration * 0.35f);
+                voice.fadeStartTime = now + Mathf.Max(0.05f, maxDuration - fadeLen);
+                voice.fadeEndTime = now + maxDuration;
+            }
+            else
+            {
+                voice.fadeStartTime = 0f;
+                voice.fadeEndTime = 0f;
+            }
+        }
+
+        private void Update()
+        {
+            float now = Time.unscaledTime;
+            TickVoiceEnvelopes(_dryPool, now);
+            TickVoiceEnvelopes(_wetPool, now);
+        }
+
+        private static void TickVoiceEnvelopes(Voice[] pool, float now)
+        {
+            if (pool == null) return;
+            for (int i = 0; i < pool.Length; i++)
+            {
+                if (pool[i].fadeEndTime <= 0f) continue;
+                var src = pool[i].source;
+                if (src == null || !src.isPlaying)
+                {
+                    pool[i].fadeEndTime = 0f;
+                    continue;
+                }
+                if (now >= pool[i].fadeEndTime)
+                {
+                    src.Stop();
+                    src.volume = 0f;
+                    pool[i].fadeEndTime = 0f;
+                }
+                else if (now >= pool[i].fadeStartTime)
+                {
+                    float t = (now - pool[i].fadeStartTime) / Mathf.Max(0.01f, pool[i].fadeEndTime - pool[i].fadeStartTime);
+                    src.volume = pool[i].peakVolume * (1f - t) * (1f - t);
+                }
+            }
         }
 
         public void StartPlayerLoops(AudioClip engineClip)
@@ -282,7 +379,7 @@ namespace Modern8bitTanks
             float volScale = Mathf.Clamp01(sfxVolume);
             if (!hasActiveMissile || !sfxEnabled || volScale <= 0.001f)
             {
-                _missileMotorSource.volume = Mathf.MoveTowards(_missileMotorSource.volume, 0f, Time.unscaledDeltaTime * 5.5f);
+                _missileMotorSource.volume = Mathf.MoveTowards(_missileMotorSource.volume, 0f, Time.unscaledDeltaTime * 7.5f);
                 return;
             }
             if (!_missileMotorSource.isPlaying) _missileMotorSource.Play();
@@ -290,10 +387,11 @@ namespace Modern8bitTanks
             Vector2 delta = missilePos - listenerPos;
             float dist = delta.magnitude;
             float pan = Mathf.Clamp(delta.x / FullPanDistance, -0.92f, 0.92f);
-            float atten = 1f / (1f + Mathf.Pow(dist / HalfVolumeDistance, 1.2f));
-            float targetVol = Mathf.Clamp01(0.42f * combatSfxMaster * volScale * atten);
+            float atten = 1f / (1f + Mathf.Pow(dist / HalfVolumeDistance, 1.25f));
+            // Balanced in-flight rocket motor bed that never clashes with the launch ignition burst
+            float targetVol = Mathf.Clamp01(0.24f * combatSfxMaster * volScale * atten);
             _missileMotorSource.panStereo = Mathf.Lerp(_missileMotorSource.panStereo, pan, dt * 12f);
-            _missileMotorSource.volume = Mathf.Lerp(_missileMotorSource.volume, targetVol, dt * 14f);
+            _missileMotorSource.volume = Mathf.Lerp(_missileMotorSource.volume, targetVol, dt * 8f);
             _missileMotorSource.pitch = 1.18f + Mathf.Clamp01(1f - dist / 30f) * 0.14f;
             if (_missileMotorLp != null)
                 _missileMotorLp.cutoffFrequency = Mathf.Lerp(14000f, 2600f, Mathf.Clamp01(dist / MaxAudibleDistance));

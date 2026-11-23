@@ -17,6 +17,7 @@ namespace Modern8bitTanks
         private float _titleTime = 0f;
         private float _titleExitTimer = 0f;
         private bool _titleLandingDustFired = false;
+        private bool _titleTurretLockDustFired = false;
 
         private bool _deployOpen = false;
         private bool _deployFromTree = false;
@@ -104,15 +105,17 @@ namespace Modern8bitTanks
             Transform hp = _titleHitsGroup.transform;
             int W = renderWidth;
 
-            // Subtle dark cinematic bottom band — upper 78% stays wide open for the live 3D Stacking Diorama!
-            CreatePixelSolid(vp, "TitleBotShade", 0, 0, W, 56, new Color(0.04f, 0.04f, 0.03f, 0.78f));
-            CreatePixelSolid(vp, "TitleBotRule", 0, 56, W, 1, PanelBorder);
+            // Riveted brushed-steel armored title dock with diagonal military hazard caution tape!
+            MilitaryUiSprites.CreateTiledSprite(vp, "TitleBotSteel", MilitaryUiSprites.ArmorHeaderBar, 0, 0, W, 50, PanelGlassDeep);
+            MilitaryUiSprites.CreateTiledSprite(vp, "TitleBotHazard", MilitaryUiSprites.HazardTape, 0, 50, W, 4, new Color(1f, 1f, 1f, 0.92f));
+            CreatePixelSolid(vp, "TitleBotRuleTop", 0, 54, W, 1, new Color(0.06f, 0.07f, 0.05f, 1f));
+            CreatePixelSolid(vp, "TitleBotRuleSub", 0, 49, W, 1, new Color(0.06f, 0.07f, 0.05f, 1f));
 
-            CreatePixelText(vp, "SPRITE-STACKED ARMORED COMBAT  •  121 VEHICLES", 8, TextMuted, TextAnchor.MiddleCenter, 0, 38, W, 14);
+            CreatePixelText(vp, "ARMORED WARFARE  •  121 HISTORICAL & MODERN VEHICLES", 8, TextMuted, TextAnchor.MiddleCenter, 0, 34, W, 14);
 
-            // Centered primary START GAME + SETTINGS buttons (EVEN pixel rects!)
-            CreatePixelButton(vp, hp, "START GAME (ENTER)", 122, 10, 156, 22, GoldColor, GoldColor, DarkInk, 8, BeginEnterGarageFromTitle, useTitleFont: true);
-            CreatePixelButton(vp, hp, "SETTINGS", 286, 10, 72, 22, BtnBg, LightCyan, LightCyan, 8, () => SetSettingsOpen(true));
+            CreatePrimaryCtaButton(vp, hp, "START GAME (ENTER)", 68, 7, 164, 24, BeginEnterGarageFromTitle);
+            CreatePixelButton(vp, hp, "ONLINE", 240, 7, 88, 24, BtnBg, LightCyan, LightCyan, 8, () => SetOnlineRoomOpen(true));
+            CreatePixelButton(vp, hp, "SETTINGS", 336, 7, 76, 24, BtnBg, PanelBorder, TextLight, 8, () => SetSettingsOpen(true));
         }
 
         private void BuildDeployModalUI()
@@ -122,56 +125,60 @@ namespace Modern8bitTanks
             int W = renderWidth;
             int H = renderHeight;
 
-            CreatePixelSolid(vp, "DeployDim", 0, 0, W, H, new Color(0.03f, 0.03f, 0.03f, 0.74f));
+            CreatePixelSolid(vp, "DeployDim", 0, 0, W, H, new Color(0.02f, 0.03f, 0.02f, 0.80f));
 
-            int cw = 280;
-            int ch = 206;
+            int cw = 296;
+            int ch = 218;
             int cx = (W - cw) / 2;
             int cy = (H - ch) / 2;
-            CreatePixelBox(vp, "DeployCard", cx, cy, cw, ch, new Color(0.08f, 0.09f, 0.08f, 0.98f), GoldColor);
-            CreatePixelText(vp, "SELECT BATTLE MODE", 8, GoldColor, TextAnchor.MiddleCenter, cx, cy + 186, cw, 14, useTitleFont: true);
-            _deployVehicleLabel = CreatePixelText(vp, "", 8, TextMuted, TextAnchor.MiddleCenter, cx + 8, cy + 170, cw - 16, 12);
+            var card = CreateTacticalCard(vp, "DeployCard", cx, cy, cw, ch, PanelGlassModal, BrassDim, GoldColor, withHazardTape: false);
+            // Red/black war-room alert hazard strip across top of Deployment Briefing!
+            MilitaryUiSprites.CreateTiledSprite(card, "DeployRedHazard", MilitaryUiSprites.HazardTapeRed, 6, ch - 8, cw - 12, 3, new Color(1f, 1f, 1f, 0.92f));
+            MilitaryUiSprites.CreateIcon(card, "DeployCrosshair", MilitaryUiSprites.IconCrosshair, 14, ch - 23, GoldColor);
+            CreatePixelText(vp, "DEPLOYMENT BRIEFING", 8, GoldColor, TextAnchor.MiddleCenter, cx, cy + 193, cw, 14, useTitleFont: true);
+            _deployVehicleLabel = CreatePixelText(vp, "", 8, LightCyan, TextAnchor.MiddleCenter, cx + 8, cy + 177, cw - 16, 12);
+            CreateWeldSeam(card, 12, 174, cw - 24);
 
             // 5 Battle Mode rows (all EVEN coordinates & dimensions!)
-            CreatePixelButton(vp, hp, "1v1 DUEL   - SAME-TIER RIVAL", cx + 12, cy + 148, 256, 18, BtnSelected, PanelBorder, TextLight, 8, () =>
+            CreatePixelButton(vp, hp, "1v1 DUEL   - SAME-TIER RIVAL", cx + 14, cy + 150, cw - 28, 18, BtnSelected, PanelBorder, TextLight, 8, () =>
             {
                 BattleSessionState.SelectedBattleMode = BattleMode.Duel1v1;
                 RefreshAllUI();
             }, out _deployMode1v1Bg);
 
-            CreatePixelButton(vp, hp, "2v2 SQUAD  - WINGMAN CLASH", cx + 12, cy + 128, 256, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            CreatePixelButton(vp, hp, "2v2 SQUAD  - WINGMAN CLASH", cx + 14, cy + 130, cw - 28, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 BattleSessionState.SelectedBattleMode = BattleMode.Squad2v2;
                 RefreshAllUI();
             }, out _deployMode2v2Bg);
 
-            CreatePixelButton(vp, hp, "5v5 BATTLE - COMPANY WAR", cx + 12, cy + 108, 256, 18, BtnBg, GoldColor, GoldColor, 8, () =>
+            CreatePixelButton(vp, hp, "5v5 BATTLE - COMPANY WAR", cx + 14, cy + 110, cw - 28, 18, BtnBg, GoldColor, GoldColor, 8, () =>
             {
                 BattleSessionState.SelectedBattleMode = BattleMode.Battle5v5;
                 RefreshAllUI();
             }, out _deployMode5v5Bg);
 
-            CreatePixelButton(vp, hp, "SURVIVAL   - ENDLESS WAVES", cx + 12, cy + 88, 256, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            CreatePixelButton(vp, hp, "SURVIVAL   - ENDLESS WAVES", cx + 14, cy + 90, cw - 28, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 BattleSessionState.SelectedBattleMode = BattleMode.SurvivalWave;
                 RefreshAllUI();
             }, out _deployModeWaveBg);
 
-            CreatePixelButton(vp, hp, "RANGE      - FIRING PRACTICE", cx + 12, cy + 68, 256, 18, BtnBg, LightCyan, LightCyan, 8, () =>
+            CreatePixelButton(vp, hp, "RANGE      - FIRING PRACTICE", cx + 14, cy + 70, cw - 28, 18, BtnBg, LightCyan, LightCyan, 8, () =>
             {
                 BattleSessionState.SelectedBattleMode = BattleMode.FiringRange;
                 RefreshAllUI();
             }, out _deployModeRangeBg);
 
             // Map selector row inside Deploy Modal (live updates backdrop behind modal!)
-            CreatePixelText(vp, "BATTLEFIELD MAP", 8, TextMuted, TextAnchor.MiddleCenter, cx, cy + 56, cw, 10);
-            CreatePixelButton(vp, hp, "DESERT", cx + 12, cy + 36, 82, 18, BtnSelected, GoldColor, TextLight, 8, () => SelectBattleMap(BattleMap.Desert), out _deployMapDesertBg);
-            CreatePixelButton(vp, hp, "CITY", cx + 98, cy + 36, 84, 18, BtnBg, PanelBorder, TextLight, 8, () => SelectBattleMap(BattleMap.City), out _deployMapCityBg);
-            CreatePixelButton(vp, hp, "FOREST", cx + 186, cy + 36, 82, 18, BtnBg, MbtGreen, TextLight, 8, () => SelectBattleMap(BattleMap.Forest), out _deployMapForestBg);
+            CreatePixelText(vp, "THEATER OF OPERATIONS", 8, TextMuted, TextAnchor.MiddleCenter, cx, cy + 57, cw, 10);
+            CreatePixelButton(vp, hp, "DESERT", cx + 14, cy + 37, 86, 18, BtnSelected, GoldColor, TextLight, 8, () => SelectBattleMap(BattleMap.Desert), out _deployMapDesertBg);
+            CreatePixelButton(vp, hp, "CITY", cx + 105, cy + 37, 86, 18, BtnBg, PanelBorder, TextLight, 8, () => SelectBattleMap(BattleMap.City), out _deployMapCityBg);
+            CreatePixelButton(vp, hp, "FOREST", cx + 196, cy + 37, 86, 18, BtnBg, MbtGreen, TextLight, 8, () => SelectBattleMap(BattleMap.Forest), out _deployMapForestBg);
 
             // Bottom Action Buttons: BACK + DEPLOY!
-            CreatePixelButton(vp, hp, "BACK [ESC]", cx + 12, cy + 10, 96, 20, BtnBg, PanelBorder, TextLight, 8, () => SetDeployModalOpen(false));
-            CreatePixelButton(vp, hp, "DEPLOY! (ENTER)", cx + 114, cy + 10, 154, 20, GoldColor, GoldColor, DarkInk, 8, LaunchBattleScene, useTitleFont: true);
+            CreatePixelButton(vp, hp, "BACK [ESC]", cx + 14, cy + 10, 96, 22, BtnBg, PanelBorder, TextLight, 8, () => SetDeployModalOpen(false));
+            CreatePrimaryCtaButton(vp, hp, "DEPLOY! (ENTER)", cx + 116, cy + 10, cw - 130, 22, LaunchBattleScene);
         }
 
         // ============================================================
@@ -301,6 +308,7 @@ namespace Modern8bitTanks
             _titleExitTimer = 0f;
             _titleTime = 0f;
             _titleLandingDustFired = false;
+            _titleTurretLockDustFired = false;
 
             if (open)
             {
@@ -324,10 +332,14 @@ namespace Modern8bitTanks
             if (!open)
             {
                 ClearTitleDust();
+                if (_titleLogoStack != null) _titleLogoStack.dropProgress = 1f;
+                for (int i = 0; i < _titleWingmen.Count; i++)
+                    if (_titleWingmen[i] != null) _titleWingmen[i].SetAssemblyDrop(1f);
                 if (showcaseTank != null)
                 {
+                    showcaseTank.SetAssemblyDrop(1f);
                     showcaseTank.gameObject.SetActive(true);
-                    showcaseTank.Position2D = new Vector2(WorldW * 0.5f, WorldH * 0.5f + 0.35f);
+                    showcaseTank.Position2D = new Vector2(WorldW * 0.5f, WorldH * 0.5f + 0.15f);
                 }
             }
 
@@ -345,6 +357,11 @@ namespace Modern8bitTanks
 
         private void SetDeployModalOpen(bool open, bool fromTree = false)
         {
+            if (open && _choosingOnlineVehicle)
+            {
+                ConfirmOnlineVehicle();
+                return;
+            }
             if (open) _deployFromTree = fromTree;
             _deployOpen = open;
             if (_deployVisualGroup != null) _deployVisualGroup.SetActive(open);
@@ -354,12 +371,13 @@ namespace Modern8bitTanks
 
         private void SyncActiveHitGroups()
         {
-            bool settings = _settingsOpen;
-            bool deploy = !settings && _deployOpen;
-            bool title = !settings && !deploy && _titleOpen;
-            bool tree = !settings && !deploy && !title && _treeOpen;
-            bool garage = !settings && !deploy && !title && !tree;
+            bool settings = !_onlineOpen && _settingsOpen;
+            bool deploy = !_onlineOpen && !settings && _deployOpen;
+            bool title = !_onlineOpen && !settings && !deploy && _titleOpen;
+            bool tree = !_onlineOpen && !settings && !deploy && !title && _treeOpen;
+            bool garage = !_onlineOpen && !settings && !deploy && !title && !tree;
 
+            if (_onlineHits != null) _onlineHits.SetActive(_onlineOpen);
             if (_settingsHitsGroup != null) _settingsHitsGroup.SetActive(settings);
             if (_deployHitsGroup != null) _deployHitsGroup.SetActive(deploy);
             if (_titleHitsGroup != null) _titleHitsGroup.SetActive(title);
@@ -407,52 +425,61 @@ namespace Modern8bitTanks
             Vector2 center = new Vector2(WorldW * 0.5f, WorldH * 0.5f);
             Vector2 convoyDir = SpriteStackCamera.Squash(TankEntity.SliceAngleToDir(TitleConvoyAngleDeg), squash).normalized;
 
-            // 1. Exploded-View Sprite-Stacking Assembly Curve (layers drop & snap together on launch!)
-            float assemble01 = Mathf.Clamp01((_titleTime - 0.08f) / 0.78f);
-            float easeOut = 1f - Mathf.Pow(1f - assemble01, 3f);
-            float tankSpacing = Mathf.Lerp(2.35f, spacingPx, easeOut);
+            // 1. Slow, Graceful Layer-by-Layer Sky Descent (individual slices float down & stack one by one!)
+            float leadDrop01 = _titleTransitioning ? 1f : Mathf.Clamp01((_titleTime - 0.18f) / 2.55f);
+            float leadEase = 1f - Mathf.Pow(1f - leadDrop01, 2.2f);
+            float tankSpacing = Mathf.Lerp(spacingPx * 1.38f, spacingPx, leadEase);
 
-            // Trigger landing dust burst right when the stacked slices snap together!
-            if (!_titleLandingDustFired && assemble01 >= 0.96f)
+            // Soft landing dust puff when the lead tank's hull touches down, plus a crisp settle when turret locks in!
+            if (!_titleLandingDustFired && leadDrop01 >= 0.56f)
             {
                 _titleLandingDustFired = true;
-                if (showcaseTank != null) showcaseTank.TriggerFireKick(0f); // Suspension dip!
-                SpawnTitleDustBurst(center + new Vector2(0.15f, -0.55f), 10);
+                if (showcaseTank != null) showcaseTank.TriggerFireKick(0f);
+                SpawnTitleDustBurst(center + new Vector2(0.15f, -0.60f), 8);
+            }
+            if (!_titleTurretLockDustFired && leadDrop01 >= 0.96f)
+            {
+                _titleTurretLockDustFired = true;
+                if (showcaseTank != null) showcaseTank.TriggerFireKick(0f);
+                SpawnTitleDustBurst(center + new Vector2(0.15f, -0.60f), 6);
             }
 
-            // 2. Animate 3D Sprite-Stacked Logo ("8-BIT TANKS")
+            // 2. Slow Layer-by-Layer Descending 3D Stacked Logo ("8-BIT TANKS" — 3.2s gentle float down!)
             if (_titleLogoStack != null)
             {
-                float logoAsm = Mathf.Clamp01(_titleTime / 0.85f);
-                float logoEase = 1f - Mathf.Pow(1f - logoAsm, 3f);
-                float baseLogoSpacing = Mathf.Lerp(3.8f, 0.92f, logoEase) + Mathf.Sin(_titleTime * 2.1f) * 0.06f * logoEase;
-                // On PLAY click, logo explodes vertically into floating stack slices & flies off!
+                float logoDrop01 = _titleTransitioning ? 1f : Mathf.Clamp01((_titleTime - 0.06f) / 3.20f);
+                float logoEase = 1f - Mathf.Pow(1f - logoDrop01, 2.4f);
+                float baseLogoSpacing = Mathf.Lerp(1.32f, 0.94f, logoEase) + Mathf.Sin(_titleTime * 1.6f) * 0.05f * logoEase;
+                // On START click, logo expands vertically into floating slices & drifts cleanly away!
                 float exitExplode = exit01 * exit01;
+                _titleLogoStack.dropHeightPx = 58f;
+                _titleLogoStack.dropProgress = logoDrop01;
                 _titleLogoStack.spacingPx = baseLogoSpacing + exitExplode * 4.8f;
-                _titleLogoStack.squash = 0.72f;
-                _titleLogoStack.angleDeg = Mathf.Lerp(-24f, 0f, logoEase) + Mathf.Sin(_titleTime * 1.15f) * 11f * logoEase + exitExplode * 28f;
+                _titleLogoStack.squash = 0.74f;
+                _titleLogoStack.angleDeg = Mathf.Lerp(-10f, 0f, logoEase) + Mathf.Sin(_titleTime * 0.95f) * 9.5f * logoEase + exitExplode * 26f;
                 _titleLogoStack.transform.position = new Vector3(
                     center.x,
-                    center.y + 1.95f + Mathf.Sin(_titleTime * 1.6f) * 0.08f + exitExplode * 3.8f,
+                    center.y + 1.92f + Mathf.Sin(_titleTime * 1.35f) * 0.08f * logoEase + exitExplode * 3.8f,
                     0f
                 );
                 _titleLogoStack.ApplyVisuals();
             }
 
-            // 3. Lead Showcase Tank + 2 Escort Wingmen rolling in formation
-            float sway = Mathf.Sin(_titleTime * 1.45f) * 0.14f;
+            // 3. Lead Showcase Tank + 2 Escort Wingmen descending staggered layer-by-layer into formation!
+            float sway = Mathf.Sin(_titleTime * 1.25f) * 0.12f * leadEase;
             Vector2 leadPos = Vector2.Lerp(
                 center + new Vector2(0.15f, -0.60f + sway * 0.5f),
-                center + new Vector2(0f, 0.35f),
+                center + new Vector2(0f, 0.15f),
                 exit01 * exit01
             );
 
             if (showcaseTank != null)
             {
                 if (!showcaseTank.gameObject.activeSelf) showcaseTank.gameObject.SetActive(true);
+                showcaseTank.SetAssemblyDrop(leadDrop01, dropHeightPx: 50f);
                 showcaseTank.Position2D = leadPos;
-                showcaseTank.hullAngleDeg = Mathf.LerpAngle(TitleConvoyAngleDeg + Mathf.Sin(_titleTime * 0.9f) * 3.5f, 35f + _manualAngleOffset, exit01);
-                showcaseTank.turretAngleDeg = showcaseTank.hullAngleDeg + Mathf.Sin(_titleTime * 0.85f) * 26f * (1f - exit01);
+                showcaseTank.hullAngleDeg = Mathf.LerpAngle(TitleConvoyAngleDeg + Mathf.Sin(_titleTime * 0.85f) * 3.2f, 35f + _manualAngleOffset, exit01);
+                showcaseTank.turretAngleDeg = showcaseTank.hullAngleDeg + Mathf.Sin(_titleTime * 0.80f) * 24f * (1f - exit01) * leadEase;
                 showcaseTank.SyncVisuals(squash, tankSpacing);
             }
 
@@ -465,12 +492,18 @@ namespace Modern8bitTanks
             {
                 TankEntity w = _titleWingmen[i];
                 if (w == null) continue;
+                float wingDelay = 0.55f + i * 0.35f;
+                float wingDrop01 = _titleTransitioning ? 1f : Mathf.Clamp01((_titleTime - wingDelay) / 2.55f);
+                float wingEase = 1f - Mathf.Pow(1f - wingDrop01, 2.2f);
+                float wingSpacing = Mathf.Lerp(spacingPx * 1.38f, spacingPx, wingEase);
+
+                w.SetAssemblyDrop(wingDrop01, dropHeightPx: 54f);
                 Vector2 exitPush = (i == 0 ? new Vector2(-1f, 0.6f) : new Vector2(-1f, -0.6f)) * (exit01 * exit01 * 9.5f);
-                Vector2 wPos = center + wingOffsets[i] + new Vector2(0f, Mathf.Sin(_titleTime * 1.3f + i * 2.1f) * 0.12f) + exitPush;
+                Vector2 wPos = center + wingOffsets[i] + new Vector2(0f, Mathf.Sin(_titleTime * 1.2f + i * 2.1f) * 0.10f * wingEase) + exitPush;
                 w.Position2D = wPos;
-                w.hullAngleDeg = TitleConvoyAngleDeg + Mathf.Sin(_titleTime * 0.8f + i * 1.7f) * 3f;
-                w.turretAngleDeg = w.hullAngleDeg + Mathf.Cos(_titleTime * 0.72f + i * 1.9f) * 22f;
-                w.SyncVisuals(squash, tankSpacing);
+                w.hullAngleDeg = TitleConvoyAngleDeg + Mathf.Sin(_titleTime * 0.75f + i * 1.7f) * 3f;
+                w.turretAngleDeg = w.hullAngleDeg + Mathf.Cos(_titleTime * 0.68f + i * 1.9f) * 20f * wingEase;
+                w.SyncVisuals(squash, wingSpacing);
             }
 
             // 4. Scroll Sprite-Stacked Battlefield Props past the convoy!
@@ -502,21 +535,25 @@ namespace Modern8bitTanks
                 }
             }
 
-            // 5. Continuous Track Dust behind all 3 moving convoy tanks!
+            // 5. Continuous Track Dust behind convoy tanks once their hulls touch down!
             _titleDustTimer -= dt;
             if (_titleDustTimer <= 0f && !_titleTransitioning)
             {
-                _titleDustTimer = 0.065f;
-                if (showcaseTank != null) EmitTitleTrackDust(showcaseTank, convoyDir);
+                _titleDustTimer = 0.068f;
+                if (showcaseTank != null && leadDrop01 >= 0.56f) EmitTitleTrackDust(showcaseTank, convoyDir);
                 for (int i = 0; i < _titleWingmen.Count; i++)
-                    if (_titleWingmen[i] != null) EmitTitleTrackDust(_titleWingmen[i], convoyDir);
+                {
+                    float wDrop = Mathf.Clamp01((_titleTime - (0.55f + i * 0.35f)) / 2.55f);
+                    if (_titleWingmen[i] != null && wDrop >= 0.56f) EmitTitleTrackDust(_titleWingmen[i], convoyDir);
+                }
             }
             UpdateTitleDust(dt, convoyDir);
 
-            // 6. Camera smoothly frames the live Stacking convoy & zooms gently toward Garage on PLAY!
+            // 6. Camera smoothly frames the live Stacking convoy & zooms gently toward Garage on START!
             if (_cam != null)
             {
-                float titleZoom = Mathf.Lerp(1.42f, showcaseZoom, exit01 * exit01 * (3f - 2f * exit01));
+                float targetGarageZoom = GetAdaptiveShowcaseZoom(GetSelectedVehicle());
+                float titleZoom = Mathf.Lerp(1.42f, targetGarageZoom, exit01 * exit01 * (3f - 2f * exit01));
                 float orthoSize = ((renderHeight / PPU) * 0.5f) / titleZoom;
                 _cam.orthographicSize = orthoSize;
                 float camX = Mathf.Round(center.x * PPU) / PPU;

@@ -14,7 +14,7 @@ Shader "Modern8bitTanks/URPHd2dScreenComposite"
     {
         Tags
         {
-            "Queue" = "Opaque"
+            "Queue" = "Geometry"
             "RenderType" = "Opaque"
             "RenderPipeline" = "UniversalPipeline"
             "IgnoreProjector" = "True"

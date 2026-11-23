@@ -192,6 +192,12 @@ namespace Modern8bitTanks
             vehicleDef = def;
             tankType = def.id;
             meta = def.ToTankMeta();
+            // Gently boost micro-tankettes (< 31px long, e.g. Wiesel / MS-1 / ASU-57) so their pixels & 1px gun barrels
+            // never crush on 480x270 while preserving unmistakable relative size next to heavy MBTs!
+            float hullLenPx = def.hullLength > 0 ? def.hullLength : 38f;
+            float microBoost = hullLenPx < 31f ? Mathf.Clamp(31f / Mathf.Max(18f, hullLenPx), 1.0f, 1.18f) : 1.0f;
+            pixelsPerUnit = 16f / microBoost;
+
             reloadDuration = def.reload;
             hullTurnSpeed = def.EffectiveHullTurnSpeed;
             turretTurnSpeed = def.EffectiveTurretTurnSpeed;
@@ -372,6 +378,25 @@ namespace Modern8bitTanks
         {
             hullStack.hitFlash = 0.65f;
             turretStack.hitFlash = 0.65f;
+        }
+
+        /// <summary>
+        /// Sequences Sprite-Stacking slices slowly descending from overhead:
+        /// hull slices assemble first (0.00..0.68), then turret slices glide down onto the turret ring (0.32..1.00)!
+        /// </summary>
+        public void SetAssemblyDrop(float progress01, float dropHeightPx = 42f)
+        {
+            float p = Mathf.Clamp01(progress01);
+            if (hullStack != null)
+            {
+                hullStack.dropHeightPx = dropHeightPx;
+                hullStack.dropProgress = p >= 0.999f ? 1f : Mathf.Clamp01(p / 0.68f);
+            }
+            if (turretStack != null)
+            {
+                turretStack.dropHeightPx = dropHeightPx * 1.12f;
+                turretStack.dropProgress = p >= 0.999f ? 1f : Mathf.Clamp01((p - 0.30f) / 0.70f);
+            }
         }
 
         public void SyncVisuals(

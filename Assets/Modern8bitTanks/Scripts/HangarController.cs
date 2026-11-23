@@ -30,9 +30,10 @@ namespace Modern8bitTanks
         [Header("Display Settings")]
         public int renderWidth = 480;
         public int renderHeight = 270;
-        [Range(0.45f, 1.0f)] public float squash = 0.75f;
-        [Range(0f, 2.5f)] public float spacingPx = 0.65f;
-        [Range(1.0f, 2.5f)] public float showcaseZoom = 1.65f;
+        [Range(0.45f, 1.0f)] public float squash = 0.80f;
+        [Range(0f, 2.5f)] public float spacingPx = 0.72f;
+        [Range(1.0f, 3.0f)] public float showcaseZoom = 2.0f;
+        private float _currentShowcaseZoom = 2.0f;
 
         // Horizontal WoT Tech Tree Layout Constants (all EVEN integer pixels!)
         private const int ViewX = 8;
@@ -109,14 +110,38 @@ namespace Modern8bitTanks
         private AudioSource _previewAudio;
         private AudioClip _previewSfxClip;
 
-        // Garage UI Labels
+        // Garage Tactical Command UI References
+        private class StatBarSlot
+        {
+            public Image[] pips;
+            public Text valueText;
+            public Color fillColor;
+        }
+
         private Text _garageTopBadge;
+        private Text _garageIndexBadge;
+        private Image _garageNationStripe;
+        private Image _garageSpecAccent;
+        private Text _garageYearBadge;
         private Text _garageTankName;
-        private Text _garageSpecLine;
+        private Image _garageNameUnderline;
+        private Text _garageCrewLine;
+        private Text _garageEngineLine;
+        private Text _garageLayoutLine;
+        private Text _garageRoleLine;
+        private Text _garageWeaponLine;
+        private Text _garageAmmoLine;
+        private Text _garageSpecialLine;
+        private Text _garageModeLine;
+        private Text _garageMapLine;
         private Text _garageMatchLine;
-        private Image _btnMapDesertBg;
-        private Image _btnMapCityBg;
-        private Image _btnMapForestBg;
+        private Text _garageNationBtnLabel;
+        private StatBarSlot _statArm;
+        private StatBarSlot _statPen;
+        private StatBarSlot _statRld;
+        private StatBarSlot _statSpd;
+        private StatBarSlot _statTrn;
+        private StatBarSlot _statTur;
         private Texture2D _hangarBackdropTex;
         private const int HangarGroundW = 640;
         private const int HangarGroundH = 400;
@@ -148,22 +173,48 @@ namespace Modern8bitTanks
 
         private readonly Dictionary<string, TreeNodeSlot> _treeNodes = new();
 
-        // Crisp 8-bit Military Palette
+        // Gritty Military Olive-Drab Steel & Brass Warfare Palette
+        private static readonly Color PanelGlass = new Color(0.92f, 0.94f, 0.88f, 0.90f);
+        private static readonly Color PanelGlassDeep = new Color(0.86f, 0.89f, 0.82f, 0.96f);
+        private static readonly Color PanelGlassModal = new Color(0.95f, 0.97f, 0.92f, 0.98f);
         private static readonly Color TreeBackdrop = new Color(0.05f, 0.06f, 0.05f, 0.96f);
-        private static readonly Color PanelBorder = new Color(0.38f, 0.33f, 0.24f, 1f);
-        private static readonly Color GridLine = new Color(0.24f, 0.22f, 0.18f, 0.55f);
-        private static readonly Color LineColor = new Color(0.58f, 0.52f, 0.40f, 1f);
-        private static readonly Color GoldColor = new Color(0.96f, 0.78f, 0.40f, 1f);
-        private static readonly Color SpecialBorder = new Color(0.94f, 0.74f, 0.28f, 1f);
-        private static readonly Color BtnBg = new Color(0.12f, 0.13f, 0.11f, 0.96f);
-        private static readonly Color BtnHover = new Color(0.22f, 0.21f, 0.16f, 0.98f);
-        private static readonly Color BtnSelected = new Color(0.28f, 0.23f, 0.12f, 1f);
-        private static readonly Color TextLight = new Color(0.96f, 0.95f, 0.90f, 1f);
-        private static readonly Color TextMuted = new Color(0.68f, 0.66f, 0.56f, 1f);
-        private static readonly Color LightCyan = new Color(0.54f, 0.86f, 0.92f, 1f);
-        private static readonly Color SupportAmber = new Color(0.96f, 0.64f, 0.34f, 1f);
-        private static readonly Color MbtGreen = new Color(0.60f, 0.88f, 0.44f, 1f);
+        private static readonly Color BrassDim = new Color(0.48f, 0.41f, 0.25f, 1f);
+        private static readonly Color PanelBorder = new Color(0.42f, 0.38f, 0.26f, 1f);
+        private static readonly Color Hairline = new Color(0.14f, 0.16f, 0.13f, 0.92f);
+        private static readonly Color GridLine = new Color(0.24f, 0.23f, 0.18f, 0.55f);
+        private static readonly Color PipEmpty = new Color(0.09f, 0.11f, 0.09f, 0.96f);
+        private static readonly Color GoldColor = new Color(0.96f, 0.78f, 0.34f, 1f);
+        private static readonly Color GoldHi = new Color(1.00f, 0.93f, 0.66f, 1f);
+        private static readonly Color GoldShadow = new Color(0.56f, 0.40f, 0.11f, 1f);
+        private static readonly Color SpecialBorder = new Color(0.96f, 0.76f, 0.28f, 1f);
+        private static readonly Color BtnBg = new Color(0.26f, 0.29f, 0.23f, 0.98f);
+        private static readonly Color BtnHover = new Color(0.40f, 0.42f, 0.32f, 1f);
+        private static readonly Color BtnSelected = new Color(0.54f, 0.43f, 0.19f, 1f);
+        private static readonly Color TextLight = new Color(0.96f, 0.95f, 0.89f, 1f);
+        private static readonly Color TextMuted = new Color(0.68f, 0.70f, 0.60f, 1f);
+        private static readonly Color LightCyan = new Color(0.52f, 0.88f, 0.94f, 1f);
+        private static readonly Color SupportAmber = new Color(0.96f, 0.64f, 0.30f, 1f);
+        private static readonly Color MbtGreen = new Color(0.58f, 0.88f, 0.44f, 1f);
         private static readonly Color DarkInk = new Color(0.08f, 0.07f, 0.04f, 1f);
+
+        private static Color GetNationAccentColor(string nation) => nation switch
+        {
+            "USA" => new Color(0.36f, 0.68f, 0.92f, 1f),
+            "GER" => new Color(0.90f, 0.70f, 0.28f, 1f),
+            "USSR" => new Color(0.88f, 0.36f, 0.30f, 1f),
+            "JPN" => new Color(0.92f, 0.38f, 0.42f, 1f),
+            _ => GoldColor
+        };
+
+        private float GetAdaptiveShowcaseZoom(VehicleDef def)
+        {
+            if (def == null) return showcaseZoom;
+            float len = def.hullLength > 0 ? def.hullLength : 38f;
+            if (len <= 26f) return 2.50f; // Micro tankettes (Wiesel, MS-1, M50, ASU-57): crystal-clear close framing!
+            if (len <= 34f) return 2.25f; // Light tanks (Stuart, Ha-Go, Pz II, Sheridan)
+            if (len <= 44f) return 2.00f; // Standard MBTs: exact 2x pixel scale!
+            return 1.80f;                 // Massive heavies (Tiger II, A7V, M103)
+        }
 
         private void Awake()
         {
@@ -181,8 +232,8 @@ namespace Modern8bitTanks
             _cam.orthographic = true;
             _cam.clearFlags = CameraClearFlags.SolidColor;
             _cam.backgroundColor = new Color(0.11f, 0.09f, 0.06f, 1f);
-            squash = 0.75f;
-            spacingPx = 0.65f;
+            squash = 0.80f;
+            spacingPx = 0.72f;
 
             _windowbox = GetComponent<PixelWindowbox>();
             if (_windowbox == null) _windowbox = gameObject.AddComponent<PixelWindowbox>();
@@ -212,16 +263,22 @@ namespace Modern8bitTanks
             BuildSettingsUI();
             BuildTitleUI();
             BuildDeployModalUI();
+            BuildOnlineRoomUI();
             BuildTitleStage();
 
             VehicleDef cur = GetSelectedVehicle();
             if (cur != null) _treeNation = cur.nation;
+            _currentShowcaseZoom = GetAdaptiveShowcaseZoom(cur);
             ApplySelectedTankToTurntable();
             SetSettingsOpen(false);
             SetDeployModalOpen(false);
             SetTechTreeOpen(false);
             // Show the Sprite-Stacking Title Screen on initial launch; return straight to Garage after battles!
             SetTitleOpen(!BattleSessionState.HasEnteredGarage);
+            var connection = MultiplayerSessionConnection.Active;
+            if (connection != null && connection.IsReturningToLobby) connection.ReadyInLobby();
+            _onlineError = MultiplayerSessionConnection.TakeNotice();
+            if (_onlineError != null || (connection != null && connection.Room != null && !connection.IsLeaving)) SetOnlineRoomOpen(true);
         }
 
         private void LoadResourcesAndCatalog()
@@ -346,7 +403,7 @@ namespace Modern8bitTanks
             if (showcaseTank.hullStack != null && showcaseTank.hullStack.sliceMaterial != null)
                 _stackFlashMat = showcaseTank.hullStack.sliceMaterial;
 
-            Vector2 center = new Vector2(WorldW * 0.5f, WorldH * 0.5f + 0.35f);
+            Vector2 center = new Vector2(WorldW * 0.5f, WorldH * 0.5f + 0.15f);
             showcaseTank.transform.position = new Vector3(center.x, center.y, 0f);
             showcaseTank.isPlayer = false;
             showcaseTank.factionTeam = "ally";
@@ -375,9 +432,10 @@ namespace Modern8bitTanks
                 _turretTexCache[def.id] = turretTex;
             }
 
-            Vector2 center = new Vector2(WorldW * 0.5f, WorldH * 0.5f + 0.35f);
+            Vector2 center = new Vector2(WorldW * 0.5f, WorldH * 0.5f + 0.15f);
             showcaseTank.ApplyVehicleDef(def, hullTex, turretTex, _stackFlashMat);
             showcaseTank.CaptureSpawnAndReset(center, 35f + _manualAngleOffset);
+            showcaseTank.SetAssemblyDrop(1f);
             RefreshAllUI();
         }
 
@@ -389,6 +447,27 @@ namespace Modern8bitTanks
             ApplySelectedTankToTurntable();
             if (closeTreeIfSame && wasSame)
                 SetTechTreeOpen(false);
+        }
+
+        private void CycleNationInGarage()
+        {
+            VehicleDef cur = GetSelectedVehicle();
+            string curNation = cur != null ? cur.nation : "USA";
+            int nIdx = 0;
+            for (int i = 0; i < TreeNations.Length; i++)
+                if (TreeNations[i].Code == curNation) { nIdx = i; break; }
+            string nextNation = TreeNations[(nIdx + 1) % TreeNations.Length].Code;
+            _treeNation = nextNation;
+
+            // Pick a flagship modern or mid-tier tank of that nation (preferring highest tier non-special MBT)
+            VehicleDef pick = null;
+            foreach (var v in _allVehicles)
+            {
+                if (v == null || v.nation != nextNation) continue;
+                if (pick == null) pick = v;
+                else if (v.role == "MBT" && !v.IsSpecial && (pick.role != "MBT" || v.tier > pick.tier)) pick = v;
+            }
+            if (pick != null) SelectVehicle(pick.id);
         }
 
         private void CycleSelectedInCurrentNation(int dir)
@@ -408,6 +487,7 @@ namespace Modern8bitTanks
 
         public void LaunchBattleScene()
         {
+            if (MultiplayerSessionConnection.Active != null) return;
             SceneManager.LoadScene(BattleSessionState.BattleSceneName);
         }
 
@@ -440,6 +520,17 @@ namespace Modern8bitTanks
             if (_windowbox != null)
                 _windowbox.integerScale = BattleSessionState.IntegerWindowbox;
 
+            if (_choosingOnlineVehicle && (MultiplayerSessionConnection.Active == null || MultiplayerSessionConnection.Active.IsLeaving))
+                SetOnlineVehicleSelection(false);
+
+            if (_onlineOpen)
+            {
+                if (kb != null && kb.escapeKey.wasPressedThisFrame) CloseOnlineRoom();
+                RefreshOnlineRoom();
+                if (_titleOpen) UpdateTitleStage(dt);
+                return;
+            }
+
             if (kb != null)
             {
                 if (kb.escapeKey.wasPressedThisFrame)
@@ -447,6 +538,7 @@ namespace Modern8bitTanks
                     if (_settingsOpen) SetSettingsOpen(false);
                     else if (_deployOpen) SetDeployModalOpen(false);
                     else if (_treeOpen) SetTechTreeOpen(false);
+                    else if (_choosingOnlineVehicle) ConfirmOnlineVehicle();
                     else SetSettingsOpen(true);
                 }
                 else if (kb.oKey.wasPressedThisFrame && !_treeOpen && !_deployOpen)
@@ -582,7 +674,7 @@ namespace Modern8bitTanks
                 {
                     if (showcaseTank.gameObject.activeSelf) showcaseTank.gameObject.SetActive(false);
                     if (_hangarXrayGraphic != null)
-                        _hangarXrayGraphic.ShowHangarInspect(showcaseTank, showcaseTank.hullAngleDeg, showcaseTank.turretAngleDeg, showcaseZoom);
+                        _hangarXrayGraphic.ShowHangarInspect(showcaseTank, showcaseTank.hullAngleDeg, showcaseTank.turretAngleDeg, _currentShowcaseZoom);
                 }
                 else
                 {
@@ -591,10 +683,15 @@ namespace Modern8bitTanks
                 }
             }
 
+            // Adaptive crisp showcase zoom (automatically frames small tankettes close-up & MBTs at crisp 2x pixels!)
+            float targetZoom = GetAdaptiveShowcaseZoom(GetSelectedVehicle());
+            _currentShowcaseZoom = Mathf.Lerp(_currentShowcaseZoom, targetZoom, 1f - Mathf.Exp(-10f * dt));
+            if (Mathf.Abs(_currentShowcaseZoom - targetZoom) < 0.006f) _currentShowcaseZoom = targetZoom;
+
             // Center camera squarely on the showcase turntable
             if (_cam != null)
             {
-                float orthoSize = ((renderHeight / PPU) * 0.5f) / showcaseZoom;
+                float orthoSize = ((renderHeight / PPU) * 0.5f) / _currentShowcaseZoom;
                 _cam.orthographicSize = orthoSize;
                 float camX = Mathf.Round((WorldW * 0.5f) * PPU) / PPU;
                 float camY = Mathf.Round((WorldH * 0.5f) * PPU) / PPU;
@@ -712,57 +809,143 @@ namespace Modern8bitTanks
             int W = renderWidth;
             int H = renderHeight;
 
-            // Top slim header bar (y = 242..270, h = 28) — spacious & zero duplicate buttons!
-            CreatePixelSolid(vp, "TopShade", 0, H - 28, W, 28, new Color(0.05f, 0.05f, 0.04f, 0.84f));
-            CreatePixelSolid(vp, "TopRule", 0, H - 29, W, 1, PanelBorder);
+            // =================================================================
+            // 1. TOP ARMORED COMMAND RAIL (y = 246..270, h = 24)
+            // =================================================================
+            MilitaryUiSprites.CreateTiledSprite(vp, "TopSteelRail", MilitaryUiSprites.ArmorHeaderBar, 0, H - 24, W, 24, PanelGlassDeep);
+            CreatePixelSolid(vp, "TopRailHighlight", 0, H - 1, W, 1, new Color(0.44f, 0.48f, 0.38f, 0.85f));
+            CreatePixelSolid(vp, "TopRule", 0, H - 25, W, 1, new Color(0.06f, 0.07f, 0.05f, 1f));
+            CreatePixelSolid(vp, "TopRuleBevel", 0, H - 24, W, 1, new Color(0.36f, 0.40f, 0.30f, 0.90f));
 
-            CreatePixelButton(vp, hp, "TITLE", 6, H - 24, 54, 20, BtnBg, PanelBorder, TextMuted, 8, () => SetTitleOpen(true));
-            CreatePixelButton(vp, hp, "SETTINGS", 64, H - 24, 72, 20, BtnBg, LightCyan, TextLight, 8, () => SetSettingsOpen(true));
-            _garageTopBadge = CreatePixelText(vp, "8-BIT TANKS", 8, GoldColor, TextAnchor.MiddleCenter, 140, H - 24, 144, 20, useTitleFont: false);
+            _garageTitleButton = CreatePixelButton(vp, hp, "TITLE", 6, H - 21, 46, 18, BtnBg, PanelBorder, TextMuted, 8, () =>
+            {
+                if (_choosingOnlineVehicle) ConfirmOnlineVehicle();
+                else SetTitleOpen(true);
+            });
+            CreatePixelButton(vp, hp, "SETTINGS", 56, H - 21, 66, 18, BtnBg, LightCyan, TextLight, 8, () => SetSettingsOpen(true));
 
-            // Top-Right Live Biome Map Selector: DESERT / CITY / FOREST!
-            CreatePixelButton(vp, hp, "DESERT", 288, H - 24, 60, 20, BtnSelected, GoldColor, TextLight, 8, () => SelectBattleMap(BattleMap.Desert), out _btnMapDesertBg);
-            CreatePixelButton(vp, hp, "CITY", 352, H - 24, 52, 20, BtnBg, PanelBorder, TextLight, 8, () => SelectBattleMap(BattleMap.City), out _btnMapCityBg);
-            CreatePixelButton(vp, hp, "FOREST", 408, H - 24, 66, 20, BtnBg, MbtGreen, TextLight, 8, () => SelectBattleMap(BattleMap.Forest), out _btnMapForestBg);
+            // Dead-Centered Riveted Nation + Tier Armored Plaque (x = 132..348, centered at 240!)
+            var pill = MilitaryUiSprites.CreateSlicedSprite(vp, "NationPlaque", MilitaryUiSprites.ArmorPanel, 132, H - 22, 216, 20, new Color(0.92f, 0.95f, 0.88f, 0.96f), out _);
+            _garageNationStripe = CreatePixelSolid(pill, "NationStripe", 4, 3, 3, 14, GoldColor).GetComponent<Image>();
+            MilitaryUiSprites.CreateIcon(pill, "PlaqueStar", MilitaryUiSprites.IconStar, 10, 5, GoldColor);
+            _garageTopBadge = CreatePixelText(pill, "USA • TIER X • MBT", 8, GoldColor, TextAnchor.MiddleCenter, 18, 1, 190, 18);
 
-            // Centered Live 360 X-Ray Inspection Overlay (160 x 136 EVEN!)
-            const int xw = 160, xh = 136;
+            // Military stencil fleet serial readout on the top-right (e.g. UNIT 04/31)
+            _garageIndexBadge = CreatePixelText(vp, "UNIT 01/31", 8, TextMuted, TextAnchor.MiddleRight, 376, H - 21, 96, 18);
+
+            // =================================================================
+            // 2. LEFT RIVETED ARMOR TELEMETRY PLATE (x = 6..138, y = 50..238)
+            // =================================================================
+            var leftCard = CreateTacticalCard(vp, "SpecCard", 6, 50, 132, 188, PanelGlass, BrassDim, GoldColor, out _garageSpecAccent, withHazardTape: true);
+            MilitaryUiSprites.CreateIcon(leftCard, "ArmorIcon", MilitaryUiSprites.IconArmor, 7, 165, GoldColor);
+            CreatePixelText(leftCard, "SPECS", 8, GoldColor, TextAnchor.MiddleLeft, 19, 162, 68, 14);
+            _garageYearBadge = CreatePixelText(leftCard, "1999", 8, TextMuted, TextAnchor.MiddleRight, 86, 162, 38, 14);
+            CreateWeldSeam(leftCard, 6, 160, 120);
+
+            // 6 Crisp 10-Pip Recessed Tank-Dashboard LED Stat Gauges!
+            _statArm = CreateStatBarRow(leftCard, "ARM", 140, LightCyan);
+            _statPen = CreateStatBarRow(leftCard, "PEN", 122, GoldColor);
+            _statRld = CreateStatBarRow(leftCard, "RLD", 104, SupportAmber);
+            _statSpd = CreateStatBarRow(leftCard, "SPD", 86, MbtGreen);
+            _statTrn = CreateStatBarRow(leftCard, "TRN", 68, new Color(0.76f, 0.90f, 0.44f, 1f));
+            _statTur = CreateStatBarRow(leftCard, "TUR", 50, new Color(0.56f, 0.80f, 0.96f, 1f));
+
+            CreateWeldSeam(leftCard, 6, 45, 120);
+            _garageCrewLine = CreatePixelText(leftCard, "CREW 4 • TRACKED", 8, TextLight, TextAnchor.MiddleLeft, 8, 30, 116, 12);
+            _garageEngineLine = CreatePixelText(leftCard, "ENG: TURBINE", 8, TextMuted, TextAnchor.MiddleLeft, 8, 18, 116, 12);
+            _garageLayoutLine = CreatePixelText(leftCard, "REAR ENG • MANNED", 8, LightCyan, TextAnchor.MiddleLeft, 8, 6, 116, 12);
+
+            // =================================================================
+            // 3. CENTER ARMORED DEPOT BAY (x = 138..342, dead-centered at x = 240!)
+            // =================================================================
+            // Riveted Steel Vehicle Designation Plaque at top of bay
+            var namePlate = MilitaryUiSprites.CreateSlicedSprite(vp, "NamePlate", MilitaryUiSprites.ArmorPanel, 146, 214, 188, 24, new Color(0.92f, 0.94f, 0.88f, 0.92f), out _);
+            _garageNameUnderline = CreatePixelSolid(namePlate, "NameUnderline", 12, 2, 164, 2, GoldColor).GetComponent<Image>();
+            _garageTankName = CreatePixelText(namePlate, "M1A2 SEP v2", 16, GoldColor, TextAnchor.MiddleCenter, 4, 3, 180, 18, useTitleFont: false);
+
+            // Tank Gunner-Optics Rangefinder Reticle framing the rotating tank!
+            Color opticsCol = new Color(0.92f, 0.78f, 0.36f, 0.42f);
+            Color opticsTick = new Color(0.92f, 0.78f, 0.36f, 0.28f);
+            CreateCornerBracket(vp, 150, 200, true, true, opticsCol, 10);
+            CreateCornerBracket(vp, 330, 200, false, true, opticsCol, 10);
+            CreateCornerBracket(vp, 150, 62, true, false, opticsCol, 10);
+            CreateCornerBracket(vp, 330, 62, false, false, opticsCol, 10);
+            // Subtle horizontal & vertical gunner rangefinder mil-dot ticks
+            CreatePixelSolid(vp, "OptTickL", 148, 131, 6, 1, opticsTick);
+            CreatePixelSolid(vp, "OptTickR", 326, 131, 6, 1, opticsTick);
+            CreatePixelSolid(vp, "OptTickT", 240, 198, 1, 5, opticsTick);
+            CreatePixelSolid(vp, "OptTickB", 240, 60, 1, 5, opticsTick);
+
+            // Centered Live 360 X-Ray CRT Cutaway Monitor (164 x 138 EVEN!)
+            const int xw = 164, xh = 138;
             _hangarXrayWrap = new GameObject("HangarXRayOverlay") { layer = 5 };
             _hangarXrayWrap.transform.SetParent(vp, false);
             var xRt = _hangarXrayWrap.AddComponent<RectTransform>();
-            SetPixelRect(xRt, (W - xw) / 2, 92, xw, xh);
+            SetPixelRect(xRt, (W - xw) / 2, 64, xw, xh);
 
-            var xPanel = CreatePixelBox(xRt, "XRayFrame", 0, 0, xw, xh, new Color32(10, 20, 25, 185), new Color32(72, 168, 178, 225));
-            _hangarXrayBadge = CreatePixelText(xPanel, "X-RAY INTERNAL VIEW  DRAG 360", 8, LightCyan, TextAnchor.MiddleCenter, 2, xh - 14, xw - 4, 12);
+            var xPanel = CreateTacticalCard(xRt, "XRayFrame", 0, 0, xw, xh, new Color(0.55f, 0.85f, 0.90f, 0.94f), LightCyan, LightCyan, out _, withHazardTape: false);
+            _hangarXrayBadge = CreatePixelText(xPanel, "FCS X-RAY  •  DRAG 360", 8, LightCyan, TextAnchor.MiddleCenter, 2, xh - 17, xw - 4, 12);
 
             var bgGo = new GameObject("XRayHologram") { layer = 5 };
             bgGo.transform.SetParent(xPanel, false);
             var bgImg = bgGo.AddComponent<RawImage>();
-            SetPixelRect(bgImg.rectTransform, 4, 4, xw - 8, xh - 20);
+            SetPixelRect(bgImg.rectTransform, 5, 5, xw - 10, xh - 24);
             bgImg.raycastTarget = false;
 
             var fgGo = new GameObject("XRayCutaway") { layer = 5 };
             fgGo.transform.SetParent(xPanel, false);
             _hangarXrayGraphic = fgGo.AddComponent<TankCutawayGraphic>();
-            SetPixelRect(_hangarXrayGraphic.rectTransform, 4, 4, xw - 8, xh - 20);
+            SetPixelRect(_hangarXrayGraphic.rectTransform, 5, 5, xw - 10, xh - 24);
             _hangarXrayGraphic.raycastTarget = false;
-            _hangarXrayGraphic.AttachBackdrop(bgImg, xw - 8, xh - 20);
+            _hangarXrayGraphic.AttachBackdrop(bgImg, xw - 10, xh - 24);
+            MilitaryUiSprites.CreateTiledSprite(xPanel, "XRayScanlines", MilitaryUiSprites.Scanlines, 5, 5, xw - 10, xh - 24, Color.white);
             _hangarXrayWrap.SetActive(false);
 
-            // Bottom Garage Console (y = 0..64, h = 64) — center 178px wide-open for the player's tank!
-            CreatePixelSolid(vp, "BotShade", 0, 0, W, 64, new Color(0.05f, 0.05f, 0.04f, 0.88f));
-            CreatePixelSolid(vp, "BotRule", 0, 64, W, 1, PanelBorder);
+            // =================================================================
+            // 4. RIGHT RIVETED ARMAMENT & OPERATION PLATE (x = 342..474, y = 50..238)
+            // =================================================================
+            var rightCard = CreateTacticalCard(vp, "MissionCard", 342, 50, 132, 188, PanelGlass, BrassDim, GoldColor, out _, withHazardTape: true);
+            MilitaryUiSprites.CreateIcon(rightCard, "ShellIcon", MilitaryUiSprites.IconShell, 8, 165, SupportAmber);
+            CreatePixelText(rightCard, "ARMAMENT", 8, GoldColor, TextAnchor.MiddleLeft, 18, 162, 104, 14);
+            CreateWeldSeam(rightCard, 6, 160, 120);
 
-            _garageTankName = CreatePixelText(vp, "M1A2 SEP v2", 16, GoldColor, TextAnchor.MiddleCenter, 0, 68, W, 20, useTitleFont: false);
-            _garageSpecLine = CreatePixelText(vp, "", 8, TextLight, TextAnchor.MiddleCenter, 8, 44, W - 16, 16);
-            _garageMatchLine = CreatePixelText(vp, "", 8, TextMuted, TextAnchor.MiddleCenter, 8, 30, W - 16, 14);
+            _garageRoleLine = CreatePixelText(rightCard, "MAIN BATTLE TANK", 8, TextLight, TextAnchor.MiddleLeft, 8, 145, 116, 12);
+            _garageWeaponLine = CreatePixelText(rightCard, "WPN: CANNON", 8, SupportAmber, TextAnchor.MiddleLeft, 8, 131, 116, 12);
+            _garageAmmoLine = CreatePixelText(rightCard, "APFS / HEAT / HE", 8, TextMuted, TextAnchor.MiddleLeft, 8, 117, 116, 12);
+            _garageSpecialLine = CreatePixelText(rightCard, "SMOKE [Q] • COAX", 8, MbtGreen, TextAnchor.MiddleLeft, 8, 103, 116, 12);
 
-            // Bottom Controls Row (y = 6..26, h = 20 EVEN!) — Clean Garage console: BATTLE opens Mode Selection!
-            CreatePixelButton(vp, hp, "<", 6, 6, 22, 20, BtnBg, PanelBorder, TextLight, 8, () => CycleSelectedInCurrentNation(-1));
-            CreatePixelButton(vp, hp, ">", 30, 6, 22, 20, BtnBg, PanelBorder, TextLight, 8, () => CycleSelectedInCurrentNation(1));
-            CreatePixelButton(vp, hp, "TECH TREE [T]", 58, 6, 98, 20, BtnBg, GoldColor, GoldColor, 8, () => SetTechTreeOpen(true));
-            CreatePixelButton(vp, hp, "X-RAY [X]", 160, 6, 78, 20, BtnBg, LightCyan, LightCyan, 8, () => SetXRayMode(!_xrayMode), out _btnXrayBg);
-            CreatePixelButton(vp, hp, "BATTLE (ENTER)", 244, 6, 230, 20, GoldColor, GoldColor, DarkInk, 8, () => SetDeployModalOpen(true, fromTree: false), useTitleFont: true);
+            CreateWeldSeam(rightCard, 6, 97, 120);
+            MilitaryUiSprites.CreateIcon(rightCard, "OpIcon", MilitaryUiSprites.IconCrosshair, 7, 82, GoldColor);
+            CreatePixelText(rightCard, "OPERATION", 8, GoldColor, TextAnchor.MiddleLeft, 19, 80, 104, 12);
+            _garageModeLine = CreatePixelText(rightCard, "MODE: 1v1 DUEL", 8, TextLight, TextAnchor.MiddleLeft, 8, 66, 116, 12);
+            _garageMapLine = CreatePixelText(rightCard, "MAP: DESERT", 8, GoldColor, TextAnchor.MiddleLeft, 8, 52, 116, 12);
+            _garageMatchLine = CreatePixelText(rightCard, "TIER X MATCH", 8, TextMuted, TextAnchor.MiddleLeft, 8, 38, 116, 12);
+
+            // Stamped-steel X-Ray Inspection Toggle right inside the Mission Card
+            CreatePixelButton(vp, hp, "X-RAY VIEW [X]", 350, 58, 116, 20, BtnBg, LightCyan, LightCyan, 8, () => SetXRayMode(!_xrayMode), out _btnXrayBg);
+
+            // =================================================================
+            // 5. BOTTOM ARMORED COMMAND DECK (y = 0..46, h = 46)
+            // =================================================================
+            MilitaryUiSprites.CreateTiledSprite(vp, "BotSteelDeck", MilitaryUiSprites.ArmorHeaderBar, 0, 0, W, 42, PanelGlassDeep);
+            MilitaryUiSprites.CreateTiledSprite(vp, "BotHazardRail", MilitaryUiSprites.HazardTape, 0, 42, W, 4, new Color(1f, 1f, 1f, 0.90f));
+            CreatePixelSolid(vp, "BotRuleTop", 0, 46, W, 1, new Color(0.06f, 0.07f, 0.05f, 1f));
+            CreatePixelSolid(vp, "BotRuleSub", 0, 41, W, 1, new Color(0.06f, 0.07f, 0.05f, 1f));
+
+            CreatePixelButton(vp, hp, "TECH TREE [T]", 8, 7, 106, 28, BtnBg, GoldColor, GoldColor, 8, () => SetTechTreeOpen(true));
+
+            // Center Fleet Quick-Switch Cluster: [<] [USA (31)] [>]
+            CreatePixelButton(vp, hp, "<", 122, 7, 24, 28, BtnBg, PanelBorder, TextLight, 8, () => CycleSelectedInCurrentNation(-1));
+            _garageNationBtnLabel = CreatePixelButton(vp, hp, "USA (31)", 150, 7, 94, 28, BtnBg, BrassDim, TextLight, 8, CycleNationInGarage);
+            CreatePixelButton(vp, hp, ">", 248, 7, 24, 28, BtnBg, PanelBorder, TextLight, 8, () => CycleSelectedInCurrentNation(1));
+
+            // Heavy Brass Ordnance Launch Switch (with Hazard Caution End-Caps!)
+            CreatePixelButton(vp, hp, "ONLINE", 280, 7, 76, 28, BtnBg, LightCyan, LightCyan, 8, () =>
+            {
+                if (_choosingOnlineVehicle) ConfirmOnlineVehicle();
+                else SetOnlineRoomOpen(true);
+            });
+            _garageDeployButton = CreatePrimaryCtaButton(vp, hp, "BATTLE!", 364, 7, 108, 28, () => SetDeployModalOpen(true, fromTree: false));
         }
 
         private void BuildTechTreeUI()
@@ -866,7 +1049,7 @@ namespace Modern8bitTanks
                 () => JumpTreeTo(HistoryColumns + VehicleDef.ModernTier - 1));
 
             CreatePixelButton(vp, hp, "VIEW TANK", 352, 28, 118, 20, BtnBg, PanelBorder, TextLight, 8, () => SetTechTreeOpen(false));
-            CreatePixelButton(vp, hp, "BATTLE!", 352, 4, 118, 20, GoldColor, GoldColor, DarkInk, 8, () => SetDeployModalOpen(true, fromTree: true), useTitleFont: true);
+            _treeDeployButton = CreatePrimaryCtaButton(vp, hp, "BATTLE!", 352, 4, 118, 20, () => SetDeployModalOpen(true, fromTree: true));
         }
 
         private static int TreeColumn(VehicleDef vehicle) =>
@@ -1004,7 +1187,7 @@ namespace Modern8bitTanks
         {
             _xrayMode = on;
             if (_hangarXrayWrap != null) _hangarXrayWrap.SetActive(on && !_treeOpen);
-            if (_btnXrayBg != null) _btnXrayBg.color = on ? new Color(0.10f, 0.28f, 0.32f, 1f) : BtnBg;
+            if (_btnXrayBg != null) _btnXrayBg.color = on ? new Color(0.22f, 0.54f, 0.62f, 1f) : BtnBg;
             if (showcaseTank != null) showcaseTank.gameObject.SetActive(!on || _treeOpen);
             RefreshAllUI();
         }
@@ -1016,14 +1199,15 @@ namespace Modern8bitTanks
             int W = renderWidth;
             int H = renderHeight;
 
-            CreatePixelSolid(vp, "SettingsDim", 0, 0, W, H, new Color(0.03f, 0.03f, 0.03f, 0.72f));
+            CreatePixelSolid(vp, "SettingsDim", 0, 0, W, H, new Color(0.02f, 0.03f, 0.03f, 0.78f));
 
-            int cw = 240;
-            int ch = 194;
+            int cw = 248;
+            int ch = 198;
             int cx = (W - cw) / 2;
             int cy = (H - ch) / 2;
-            CreatePixelBox(vp, "SettingsCard", cx, cy, cw, ch, new Color(0.08f, 0.09f, 0.09f, 0.98f), LightCyan);
-            CreatePixelText(vp, "SETTINGS", 8, GoldColor, TextAnchor.MiddleCenter, cx, cy + ch - 22, cw, 16, useTitleFont: true);
+            CreateTacticalCard(vp, "SettingsCard", cx, cy, cw, ch, PanelGlassModal, LightCyan, LightCyan, out _);
+            CreatePixelText(vp, "SYSTEM SETTINGS", 8, GoldColor, TextAnchor.MiddleCenter, cx, cy + ch - 22, cw, 16, useTitleFont: true);
+            CreatePixelSolid(vp, "SetHdrRule", cx + 12, cy + ch - 24, cw - 24, 1, Hairline);
 
             // Row 1: SE (SFX) Volume [-] [SE: 100%] [+]
             CreatePixelButton(vp, hp, "-", cx + 12, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
@@ -1032,13 +1216,13 @@ namespace Modern8bitTanks
                 PlayHangarPreviewSfx();
                 RefreshSettingsLabels();
             });
-            _setSfxLabel = CreatePixelButton(vp, hp, "SE: 100%", cx + 40, cy + 148, 160, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            _setSfxLabel = CreatePixelButton(vp, hp, "SE: 100%", cx + 40, cy + 148, cw - 80, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 BattleSessionState.ToggleSfxEnabled();
                 PlayHangarPreviewSfx();
                 RefreshSettingsLabels();
             });
-            CreatePixelButton(vp, hp, "+", cx + 204, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            CreatePixelButton(vp, hp, "+", cx + cw - 36, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 BattleSessionState.StepSfxVolume(+0.1f);
                 PlayHangarPreviewSfx();
@@ -1051,12 +1235,12 @@ namespace Modern8bitTanks
                 BattleSessionState.StepBgmVolume(-0.1f);
                 RefreshSettingsLabels();
             });
-            _setBgmLabel = CreatePixelButton(vp, hp, "BGM: 60%", cx + 40, cy + 126, 160, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            _setBgmLabel = CreatePixelButton(vp, hp, "BGM: 60%", cx + 40, cy + 126, cw - 80, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 BattleSessionState.ToggleBgmEnabled();
                 RefreshSettingsLabels();
             });
-            CreatePixelButton(vp, hp, "+", cx + 204, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            CreatePixelButton(vp, hp, "+", cx + cw - 36, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 BattleSessionState.StepBgmVolume(+0.1f);
                 RefreshSettingsLabels();
@@ -1098,7 +1282,7 @@ namespace Modern8bitTanks
             });
 
             // Bottom: Close
-            CreatePixelButton(vp, hp, "CLOSE [ESC]", cx + 12, cy + 10, cw - 24, 20, GoldColor, GoldColor, DarkInk, 8, () =>
+            CreatePrimaryCtaButton(vp, hp, "CLOSE [ESC]", cx + 12, cy + 10, cw - 24, 20, () =>
             {
                 SetSettingsOpen(false);
             });
@@ -1176,39 +1360,91 @@ namespace Modern8bitTanks
             if (sel != null)
             {
                 string nationName = sel.NationLabel;
+                Color nationAccent = GetNationAccentColor(sel.nation);
+
+                if (_garageNationStripe != null) _garageNationStripe.color = nationAccent;
+                if (_garageSpecAccent != null) _garageSpecAccent.color = nationAccent;
                 if (_garageTopBadge != null)
-                    _garageTopBadge.text = $"{nationName} T-{sel.TierRoman} {sel.role}";
+                    _garageTopBadge.text = $"{nationName}  •  TIER {sel.TierRoman}  •  {sel.role}";
+                if (_garageYearBadge != null)
+                    _garageYearBadge.text = sel.year > 0 ? sel.year.ToString() : sel.TierBadge;
+
                 if (_garageTankName != null)
                 {
                     _garageTankName.text = sel.name.ToUpper();
-                    _garageTankName.color = sel.IsSpecial ? new Color(1f, 0.88f, 0.42f) : GoldColor;
+                    _garageTankName.color = sel.IsSpecial ? new Color(1f, 0.90f, 0.45f) : GoldColor;
                 }
-                if (_garageSpecLine != null)
-                    _garageSpecLine.text = $"CREW {sel.CrewCapacity}  SPD {(int)sel.speed}  TRN {(int)sel.EffectiveHullTurnSpeed}  TUR {(int)sel.EffectiveTurretTurnSpeed}  PEN {(int)sel.penetration}  RLD {sel.reload:F2}s  {sel.WeaponLabel}";
+                if (_garageNameUnderline != null)
+                    _garageNameUnderline.color = sel.IsSpecial ? GoldHi : nationAccent;
+
+                if (_garageIndexBadge != null)
+                {
+                    var nationList = Array.FindAll(_allVehicles, v => v != null && v.nation == sel.nation);
+                    int idx = Array.FindIndex(nationList, v => v.id == sel.id);
+                    _garageIndexBadge.text = $"UNIT {(idx >= 0 ? idx + 1 : 1):00}/{nationList.Length:00}";
+                }
+
+                // 6 Segmented Pixel Stat Bars
+                UpdateStatBar(_statArm, sel.armorFront / 1.25f, $"{Mathf.RoundToInt(sel.armorFront * 100f)}");
+                UpdateStatBar(_statPen, sel.penetration / 155f, $"{Mathf.RoundToInt(sel.penetration)}");
+                float rldScore = 1f - Mathf.Clamp01((sel.reload - 0.16f) / 2.04f);
+                UpdateStatBar(_statRld, rldScore, $"{sel.reload:F2}s");
+                UpdateStatBar(_statSpd, sel.speed / 84f, $"{Mathf.RoundToInt(sel.speed)}");
+                UpdateStatBar(_statTrn, sel.EffectiveHullTurnSpeed / 210f, $"{Mathf.RoundToInt(sel.EffectiveHullTurnSpeed)}");
+                UpdateStatBar(_statTur, sel.EffectiveTurretTurnSpeed / 355f, $"{Mathf.RoundToInt(sel.EffectiveTurretTurnSpeed)}");
+
+                // Hull & Drivetrain mini telemetry
+                string gearStr = sel.IsWheeled ? $"{sel.WheelAxleCount * 2}x{sel.WheelAxleCount * 2} WHEEL" : "TRACKED";
+                string engStr = sel.IsFrontEngine ? "FRONT ENG" : "REAR ENG";
+                string turStr = sel.IsTurretless ? "CASEMATE" : (sel.IsUnmannedTurret ? "UNMANNED" : "MANNED");
+                if (_garageCrewLine != null) _garageCrewLine.text = $"CREW {sel.CrewCapacity}  •  {gearStr}";
+                if (_garageEngineLine != null) _garageEngineLine.text = $"ENG: {(string.IsNullOrEmpty(sel.engine) ? "DIESEL" : sel.engine.ToUpper())}";
+                if (_garageLayoutLine != null) _garageLayoutLine.text = $"{engStr} • {turStr}";
+
+                // Right Card: Armament & Operation
+                if (_garageRoleLine != null) _garageRoleLine.text = FormatRoleFull(sel.role);
+                if (_garageWeaponLine != null) _garageWeaponLine.text = $"WPN: {sel.WeaponLabel}";
+                if (_garageAmmoLine != null) _garageAmmoLine.text = FormatAmmoSummary(sel);
+                if (_garageSpecialLine != null)
+                {
+                    if (sel.HasSecondaryAtgm) _garageSpecialLine.text = "RMB: GUIDED ATGM";
+                    else if (sel.weapon == "ATGM") _garageSpecialLine.text = "SACLOS MISSILE";
+                    else _garageSpecialLine.text = "SMOKE [Q] • COAX MG";
+                }
+
+                string mapTag = DesertBattleManager.GetMapDisplayName(BattleSessionState.SelectedBattleMap);
+                string modeShort = BattleSessionState.SelectedBattleMode switch
+                {
+                    BattleMode.FiringRange => "FIRING RANGE",
+                    BattleMode.Battle5v5 => "5v5 COMPANY",
+                    BattleMode.Squad2v2 => "2v2 SQUAD",
+                    BattleMode.SurvivalWave => "SURVIVAL",
+                    _ => "1v1 DUEL"
+                };
+                if (_garageModeLine != null) _garageModeLine.text = $"MODE: {modeShort}";
+                if (_garageMapLine != null)
+                {
+                    _garageMapLine.text = $"MAP: {mapTag}";
+                    _garageMapLine.color = BattleSessionState.SelectedBattleMap switch
+                    {
+                        BattleMap.Forest => MbtGreen,
+                        BattleMap.City => LightCyan,
+                        _ => GoldColor
+                    };
+                }
                 if (_garageMatchLine != null)
                 {
-                    if (_xrayMode)
-                    {
-                        string engStr = sel.IsFrontEngine ? "FRONT ENG" : "REAR ENG";
-                        string turStr = sel.IsTurretless ? "CASEMATE" : (sel.IsUnmannedTurret ? "UNMANNED TURRET" : "MANNED TURRET");
-                        string gearStr = sel.IsWheeled ? $"{sel.WheelAxleCount * 2}x{sel.WheelAxleCount * 2} WHEELS" : "TRACKED";
-                        _garageMatchLine.text = $"X-RAY: {engStr}  •  {turStr}  •  {gearStr}";
-                        _garageMatchLine.color = LightCyan;
-                    }
-                    else
-                    {
-                        string mapTag = DesertBattleManager.GetMapDisplayName(BattleSessionState.SelectedBattleMap);
-                        string modeHint = BattleSessionState.SelectedBattleMode switch
-                        {
-                            BattleMode.FiringRange => $"{mapTag}  •  FIRING RANGE (TEST DRIVE / 6 TARGETS)",
-                            BattleMode.Battle5v5 => $"{mapTag}  •  5v5 TEAM BATTLE (TIER {sel.TierRoman})",
-                            BattleMode.Squad2v2 => $"{mapTag}  •  2v2 SQUAD (TIER {sel.TierRoman})",
-                            BattleMode.SurvivalWave => $"{mapTag}  •  SURVIVAL WAVE (TIER {sel.TierRoman})",
-                            _ => $"{mapTag}  •  1v1 DUEL (RANDOM TIER {sel.TierRoman} RIVAL)"
-                        };
-                        _garageMatchLine.text = modeHint;
-                        _garageMatchLine.color = BattleSessionState.SelectedBattleMode == BattleMode.FiringRange ? LightCyan : TextMuted;
-                    }
+                    _garageMatchLine.text = BattleSessionState.SelectedBattleMode == BattleMode.FiringRange
+                        ? "6 TARGETS • TEST"
+                        : $"TIER {sel.TierRoman} BRACKET";
+                    _garageMatchLine.color = BattleSessionState.SelectedBattleMode == BattleMode.FiringRange ? LightCyan : TextMuted;
+                }
+
+                if (_garageNationBtnLabel != null)
+                {
+                    int nCount = Array.FindAll(_allVehicles, v => v != null && v.nation == sel.nation).Length;
+                    _garageNationBtnLabel.text = $"{sel.nation} ({nCount})";
+                    _garageNationBtnLabel.color = nationAccent;
                 }
 
                 if (_treeDetailTitle != null)
@@ -1218,10 +1454,6 @@ namespace Modern8bitTanks
             }
 
             RefreshDeployModalUI();
-
-            if (_btnMapDesertBg != null) _btnMapDesertBg.color = BattleSessionState.SelectedBattleMap == BattleMap.Desert ? BtnSelected : BtnBg;
-            if (_btnMapCityBg != null) _btnMapCityBg.color = BattleSessionState.SelectedBattleMap == BattleMap.City ? BtnSelected : BtnBg;
-            if (_btnMapForestBg != null) _btnMapForestBg.color = BattleSessionState.SelectedBattleMap == BattleMap.Forest ? BtnSelected : BtnBg;
 
             foreach (var (nation, button) in _nationButtons)
                 button.color = _treeNation == nation ? BtnSelected : BtnBg;
@@ -1316,6 +1548,130 @@ namespace Modern8bitTanks
             return outer;
         }
 
+        private static RectTransform CreateTacticalCard(Transform parent, string name, int x, int y, int w, int h, Color bg, Color border, Color topAccent, bool withHazardTape = true)
+            => CreateTacticalCard(parent, name, x, y, w, h, bg, border, topAccent, out _, withHazardTape);
+
+        private static RectTransform CreateTacticalCard(Transform parent, string name, int x, int y, int w, int h, Color bg, Color border, Color topAccent, out Image accentImg, bool withHazardTape = true)
+        {
+            // 9-sliced Riveted Rolled-Steel Armor Plate with forged corner bolts & beveled edges!
+            var box = MilitaryUiSprites.CreateSlicedSprite(parent, name, MilitaryUiSprites.ArmorPanel, x, y, w, h, bg, out _);
+            accentImg = CreatePixelSolid(box, "TopAccent", 4, h - 4, Mathf.Max(1, w - 8), 2, topAccent).GetComponent<Image>();
+            if (withHazardTape && w >= 48)
+            {
+                MilitaryUiSprites.CreateTiledSprite(box, "HazardStrip", MilitaryUiSprites.HazardTape, 6, h - 8, Mathf.Max(8, w - 12), 3, new Color(1f, 1f, 1f, 0.88f));
+            }
+            return box;
+        }
+
+        private static void CreateWeldSeam(Transform parent, int x, int y, int w)
+        {
+            CreatePixelSolid(parent, "WeldDk", x, y, w, 1, new Color(0.06f, 0.08f, 0.06f, 0.95f));
+            CreatePixelSolid(parent, "WeldHi", x, y - 1, w, 1, new Color(0.36f, 0.40f, 0.30f, 0.65f));
+        }
+
+        private static void CreateCornerBracket(Transform parent, int x, int y, bool left, bool top, Color col, int arm)
+        {
+            int hx = left ? x : x - arm + 1;
+            int hy = y;
+            int vx = x;
+            int vy = top ? y - arm + 1 : y;
+            CreatePixelSolid(parent, "BrH", hx, hy, arm, 1, col);
+            CreatePixelSolid(parent, "BrV", vx, vy, 1, arm, col);
+        }
+
+        private StatBarSlot CreateStatBarRow(Transform parent, string label, int y, Color fillColor)
+        {
+            CreatePixelText(parent, label, 8, TextMuted, TextAnchor.MiddleLeft, 8, y, 26, 14);
+            // Recessed dark armored gauge channel housing the 10 LED pips
+            CreatePixelSolid(parent, $"GaugeTrack_{label}", 34, y + 3, 53, 8, new Color(0.05f, 0.06f, 0.05f, 0.96f));
+            CreatePixelSolid(parent, $"GaugeLip_{label}", 34, y + 2, 53, 1, new Color(0.36f, 0.40f, 0.31f, 0.55f));
+            const int pipCount = 10;
+            var pips = new Image[pipCount];
+            for (int i = 0; i < pipCount; i++)
+            {
+                var p = CreatePixelSolid(parent, $"Pip_{label}_{i}", 36 + i * 5, y + 4, 4, 6, PipEmpty);
+                pips[i] = p.GetComponent<Image>();
+            }
+            var valTxt = CreatePixelText(parent, "0", 8, TextLight, TextAnchor.MiddleRight, 88, y, 36, 14);
+            return new StatBarSlot { pips = pips, valueText = valTxt, fillColor = fillColor };
+        }
+
+        private static void UpdateStatBar(StatBarSlot slot, float norm01, string formatted)
+        {
+            if (slot == null) return;
+            if (slot.valueText != null) slot.valueText.text = formatted;
+            if (slot.pips == null) return;
+            int lit = Mathf.Clamp(Mathf.RoundToInt(Mathf.Clamp01(norm01) * slot.pips.Length), 1, slot.pips.Length);
+            for (int i = 0; i < slot.pips.Length; i++)
+            {
+                if (slot.pips[i] != null)
+                    slot.pips[i].color = i < lit ? slot.fillColor : PipEmpty;
+            }
+        }
+
+        private static string FormatRoleFull(string role) => role switch
+        {
+            "MBT" => "MAIN BATTLE TANK",
+            "LIGHT" => "LIGHT RECON",
+            "HEAVY" => "HEAVY BREAKTHRU",
+            "TD" => "TANK DESTROYER",
+            "SUPPORT" => "FIRE SUPPORT",
+            "SPECIAL" => "SPECIAL PROTOTYPE",
+            "MEDIUM" => "MEDIUM TANK",
+            _ => string.IsNullOrEmpty(role) ? "ARMORED UNIT" : role.ToUpper()
+        };
+
+        private static string FormatAmmoSummary(VehicleDef def)
+        {
+            if (def == null) return "";
+            return def.weapon switch
+            {
+                "AutocannonATGM" => "AP-T / HEI / ATGM",
+                "TwinAutocannonATGM" => "2xAP-T / ATGM",
+                "ATGM" => "TOW / GUIDED",
+                _ => def.tier >= VehicleDef.ModernTier ? "APFS / HEAT / HE" : (def.tier >= 5 ? "APFS / APHE / HE" : "APHE / HEAT / HE")
+            };
+        }
+
+        private Text CreatePrimaryCtaButton(
+            Transform visualParent, Transform hitParent, string label,
+            int x, int y, int w, int h, Action onClick)
+        {
+            // Heavy Brass Ordnance Launch Switch with black-and-amber hazard caution end-caps!
+            Color idleTint = new Color(0.92f, 0.90f, 0.85f, 1f);
+            var outer = MilitaryUiSprites.CreateSlicedSprite(visualParent, "Cta_" + label, MilitaryUiSprites.OrdnanceButton, x, y, w, h, idleTint, out Image fillImg);
+            var txt = CreatePixelText(outer, label, 8, DarkInk, TextAnchor.MiddleCenter, 0, 0, w, h, useTitleFont: true);
+            var sh = txt.GetComponent<Shadow>();
+            if (sh != null) sh.effectColor = new Color(1.0f, 0.94f, 0.68f, 0.55f);
+
+            var hitGo = new GameObject("Hit_" + label);
+            hitGo.transform.SetParent(hitParent, false);
+            var hitRt = hitGo.AddComponent<RectTransform>();
+            hitRt.anchorMin = new Vector2((float)x / renderWidth, (float)y / renderHeight);
+            hitRt.anchorMax = new Vector2((float)(x + w) / renderWidth, (float)(y + h) / renderHeight);
+            hitRt.offsetMin = Vector2.zero;
+            hitRt.offsetMax = Vector2.zero;
+
+            var hitImg = hitGo.AddComponent<Image>();
+            hitImg.color = new Color(0f, 0f, 0f, 0f);
+            hitImg.raycastTarget = true;
+
+            var btn = hitGo.AddComponent<Button>();
+            btn.transition = Selectable.Transition.None;
+            btn.onClick.AddListener(() => onClick?.Invoke());
+
+            var trigger = hitGo.AddComponent<EventTrigger>();
+            var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+            enter.callback.AddListener(_ => { if (fillImg != null) fillImg.color = Color.white; });
+            trigger.triggers.Add(enter);
+
+            var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+            exit.callback.AddListener(_ => { if (fillImg != null) fillImg.color = idleTint; });
+            trigger.triggers.Add(exit);
+
+            return txt;
+        }
+
         private Text CreatePixelText(Transform parent, string content, int fontSize, Color col, TextAnchor align, int x, int y, int w, int h, bool useTitleFont = false)
         {
             int crispSize = fontSize >= 16 ? 16 : 8;
@@ -1356,9 +1712,16 @@ namespace Modern8bitTanks
             Color bg, Color border, Color textColor, int fontSize, Action onClick,
             out Image fillImgOut, bool useTitleFont = false)
         {
-            var visualBox = CreatePixelBox(visualParent, "Btn_" + label, x, y, w, h, bg, border, out Image fillImg);
+            // Stamped-steel riveted military switch button!
+            var visualBox = MilitaryUiSprites.CreateSlicedSprite(visualParent, "Btn_" + label, MilitaryUiSprites.SteelButton, x, y, w, h, bg, out Image fillImg);
             fillImgOut = fillImg;
-            var txt = CreatePixelText(visualBox, label, fontSize, textColor, TextAnchor.MiddleCenter, 0, 0, w, h, useTitleFont);
+
+            // Add a crisp 2px military status stripe on the left when button uses a special accent color (Cyan/Gold/Green)
+            bool hasAccent = border.a > 0.5f && border != PanelBorder && border != BrassDim && w >= 40;
+            if (hasAccent)
+                CreatePixelSolid(visualBox, "StatusBar", 2, 3, 2, Mathf.Max(2, h - 6), border);
+
+            var txt = CreatePixelText(visualBox, label, fontSize, textColor, TextAnchor.MiddleCenter, hasAccent ? 2 : 0, 0, hasAccent ? w - 2 : w, h, useTitleFont);
 
             var hitGo = new GameObject("Hit_" + label);
             hitGo.transform.SetParent(hitParent, false);

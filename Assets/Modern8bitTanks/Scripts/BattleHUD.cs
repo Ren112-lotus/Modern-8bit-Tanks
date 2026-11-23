@@ -86,6 +86,7 @@ namespace Modern8bitTanks
         // Top-Right Minimalist Tactical Minimap (68x44, no header bar!)
         private Texture2D _radarTex;
         private Color32[] _radarPixels;
+        private float _nextOnlineRadarUpdate;
         private const int RadarW = 68;
         private const int RadarH = 44;
 
@@ -125,19 +126,21 @@ namespace Modern8bitTanks
             public Color baseColor;
         }
 
-        // Crisp War Thunder Minimalist Dark-Glass Palette
-        private static readonly Color PanelBg = new Color(0.05f, 0.06f, 0.07f, 0.72f);
-        private static readonly Color PanelBgActive = new Color(0.11f, 0.13f, 0.14f, 0.78f);
-        private static readonly Color PanelBorder = new Color(0.30f, 0.35f, 0.38f, 0.80f);
-        private static readonly Color BtnBg = new Color(0.13f, 0.14f, 0.12f, 0.94f);
-        private static readonly Color BtnHover = new Color(0.24f, 0.22f, 0.16f, 0.98f);
-        private static readonly Color AbramsGold = new Color(0.95f, 0.78f, 0.44f, 1f);
-        private static readonly Color T90Green = new Color(0.52f, 0.84f, 0.36f, 1f);
-        private static readonly Color SmokeCyan = new Color(0.62f, 0.86f, 0.96f, 1f);
+        // Gritty Military Armored Warfare FCS Palette
+        private static readonly Color PanelBg = new Color(0.06f, 0.08f, 0.06f, 0.80f);
+        private static readonly Color PanelBgActive = new Color(0.18f, 0.20f, 0.14f, 0.90f);
+        private static readonly Color ArmorTint = new Color(0.88f, 0.92f, 0.84f, 0.88f);
+        private static readonly Color ArmorModalTint = new Color(0.95f, 0.97f, 0.92f, 0.98f);
+        private static readonly Color PanelBorder = new Color(0.42f, 0.39f, 0.28f, 0.92f);
+        private static readonly Color BtnBg = new Color(0.26f, 0.29f, 0.23f, 0.98f);
+        private static readonly Color BtnHover = new Color(0.42f, 0.43f, 0.32f, 1f);
+        private static readonly Color AbramsGold = new Color(0.96f, 0.78f, 0.38f, 1f);
+        private static readonly Color T90Green = new Color(0.54f, 0.86f, 0.38f, 1f);
+        private static readonly Color SmokeCyan = new Color(0.56f, 0.86f, 0.96f, 1f);
         private static readonly Color DangerRed = new Color(0.96f, 0.30f, 0.22f, 1f);
         private static readonly Color ReadyGreen = new Color(0.56f, 0.94f, 0.42f, 1f);
-        private static readonly Color TextLight = new Color(0.96f, 0.95f, 0.90f, 1f);
-        private static readonly Color TextMuted = new Color(0.70f, 0.68f, 0.58f, 1f);
+        private static readonly Color TextLight = new Color(0.96f, 0.95f, 0.89f, 1f);
+        private static readonly Color TextMuted = new Color(0.70f, 0.70f, 0.60f, 1f);
         private static readonly Color DarkInk = new Color(0.08f, 0.07f, 0.04f, 1f);
 
         public void Initialize(DesertBattleManager manager, PixelWindowbox windowbox)
@@ -234,31 +237,31 @@ namespace Modern8bitTanks
         {
             Transform parent = _combatHudGroup.transform;
 
-            // 1. Ultra-Slim Top-Center Score & Ticket Bar (176 x 16 px EVEN, tucked cleanly at top edge!)
-            int bx = (_W - 176) / 2;
-            int by = _H - 18;
-            _topScoreRect = CreatePixelBox(parent, "TopScoreboard", bx, by, 176, 16, PanelBg, PanelBorder);
+            // 1. Riveted Armored Top-Center Battle Scoreboard (184 x 18 px EVEN!)
+            int bx = (_W - 184) / 2;
+            int by = _H - 20;
+            _topScoreRect = MilitaryUiSprites.CreateSlicedSprite(parent, "TopScoreboard", MilitaryUiSprites.ArmorPanel, bx, by, 184, 18, ArmorTint, out _);
             _topScoreCg = _topScoreRect.gameObject.AddComponent<CanvasGroup>();
             _topScoreCg.blocksRaycasts = false;
 
-            // Thin team color bars on left (Ally Gold) & right (Enemy Red/Green)
-            CreatePixelSolid(_topScoreRect, "AllyAccent", 1, 1, 2, 14, AbramsGold);
-            CreatePixelSolid(_topScoreRect, "EnemyAccent", 173, 1, 2, 14, DangerRed);
+            // Bold faction war stripes on left (Ally Gold) & right (Hostile Red)
+            CreatePixelSolid(_topScoreRect, "AllyAccent", 3, 3, 3, 12, AbramsGold);
+            CreatePixelSolid(_topScoreRect, "EnemyAccent", 178, 3, 3, 12, DangerRed);
 
-            _allyNameText = CreatePixelText(_topScoreRect, "ALLY", 8, AbramsGold, TextAnchor.MiddleLeft, 5, 3, 56, 10);
-            _allyActiveText = CreatePixelText(_topScoreRect, "", 8, TextMuted, TextAnchor.MiddleRight, 46, 3, 22, 10);
-            _allyWinsText = CreatePixelText(_topScoreRect, "0", 8, AbramsGold, TextAnchor.MiddleRight, 66, 3, 12, 10, useTitleFont: true);
+            _allyNameText = CreatePixelText(_topScoreRect, "ALLY", 8, AbramsGold, TextAnchor.MiddleLeft, 8, 4, 56, 10);
+            _allyActiveText = CreatePixelText(_topScoreRect, "", 8, TextMuted, TextAnchor.MiddleRight, 49, 4, 22, 10);
+            _allyWinsText = CreatePixelText(_topScoreRect, "0", 8, AbramsGold, TextAnchor.MiddleRight, 70, 4, 12, 10, useTitleFont: true);
 
-            _centerBadgeText = CreatePixelText(_topScoreRect, "VS", 8, TextMuted, TextAnchor.MiddleCenter, 78, 3, 20, 10);
+            _centerBadgeText = CreatePixelText(_topScoreRect, "VS", 8, TextMuted, TextAnchor.MiddleCenter, 82, 4, 20, 10);
 
-            _enemyWinsText = CreatePixelText(_topScoreRect, "0", 8, DangerRed, TextAnchor.MiddleLeft, 98, 3, 12, 10, useTitleFont: true);
-            _enemyActiveText = CreatePixelText(_topScoreRect, "", 8, TextMuted, TextAnchor.MiddleLeft, 108, 3, 22, 10);
-            _enemyNameText = CreatePixelText(_topScoreRect, "FOE", 8, DangerRed, TextAnchor.MiddleRight, 115, 3, 56, 10);
+            _enemyWinsText = CreatePixelText(_topScoreRect, "0", 8, DangerRed, TextAnchor.MiddleLeft, 102, 4, 12, 10, useTitleFont: true);
+            _enemyActiveText = CreatePixelText(_topScoreRect, "", 8, TextMuted, TextAnchor.MiddleLeft, 112, 4, 22, 10);
+            _enemyNameText = CreatePixelText(_topScoreRect, "FOE", 8, DangerRed, TextAnchor.MiddleRight, 119, 4, 56, 10);
 
-            // 2. Clean Borderless-Header Top-Right Tactical Minimap (72 x 48 EVEN!)
-            int rw = RadarW + 4;
-            int rh = RadarH + 4;
-            _radarRect = CreatePixelBox(parent, "RadarPanel", _W - rw - 4, _H - rh - 4, rw, rh, PanelBg, PanelBorder);
+            // 2. Riveted Armored Tactical Minimap Housing (76 x 52 EVEN with CRT scanlines!)
+            int rw = RadarW + 8;
+            int rh = RadarH + 8;
+            _radarRect = MilitaryUiSprites.CreateSlicedSprite(parent, "RadarPanel", MilitaryUiSprites.ArmorPanel, _W - rw - 4, _H - rh - 4, rw, rh, ArmorTint, out _);
             _radarCg = _radarRect.gameObject.AddComponent<CanvasGroup>();
             _radarCg.blocksRaycasts = false;
 
@@ -274,46 +277,49 @@ namespace Modern8bitTanks
             var raw = mapGo.AddComponent<RawImage>();
             raw.texture = _radarTex;
             raw.raycastTarget = false;
-            SetPixelRect(mapGo.GetComponent<RectTransform>(), 2, 2, RadarW, RadarH);
+            SetPixelRect(mapGo.GetComponent<RectTransform>(), 4, 4, RadarW, RadarH);
+            MilitaryUiSprites.CreateTiledSprite(_radarRect, "RadarScanlines", MilitaryUiSprites.Scanlines, 4, 4, RadarW, RadarH, Color.white);
 
             // 3. Bottom-Left War Thunder X-Ray Damage Doll & Auto-Docking Live Hit Camera
             BuildDamageHud(parent, rh);
 
-            // 4. Sleek Bottom-Center War Thunder Action Bar + [1][2][3] Ammo Slots (246 x 18 EVEN — NO menu buttons!)
-            const int pw = 246;
-            _weaponRect = CreatePixelBox(parent, "WeaponPanel", (_W - pw) / 2, 4, pw, 18, PanelBg, PanelBorder);
+            // 4. Riveted Armored FCS Bottom-Center Weapon & Ammo Console (252 x 22 EVEN!)
+            const int pw = 252;
+            _weaponRect = MilitaryUiSprites.CreateSlicedSprite(parent, "WeaponPanel", MilitaryUiSprites.ArmorPanel, (_W - pw) / 2, 4, pw, 22, ArmorTint, out _);
             _weaponCg = _weaponRect.gameObject.AddComponent<CanvasGroup>();
             _weaponCg.blocksRaycasts = false;
 
             // Left: Primary Reload Bar + Status
-            _reloadStatusText = CreatePixelText(_weaponRect, "READY", 8, ReadyGreen, TextAnchor.MiddleCenter, 4, 7, ReloadTrackWidth, 9);
-            var reloadTrack = CreatePixelSolid(_weaponRect, "ReloadTrack", 4, 3, ReloadTrackWidth, 3, new Color(0.04f, 0.05f, 0.06f, 0.92f));
+            _reloadStatusText = CreatePixelText(_weaponRect, "READY", 8, ReadyGreen, TextAnchor.MiddleCenter, 6, 9, ReloadTrackWidth, 9);
+            var reloadTrack = CreatePixelSolid(_weaponRect, "ReloadTrack", 6, 4, ReloadTrackWidth, 4, new Color(0.04f, 0.05f, 0.04f, 0.96f));
             _reloadFill = CreateFillBar(reloadTrack, ReadyGreen);
 
-            CreatePixelSolid(_weaponRect, "Sep1", 60, 3, 1, 12, PanelBorder);
+            CreatePixelSolid(_weaponRect, "Sep1", 63, 4, 1, 14, new Color(0.08f, 0.09f, 0.07f, 0.95f));
 
-            // Middle: 3 EVEN-sized War Thunder Ammo Slots ([1] [2] [3] or [1] [2] + R:TOW!)
+            // Middle: 3 Armored Ammo Rack Bays ([1] [2] [3] or [1] [2] + R:TOW!)
             _ammoSlotBgs = new Image[3];
             _ammoSlotTexts = new Text[3];
             for (int i = 0; i < 3; i++)
             {
-                int sx = 64 + i * 44;
-                var slotBox = CreatePixelBox(_weaponRect, $"AmmoSlot_{i + 1}", sx, 2, 42, 14, PanelBg, PanelBorder, out Image bgImg);
+                int sx = 67 + i * 44;
+                var slotBox = CreatePixelBox(_weaponRect, $"AmmoSlot_{i + 1}", sx, 4, 42, 14, PanelBg, PanelBorder, out Image bgImg);
                 _ammoSlotBgs[i] = bgImg;
                 _ammoSlotTexts[i] = CreatePixelText(slotBox, $"{i + 1}---", 8, TextLight, TextAnchor.MiddleCenter, 0, 1, 42, 12);
             }
 
-            CreatePixelSolid(_weaponRect, "Sep2", 196, 3, 1, 12, PanelBorder);
+            CreatePixelSolid(_weaponRect, "Sep2", 200, 4, 1, 14, new Color(0.08f, 0.09f, 0.07f, 0.95f));
 
             // Right: Smoke [Q] Bar
-            _smokeStatusText = CreatePixelText(_weaponRect, "SMK[Q]", 8, SmokeCyan, TextAnchor.MiddleCenter, 200, 7, SmokeTrackWidth, 9);
-            var smokeTrack = CreatePixelSolid(_weaponRect, "SmokeTrack", 200, 3, SmokeTrackWidth, 3, new Color(0.04f, 0.05f, 0.06f, 0.92f));
+            _smokeStatusText = CreatePixelText(_weaponRect, "SMK[Q]", 8, SmokeCyan, TextAnchor.MiddleCenter, 204, 9, SmokeTrackWidth, 9);
+            var smokeTrack = CreatePixelSolid(_weaponRect, "SmokeTrack", 204, 4, SmokeTrackWidth, 4, new Color(0.04f, 0.05f, 0.04f, 0.96f));
             _smokeFill = CreateFillBar(smokeTrack, SmokeCyan);
 
-            // Wave / Matchup Toast Banner (top-center cleanly below slim score strip, 212 x 16 EVEN!)
-            var toast = CreatePixelBox(parent, "WaveToast", (_W - 212) / 2, _H - 38, 212, 16, new Color(0.06f, 0.07f, 0.08f, 0.86f), AbramsGold);
+            // Wave / Matchup Alert Banner (riveted steel plate with hazard caution border!)
+            var toast = MilitaryUiSprites.CreateSlicedSprite(parent, "WaveToast", MilitaryUiSprites.ArmorPanel, (_W - 220) / 2, _H - 42, 220, 20, ArmorModalTint, out _);
+            MilitaryUiSprites.CreateTiledSprite(toast, "ToastHazL", MilitaryUiSprites.HazardTape, 4, 4, 12, 12, new Color(1f, 1f, 1f, 0.90f));
+            MilitaryUiSprites.CreateTiledSprite(toast, "ToastHazR", MilitaryUiSprites.HazardTape, 204, 4, 12, 12, new Color(1f, 1f, 1f, 0.90f));
             _waveToastGo = toast.gameObject;
-            _waveToastText = CreatePixelText(toast, "ENGAGE!", 8, AbramsGold, TextAnchor.MiddleCenter, 0, 0, 212, 16, useTitleFont: true);
+            _waveToastText = CreatePixelText(toast, "ENGAGE!", 8, AbramsGold, TextAnchor.MiddleCenter, 18, 2, 184, 16, useTitleFont: true);
             _waveToastGo.SetActive(false);
 
             // No direct play-screen buttons (ESC opens Pause/Hangar Menu!)
@@ -347,57 +353,80 @@ namespace Modern8bitTanks
             _resultCanvasGroup = _resultOverlay.AddComponent<CanvasGroup>();
             _resultCanvasGroup.alpha = 0f;
 
-            int cw = 236;
-            int ch = 86;
+            int cw = 244;
+            int ch = 92;
             int cx = (_W - cw) / 2;
-            int cy = 62; // Lowered slightly so Match-End X-Ray Hit Camera (top-left Y:172..266) NEVER overlaps!
-            var card = CreatePixelBox(dim, "ResultCard", cx, cy, cw, ch, new Color(0.09f, 0.10f, 0.09f, 0.96f), AbramsGold);
+            int cy = 60; // Lowered slightly so Match-End X-Ray Hit Camera (top-left Y:172..266) NEVER overlaps!
+            var card = MilitaryUiSprites.CreateSlicedSprite(dim, "ResultCard", MilitaryUiSprites.ArmorPanel, cx, cy, cw, ch, ArmorModalTint, out _);
+            MilitaryUiSprites.CreateTiledSprite(card, "ResultHazard", MilitaryUiSprites.HazardTape, 6, ch - 8, cw - 12, 3, new Color(1f, 1f, 1f, 0.92f));
 
-            _resultTitle = CreatePixelText(card, "VICTORY", 16, AbramsGold, TextAnchor.MiddleCenter, 0, 52, cw, 24, useTitleFont: true);
-            _resultSubtitle = CreatePixelText(card, "VICTORY", 8, TextMuted, TextAnchor.MiddleCenter, 0, 34, cw, 14);
+            _resultTitle = CreatePixelText(card, "VICTORY", 16, AbramsGold, TextAnchor.MiddleCenter, 0, 54, cw, 24, useTitleFont: true);
+            _resultSubtitle = CreatePixelText(card, "VICTORY", 8, TextMuted, TextAnchor.MiddleCenter, 0, 36, cw, 14);
 
-            CreatePixelButton(card, _resultHitsGroup.transform, "NEXT BATTLE (R)", cx + 10, cy + 8, 126, 20, AbramsGold, AbramsGold, DarkInk, 8, () =>
+            if (MultiplayerSessionConnection.Online)
             {
-                _mgr.ResetRound();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
-
-            CreatePixelButton(card, _resultHitsGroup.transform, "HANGAR", cx + 142, cy + 8, 84, 20, BtnBg, PanelBorder, TextLight, 8, () =>
+                if (MultiplayerSessionConnection.Active.IsHost)
+                    CreatePixelButton(card, _resultHitsGroup.transform, "RETURN TO ROOM", cx + 10, cy + 9, cw - 20, 22,
+                        AbramsGold, AbramsGold, DarkInk, 8, _mgr.ReturnToOnlineRoom, isParentOffset: true, parentX: cx, parentY: cy, useTitleFont: true);
+                else
+                {
+                    CreatePixelText(card, "WAITING FOR HOST", 8, SmokeCyan, TextAnchor.MiddleLeft, 12, 9, cw - 120, 22);
+                    CreatePixelButton(card, _resultHitsGroup.transform, "LEAVE ROOM", cx + cw - 100, cy + 9, 90, 22,
+                        BtnBg, PanelBorder, TextLight, 8, _mgr.ReturnToHangar, isParentOffset: true, parentX: cx, parentY: cy);
+                }
+            }
+            else
             {
-                _mgr.ReturnToHangar();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
+                CreatePixelButton(card, _resultHitsGroup.transform, "NEXT BATTLE (R)", cx + 10, cy + 9, 132, 22,
+                    AbramsGold, AbramsGold, DarkInk, 8, _mgr.ResetRound, isParentOffset: true, parentX: cx, parentY: cy, useTitleFont: true);
+                CreatePixelButton(card, _resultHitsGroup.transform, "HANGAR", cx + 148, cy + 9, 86, 22,
+                    BtnBg, PanelBorder, TextLight, 8, _mgr.ReturnToHangar, isParentOffset: true, parentX: cx, parentY: cy);
+            }
 
             _resultOverlay.SetActive(false);
         }
 
         private void BuildPauseMenuOverlay()
         {
-            var dim = CreatePixelSolid(_hudRoot, "PauseMenuOverlay", 0, 0, _W, _H, new Color(0.03f, 0.03f, 0.03f, 0.64f));
+            var dim = CreatePixelSolid(_hudRoot, "PauseMenuOverlay", 0, 0, _W, _H, new Color(0.02f, 0.03f, 0.02f, 0.68f));
             _menuOverlay = dim.gameObject;
 
-            int cw = 196;
-            int ch = 126;
+            int cw = 204;
+            int ch = 134;
             int cx = (_W - cw) / 2;
             int cy = (_H - ch) / 2;
-            var card = CreatePixelBox(dim, "MenuCard", cx, cy, cw, ch, new Color(0.09f, 0.10f, 0.09f, 0.98f), PanelBorder);
-            CreatePixelText(card, "TACTICAL MENU", 8, AbramsGold, TextAnchor.MiddleCenter, 0, ch - 22, cw, 16, useTitleFont: true);
+            var card = MilitaryUiSprites.CreateSlicedSprite(dim, "MenuCard", MilitaryUiSprites.ArmorPanel, cx, cy, cw, ch, ArmorModalTint, out _);
+            MilitaryUiSprites.CreateTiledSprite(card, "MenuHazard", MilitaryUiSprites.HazardTape, 6, ch - 8, cw - 12, 3, new Color(1f, 1f, 1f, 0.90f));
+            CreatePixelText(card, "COMMAND MENU", 8, AbramsGold, TextAnchor.MiddleCenter, 0, ch - 25, cw, 16, useTitleFont: true);
 
-            CreatePixelButton(card, _menuHitsGroup.transform, "RESUME", cx + 12, cy + 80, cw - 24, 20, AbramsGold, AbramsGold, DarkInk, 8, () =>
+            bool online = MultiplayerSessionConnection.Online;
+            bool onlineHost = online && MultiplayerSessionConnection.Active.IsHost;
+            CreatePixelButton(card, _menuHitsGroup.transform, "RESUME", cx + 12, cy + (online ? 78 : 84), cw - 24, 20, AbramsGold, AbramsGold, DarkInk, 8, () =>
             {
                 CloseAllMenus();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
+            }, isParentOffset: true, parentX: cx, parentY: cy, useTitleFont: true);
 
-            CreatePixelButton(card, _menuHitsGroup.transform, "SETTINGS", cx + 12, cy + 56, cw - 24, 20, BtnBg, SmokeCyan, SmokeCyan, 8, () =>
+            CreatePixelButton(card, _menuHitsGroup.transform, "SETTINGS", cx + 12, cy + (online ? 50 : 60), cw - 24, 20, BtnBg, SmokeCyan, SmokeCyan, 8, () =>
             {
                 SetSettingsOpen(true);
             }, isParentOffset: true, parentX: cx, parentY: cy);
 
-            _btnNextRivalLabel = CreatePixelButton(card, _menuHitsGroup.transform, "NEXT RIVAL", cx + 12, cy + 32, cw - 24, 20, BtnBg, PanelBorder, TextLight, 8, () =>
+            if (!online)
             {
-                CloseAllMenus();
-                _mgr.ResetRound();
-            }, isParentOffset: true, parentX: cx, parentY: cy);
+                _btnNextRivalLabel = CreatePixelButton(card, _menuHitsGroup.transform, "NEXT RIVAL", cx + 12, cy + 36, cw - 24, 20, BtnBg, PanelBorder, TextLight, 8, () =>
+                {
+                    CloseAllMenus();
+                    _mgr.ResetRound();
+                }, isParentOffset: true, parentX: cx, parentY: cy);
+            }
+            else if (onlineHost)
+            {
+                CreatePixelButton(card, _menuHitsGroup.transform, "RETURN TO ROOM", cx + 12, cy + 29, cw - 24, 18,
+                    BtnBg, SmokeCyan, SmokeCyan, 8, _mgr.ReturnToOnlineRoom, isParentOffset: true, parentX: cx, parentY: cy);
+            }
 
-            CreatePixelButton(card, _menuHitsGroup.transform, "BACK TO HANGAR", cx + 12, cy + 8, cw - 24, 20, BtnBg, AbramsGold, AbramsGold, 8, () =>
+            string exitLabel = onlineHost ? "CLOSE ROOM" : online ? "LEAVE ROOM" : "BACK TO HANGAR";
+            CreatePixelButton(card, _menuHitsGroup.transform, exitLabel, cx + 12, cy + (onlineHost ? 7 : online ? 22 : 12), cw - 24, 20, BtnBg, AbramsGold, AbramsGold, 8, () =>
             {
                 CloseAllMenus();
                 _mgr.ReturnToHangar();
@@ -408,15 +437,16 @@ namespace Modern8bitTanks
 
         private void BuildSettingsOverlay()
         {
-            var dim = CreatePixelSolid(_hudRoot, "SettingsOverlay", 0, 0, _W, _H, new Color(0.03f, 0.03f, 0.03f, 0.72f));
+            var dim = CreatePixelSolid(_hudRoot, "SettingsOverlay", 0, 0, _W, _H, new Color(0.02f, 0.03f, 0.02f, 0.76f));
             _settingsOverlay = dim.gameObject;
 
-            int cw = 240;
-            int ch = 194;
+            int cw = 246;
+            int ch = 198;
             int cx = (_W - cw) / 2;
             int cy = (_H - ch) / 2;
-            var card = CreatePixelBox(dim, "SettingsCard", cx, cy, cw, ch, new Color(0.08f, 0.09f, 0.09f, 0.98f), SmokeCyan);
-            CreatePixelText(card, "SETTINGS", 8, AbramsGold, TextAnchor.MiddleCenter, 0, ch - 22, cw, 16, useTitleFont: true);
+            var card = MilitaryUiSprites.CreateSlicedSprite(dim, "SettingsCard", MilitaryUiSprites.ArmorPanel, cx, cy, cw, ch, ArmorModalTint, out _);
+            MilitaryUiSprites.CreateTiledSprite(card, "SetHazard", MilitaryUiSprites.HazardTape, 6, ch - 8, cw - 12, 3, new Color(1f, 1f, 1f, 0.88f));
+            CreatePixelText(card, "SYSTEM SETTINGS", 8, AbramsGold, TextAnchor.MiddleCenter, 0, ch - 25, cw, 16, useTitleFont: true);
 
             Transform hits = _settingsHitsGroup.transform;
 
@@ -427,13 +457,13 @@ namespace Modern8bitTanks
                 RefreshMenuLabels();
             }, isParentOffset: true, parentX: cx, parentY: cy);
 
-            _btnSfxLabel = CreatePixelButton(card, hits, "SE: 100%", cx + 40, cy + 148, 160, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            _btnSfxLabel = CreatePixelButton(card, hits, "SE: 100%", cx + 40, cy + 148, cw - 80, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 _mgr.ToggleSfxEnabled();
                 RefreshMenuLabels();
             }, isParentOffset: true, parentX: cx, parentY: cy);
 
-            CreatePixelButton(card, hits, "+", cx + 204, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            CreatePixelButton(card, hits, "+", cx + cw - 36, cy + 148, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 _mgr.StepSfxVolume(+0.1f);
                 RefreshMenuLabels();
@@ -446,13 +476,13 @@ namespace Modern8bitTanks
                 RefreshMenuLabels();
             }, isParentOffset: true, parentX: cx, parentY: cy);
 
-            _btnBgmLabel = CreatePixelButton(card, hits, "BGM: 60%", cx + 40, cy + 126, 160, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            _btnBgmLabel = CreatePixelButton(card, hits, "BGM: 60%", cx + 40, cy + 126, cw - 80, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 _mgr.ToggleBgmEnabled();
                 RefreshMenuLabels();
             }, isParentOffset: true, parentX: cx, parentY: cy);
 
-            CreatePixelButton(card, hits, "+", cx + 204, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
+            CreatePixelButton(card, hits, "+", cx + cw - 36, cy + 126, 24, 18, BtnBg, PanelBorder, TextLight, 8, () =>
             {
                 _mgr.StepBgmVolume(+0.1f);
                 RefreshMenuLabels();
@@ -840,7 +870,7 @@ namespace Modern8bitTanks
                 }
             }
 
-            UpdateRadarTexture(props, tanks, smokes, worldW, worldH);
+            UpdateRadarTexture(player, props, tanks, smokes, worldW, worldH);
 
             if (cam != null)
             {
@@ -864,9 +894,15 @@ namespace Modern8bitTanks
             }
         }
 
-        private void UpdateRadarTexture(List<DestructibleProp> props, List<TankEntity> tanks, List<RadarSmokeInfo> smokes, float worldW, float worldH)
+        private void UpdateRadarTexture(TankEntity player, List<DestructibleProp> props, List<TankEntity> tanks,
+            List<RadarSmokeInfo> smokes, float worldW, float worldH)
         {
             if (_radarTex == null) return;
+            if (MultiplayerSessionConnection.Online)
+            {
+                if (Time.unscaledTime < _nextOnlineRadarUpdate) return;
+                _nextOnlineRadarUpdate = Time.unscaledTime + MultiplayerMatchTransport.SnapshotInterval;
+            }
             BattleMap curMap = _mgr != null ? _mgr.battleMap : BattleMap.Desert;
             Color32 bg = curMap switch
             {
@@ -921,14 +957,14 @@ namespace Modern8bitTanks
 
             foreach (var t in tanks)
             {
-                if (t == null || !t.alive) continue;
+                if (t == null || !t.alive || !_mgr.IsRadarContactVisible(t, player)) continue;
                 int tx = Mathf.Clamp(Mathf.RoundToInt((t.Position2D.x / worldW) * (RadarW - 1)), 1, RadarW - 2);
                 int ty = Mathf.Clamp(Mathf.RoundToInt((t.Position2D.y / worldH) * (RadarH - 1)), 1, RadarH - 2);
                 Color32 tc = t.isPlayer
                     ? new Color32(255, 232, 118, 255)
-                    : (t.factionTeam == "ally"
+                    : (player != null && MultiplayerSessionConnection.Online ? t.factionTeam == player.factionTeam : t.factionTeam == "ally")
                         ? new Color32(82, 214, 255, 255)
-                        : new Color32(255, 92, 74, 255));
+                        : new Color32(255, 92, 74, 255);
                 PlotDot(tx, ty, 1, tc);
             }
 
@@ -1074,8 +1110,20 @@ namespace Modern8bitTanks
             int localX = isParentOffset ? screenX - parentX : screenX;
             int localY = isParentOffset ? screenY - parentY : screenY;
 
-            var visualBox = CreatePixelBox(visualParent, "Btn_" + label, localX, localY, w, h, bg, border, out Image fillImg);
-            var txt = CreatePixelText(visualBox, label, fontSize, textColor, TextAnchor.MiddleCenter, 0, 0, w, h, useTitleFont);
+            bool isOrdnanceCta = bg == AbramsGold;
+            Color idleTint = isOrdnanceCta ? new Color(0.92f, 0.90f, 0.85f, 1f) : bg;
+            Sprite btnSprite = isOrdnanceCta ? MilitaryUiSprites.OrdnanceButton : MilitaryUiSprites.SteelButton;
+            var visualBox = MilitaryUiSprites.CreateSlicedSprite(visualParent, "Btn_" + label, btnSprite, localX, localY, w, h, idleTint, out Image fillImg);
+            bool hasAccent = !isOrdnanceCta && border.a > 0.5f && border != PanelBorder && w >= 40;
+            if (hasAccent)
+                CreatePixelSolid(visualBox, "StatusBar", 2, 3, 2, Mathf.Max(2, h - 6), border);
+
+            var txt = CreatePixelText(visualBox, label, fontSize, textColor, TextAnchor.MiddleCenter, hasAccent ? 2 : 0, 0, hasAccent ? w - 2 : w, h, useTitleFont);
+            if (isOrdnanceCta)
+            {
+                var sh = txt.GetComponent<Shadow>();
+                if (sh != null) sh.effectColor = new Color(1.0f, 0.94f, 0.68f, 0.55f);
+            }
 
             var hitGo = new GameObject("Hit_" + label);
             hitGo.transform.SetParent(hitParent, false);
@@ -1098,7 +1146,7 @@ namespace Modern8bitTanks
             enter.callback.AddListener(_ =>
             {
                 if (fillImg != null)
-                    fillImg.color = bg == AbramsGold ? Color.Lerp(bg, Color.white, 0.2f) : BtnHover;
+                    fillImg.color = isOrdnanceCta ? Color.white : BtnHover;
             });
             trigger.triggers.Add(enter);
 
@@ -1106,7 +1154,7 @@ namespace Modern8bitTanks
             exit.callback.AddListener(_ =>
             {
                 if (fillImg != null)
-                    fillImg.color = bg;
+                    fillImg.color = idleTint;
             });
             trigger.triggers.Add(exit);
 

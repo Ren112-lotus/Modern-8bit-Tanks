@@ -59,14 +59,16 @@ namespace Modern8bitTanks
         {
             _radarPanelHeight = radarHeight;
 
-            // Bottom-Left War Thunder Damage Doll (68 x 58 EVEN, clean dark-glass card!)
-            _vehicleStatusCard = CreatePixelBox(parent, "VehicleStatus", 4, 4, StatusCardW, StatusCardH, WtBg, WtBorder);
+            // Bottom-Left Riveted Armored Damage Doll Monitor (68 x 58 EVEN)
+            _vehicleStatusCard = MilitaryUiSprites.CreateSlicedSprite(parent, "VehicleStatus", MilitaryUiSprites.ArmorPanel, 4, 4, StatusCardW, StatusCardH, ArmorTint, out _);
             _vehicleStatusCg = _vehicleStatusCard.gameObject.AddComponent<CanvasGroup>();
             _vehicleStatusCg.blocksRaycasts = false;
             _vehicleStatusCg.interactable = false;
 
-            _vehicleStatusGraphic = AddCutaway(_vehicleStatusCard, "VehicleDiagram", 2, 12, StatusCardW - 4, StatusCardH - 14, StatusCardW - 4, StatusCardH - 14);
-            CreatePixelSolid(_vehicleStatusCard, "ServiceDivider", 3, 11, StatusCardW - 6, 1, new Color32(52, 62, 70, 165));
+            CreatePixelSolid(_vehicleStatusCard, "StatusCrtBg", 3, 13, StatusCardW - 6, StatusCardH - 16, WtViewportBg);
+            _vehicleStatusGraphic = AddCutaway(_vehicleStatusCard, "VehicleDiagram", 3, 13, StatusCardW - 6, StatusCardH - 16, StatusCardW - 6, StatusCardH - 16);
+            MilitaryUiSprites.CreateTiledSprite(_vehicleStatusCard, "StatusScan", MilitaryUiSprites.Scanlines, 3, 13, StatusCardW - 6, StatusCardH - 16, Color.white);
+            CreatePixelSolid(_vehicleStatusCard, "ServiceDivider", 3, 12, StatusCardW - 6, 1, new Color32(18, 22, 16, 220));
 
             _fireIcon = BuildServiceIcon(_vehicleStatusCard, "Fire", DangerRed, new[]
             {
@@ -90,29 +92,30 @@ namespace Modern8bitTanks
             _hitCamLayer = layerGo.AddComponent<RectTransform>();
             Stretch(_hitCamLayer);
 
-            // War Thunder Live Hit Camera (138 x 94 EVEN, auto-docks opposite from hit enemy!)
-            _hitCameraCard = CreatePixelBox(_hitCamLayer, "HitCamera", 4, _H - 4 - HitCamH,
-                HitCamW, HitCamH, WtBg, WtBorder);
+            // Riveted Armored Live Hit Camera Monitor (138 x 94 EVEN, auto-docks opposite from hit enemy!)
+            _hitCameraCard = MilitaryUiSprites.CreateSlicedSprite(_hitCamLayer, "HitCamera", MilitaryUiSprites.ArmorPanel, 4, _H - 4 - HitCamH,
+                HitCamW, HitCamH, ArmorModalTint, out _);
             _hitCameraCanvasGroup = _hitCameraCard.gameObject.AddComponent<CanvasGroup>();
             _hitCameraCanvasGroup.blocksRaycasts = false;
             _hitCameraCanvasGroup.interactable = false;
 
             // Clean top telemetry header
-            CreatePixelSolid(_hitCameraCard, "LiveDot", 4, HitCamH - 8, 3, 3, DangerRed);
-            _hitCameraTarget = CreatePixelText(_hitCameraCard, "", 8, TextLight, TextAnchor.MiddleLeft, 10, HitCamH - 11, 86, 10);
-            _hitCameraRound = CreatePixelText(_hitCameraCard, "", 8, WtInfo, TextAnchor.MiddleRight, 94, HitCamH - 11, HitCamW - 98, 10);
+            CreatePixelSolid(_hitCameraCard, "LiveDot", 5, HitCamH - 9, 3, 3, DangerRed);
+            _hitCameraTarget = CreatePixelText(_hitCameraCard, "", 8, TextLight, TextAnchor.MiddleLeft, 11, HitCamH - 12, 84, 10);
+            _hitCameraRound = CreatePixelText(_hitCameraCard, "", 8, WtInfo, TextAnchor.MiddleRight, 94, HitCamH - 12, HitCamW - 99, 10);
 
-            int vpW = HitCamW - 6;
-            int vpH = 54;
-            var viewport = CreatePixelSolid(_hitCameraCard, "Viewport", 3, 27, vpW, vpH, WtViewportBg);
+            int vpW = HitCamW - 8;
+            int vpH = 52;
+            var viewport = CreatePixelSolid(_hitCameraCard, "Viewport", 4, 28, vpW, vpH, WtViewportBg);
             viewport.gameObject.AddComponent<RectMask2D>();
             _hitCameraGraphic = AddCutaway(viewport, "ImpactDiagram", 0, 0, vpW, vpH, vpW, vpH);
+            MilitaryUiSprites.CreateTiledSprite(viewport, "HitCamScan", MilitaryUiSprites.Scanlines, 0, 0, vpW, vpH, Color.white);
 
             // Clean bottom War Thunder result + ballistic + struck modules readout
-            CreatePixelSolid(_hitCameraCard, "ResultDivider", 3, 26, HitCamW - 6, 1, new Color32(58, 68, 76, 180));
-            _hitCameraResult = CreatePixelText(_hitCameraCard, "", 8, WtAccent, TextAnchor.MiddleLeft, 4, 16, 74, 10);
-            _hitCameraBallistics = CreatePixelText(_hitCameraCard, "", 8, WtInfo, TextAnchor.MiddleRight, 76, 16, HitCamW - 80, 10);
-            _hitCameraParts = CreatePixelText(_hitCameraCard, "", 8, TextLight, TextAnchor.MiddleLeft, 4, 3, HitCamW - 8, 10);
+            CreatePixelSolid(_hitCameraCard, "ResultDivider", 4, 27, HitCamW - 8, 1, new Color32(18, 22, 16, 220));
+            _hitCameraResult = CreatePixelText(_hitCameraCard, "", 8, WtAccent, TextAnchor.MiddleLeft, 5, 16, 74, 10);
+            _hitCameraBallistics = CreatePixelText(_hitCameraCard, "", 8, WtInfo, TextAnchor.MiddleRight, 76, 16, HitCamW - 81, 10);
+            _hitCameraParts = CreatePixelText(_hitCameraCard, "", 8, TextLight, TextAnchor.MiddleLeft, 5, 4, HitCamW - 10, 10);
             ClearHitCamera();
         }
 
@@ -201,11 +204,13 @@ namespace Modern8bitTanks
             ProjectileKind kind,
             Camera cam = null,
             bool isDecisiveKill = false,
-            string roundOverride = null)
+            string roundOverride = null,
+            TankLoss? confirmedLoss = null)
         {
             if (_hitCameraCard == null || target == null) return;
+            TankLoss loss = confirmedLoss ?? target.Loss;
             int priority = isDecisiveKill ? 4
-                : target.Loss != TankLoss.None ? 3
+                : loss != TankLoss.None ? 3
                 : hit.Modules != TankModule.None || hit.KnockedOut != TankCrew.None || hit.Ignited ? 2
                 : kind == ProjectileKind.MG ? 0 : 1;
 
@@ -221,7 +226,7 @@ namespace Modern8bitTanks
                                     string.IsNullOrEmpty(roundOverride);
             if (sameActiveTarget)
             {
-                _hitCameraGraphic.AddReplayShot(trace, hit, target.Loss);
+                _hitCameraGraphic.AddReplayShot(trace, hit, loss);
                 _burstHitCount++;
                 _burstStruckModules |= hit.StruckModules;
                 _burstKnockedOut |= hit.KnockedOut;
@@ -241,7 +246,7 @@ namespace Modern8bitTanks
                 if (priority >= _hitCameraPriority)
                 {
                     _hitCameraPriority = priority;
-                    _hitCameraResult.text = target.Loss switch
+                    _hitCameraResult.text = loss switch
                     {
                         TankLoss.Ammo => "AMMO BLOWN!",
                         TankLoss.Fire => "BURNED OUT",
@@ -261,12 +266,12 @@ namespace Modern8bitTanks
                     ? $"{angS} DEG"
                     : $"{penS}/{effS} {angS}D";
 
-                _hitCameraParts.text = target.Loss == TankLoss.Ammo
+                _hitCameraParts.text = loss == TankLoss.Ammo
                     ? "AMMUNITION COOKOFF"
-                    : target.Loss == TankLoss.Fire
+                    : loss == TankLoss.Fire
                         ? "ENGINE FIRE BURNOUT"
                         : DescribeHitParts(_burstStruckModules, _burstKnockedOut, target.IsWheeled);
-                _hitCameraParts.color = target.Loss == TankLoss.Ammo ? WtAccent : TextLight;
+                _hitCameraParts.color = loss == TankLoss.Ammo ? WtAccent : TextLight;
                 _hitCameraParts.enabled = true;
                 return;
             }
@@ -304,7 +309,7 @@ namespace Modern8bitTanks
                 ? roundOverride
                 : AmmoInfo.FullLabel(hit.Ammo);
 
-            _hitCameraResult.text = target.Loss switch
+            _hitCameraResult.text = loss switch
             {
                 TankLoss.Ammo => "AMMO BLOWN!",
                 TankLoss.Fire => "BURNED OUT",
@@ -320,22 +325,22 @@ namespace Modern8bitTanks
             int eff = Mathf.RoundToInt(hit.EffectiveArmor);
             int ang = Mathf.RoundToInt(hit.ImpactAngleDeg);
             if (!string.IsNullOrEmpty(roundOverride))
-                _hitCameraBallistics.text = target.Loss == TankLoss.Ammo ? "COOKOFF" : "FATAL";
+                _hitCameraBallistics.text = loss == TankLoss.Ammo ? "COOKOFF" : "FATAL";
             else
                 _hitCameraBallistics.text = hit.Armor == ArmorHit.Ricochet
                     ? $"{ang} DEG"
                     : $"{pen}/{eff} {ang}D";
 
-            _hitCameraParts.text = target.Loss == TankLoss.Ammo
+            _hitCameraParts.text = loss == TankLoss.Ammo
                 ? "AMMUNITION COOKOFF"
-                : target.Loss == TankLoss.Fire
+                : loss == TankLoss.Fire
                     ? "ENGINE FIRE BURNOUT"
                     : DescribeHitParts(_burstStruckModules, _burstKnockedOut, target.IsWheeled);
-            _hitCameraParts.color = target.Loss == TankLoss.Ammo ? WtAccent : TextLight;
+            _hitCameraParts.color = loss == TankLoss.Ammo ? WtAccent : TextLight;
             _hitCameraParts.enabled = false;
             _hitCameraCanvasGroup.alpha = 1f;
             _hitCameraCard.gameObject.SetActive(true);
-            _hitCameraGraphic.StartReplay(target, null, trace, hit);
+            _hitCameraGraphic.StartReplay(target, null, trace, hit, loss);
         }
 
         /// <summary>

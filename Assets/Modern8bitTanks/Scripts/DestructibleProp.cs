@@ -31,6 +31,7 @@ namespace Modern8bitTanks
         private int _remainingPixels;
         private Vector3 _savedStartPos;
         private bool _startPosCaptured;
+        private float _renderedCameraRoll = float.NaN;
 
         private void OnEnable()
         {
@@ -113,19 +114,26 @@ namespace Modern8bitTanks
 
         public void UpdateSortOrder()
         {
-            if (sortingGroup != null)
-                sortingGroup.sortingOrder = Application.isPlaying
-                    ? SpriteStackCamera.DepthOrder(transform.position)
-                    : Mathf.Clamp(Mathf.RoundToInt(-transform.position.y * 100f), -10000, 10000);
+            if (sortingGroup == null) return;
+            int order = Application.isPlaying
+                ? SpriteStackCamera.DepthOrder(transform.position)
+                : Mathf.Clamp(Mathf.RoundToInt(-transform.position.y * 100f), -10000, 10000);
+            if (sortingGroup.sortingOrder != order) sortingGroup.sortingOrder = order;
         }
 
         public void Tick(float dt, float squash, float spacingPx)
         {
             if (!alive || stack == null) return;
-            if (stack.hitFlash > 0f) stack.hitFlash = Mathf.Max(0f, stack.hitFlash - dt * 5f);
-            stack.squash = squash;
-            stack.spacingPx = spacingPx;
-            stack.ApplyVisuals();
+            bool fadingHit = stack.hitFlash > 0f;
+            if (fadingHit) stack.hitFlash = Mathf.Max(0f, stack.hitFlash - dt * 5f);
+            float cameraRoll = SpriteStackCamera.RollDeg;
+            if (fadingHit || cameraRoll != _renderedCameraRoll || stack.squash != squash || stack.spacingPx != spacingPx)
+            {
+                _renderedCameraRoll = cameraRoll;
+                stack.squash = squash;
+                stack.spacingPx = spacingPx;
+                stack.ApplyVisuals();
+            }
             UpdateSortOrder();
         }
 
