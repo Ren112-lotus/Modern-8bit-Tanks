@@ -80,6 +80,13 @@ namespace Modern8bitTanks
             }
         }
 
+        internal void SetVisible(bool visible)
+        {
+            enabled = visible;
+            foreach (var tile in _cloudTileTransforms) tile.gameObject.SetActive(visible);
+            foreach (var mote in _moteRenderers) mote.gameObject.SetActive(visible);
+        }
+
         private void LateUpdate()
         {
             float dt = Time.deltaTime;
