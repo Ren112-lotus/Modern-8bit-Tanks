@@ -11,6 +11,7 @@ namespace Modern8bitTanks
         private bool _titleOpen = false;
         private bool _titleTransitioning = false;
         private float _titleExitTimer = 0f;
+        private float _titleTime;
 
         private bool _deployOpen = false;
         private bool _deployFromTree = false;
@@ -34,12 +35,17 @@ namespace Modern8bitTanks
 
         [SerializeField] private Transform _titleStageRoot;
         [SerializeField] private TankEntity[] _titleWingmen;
+        private Vector2[] _titleWingPositions;
         private const float TitleTankAngle = 72f;
 
         private void InitializeTitleStage()
         {
-            foreach (var tank in _titleWingmen)
+            _titleWingPositions = new Vector2[_titleWingmen.Length];
+            for (int i = 0; i < _titleWingmen.Length; i++)
             {
+                var tank = _titleWingmen[i];
+                if (tank == null) continue;
+                _titleWingPositions[i] = tank.Position2D;
                 string id = tank.tankType;
                 var vehicle = _vehicleMap.TryGetValue(id, out var found) ? found : GetSelectedVehicle();
                 if (vehicle == null) continue;
@@ -78,6 +84,7 @@ namespace Modern8bitTanks
             RefreshMapBackdropSprite(_sessionState.SelectedBattleMap);
             _titleTransitioning = false;
             _titleExitTimer = 0f;
+            _titleTime = 0f;
             _atmosphere?.SetVisible(!open);
 
             if (open)
@@ -168,6 +175,7 @@ namespace Modern8bitTanks
         {
             if (!_titleOpen) return;
 
+            _titleTime += dt;
             float blend = 0f;
             if (_titleTransitioning)
             {
@@ -185,10 +193,15 @@ namespace Modern8bitTanks
             if (showcaseTank != null)
             {
                 if (!showcaseTank.gameObject.activeSelf) showcaseTank.gameObject.SetActive(true);
-                showcaseTank.Position2D = center + Vector2.Lerp(new Vector2(0.15f, -0.60f), new Vector2(0f, 0.15f), blend);
-                showcaseTank.hullAngleDeg = Mathf.LerpAngle(TitleTankAngle, 35f + _manualAngleOffset, blend);
-                showcaseTank.turretAngleDeg = showcaseTank.hullAngleDeg;
-                showcaseTank.SyncVisuals(squash, spacingPx);
+                Vector2 position = center + Vector2.Lerp(new Vector2(0.15f, -0.60f), new Vector2(0f, 0.15f), blend);
+                UpdateTitleTankPose(showcaseTank, position, _titleTime, blend);
+            }
+
+            for (int i = 0; i < _titleWingmen.Length; i++)
+            {
+                var tank = _titleWingmen[i];
+                if (tank != null)
+                    UpdateTitleTankPose(tank, _titleWingPositions[i], _titleTime + (i + 1) * 1.7f, 0f);
             }
 
             if (_cam != null)
@@ -201,6 +214,17 @@ namespace Modern8bitTanks
                 _cam.transform.position = new Vector3(camX, camY, -20f);
                 _cam.transform.rotation = Quaternion.identity;
             }
+        }
+
+        private void UpdateTitleTankPose(TankEntity tank, Vector2 position, float phase, float garageBlend)
+        {
+            float idleWeight = 1f - garageBlend;
+            tank.Position2D = position + Vector2.up * (Mathf.Sin(phase * 1.2f) * 0.10f * idleWeight);
+            float heading = TitleTankAngle + Mathf.Sin(phase * 0.85f) * 3f;
+            tank.hullAngleDeg = Mathf.LerpAngle(heading, 35f + _manualAngleOffset, garageBlend);
+            float traverse = tank.vehicleDef?.fixedGunTraverse is > 0 ? Mathf.Min(22f, tank.vehicleDef.fixedGunTraverse) : 22f;
+            tank.turretAngleDeg = tank.hullAngleDeg + Mathf.Sin(phase * 0.78f) * traverse * idleWeight;
+            tank.SyncVisuals(squash, spacingPx);
         }
     }
 }
