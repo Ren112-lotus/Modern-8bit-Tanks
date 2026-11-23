@@ -71,10 +71,10 @@ namespace Modern8bitTanks
 
         private Font _font;
         private Font _titleFont;
-        private Sprite _whitePxSprite;
-        private Material _stackFlashMat;
-        private Material _emissiveFxMat;
-        private Material _groundHd2dMat;
+        [SerializeField] private Sprite _whitePxSprite;
+        [SerializeField] private Material _stackFlashMat;
+        [SerializeField] private Material _emissiveFxMat;
+        [SerializeField] private Material _groundHd2dMat;
 
         private VehicleDef[] _allVehicles = Array.Empty<VehicleDef>();
         private readonly Dictionary<string, VehicleDef> _vehicleMap = new();
@@ -274,25 +274,6 @@ namespace Modern8bitTanks
             ForceFontPointFilter(_titleFont);
             Font.textureRebuilt += OnFontTextureRebuilt;
 
-            var whiteTex = new Texture2D(1, 1, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };
-            whiteTex.SetPixel(0, 0, Color.white);
-            whiteTex.Apply();
-            _whitePxSprite = Sprite.Create(whiteTex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
-
-            Shader fxSh = Resources.Load<Shader>("Shaders/URPEmissiveEffect")
-                          ?? Shader.Find("Modern8bitTanks/URPEmissiveEffect")
-                          ?? Shader.Find("Sprites/Default");
-            _emissiveFxMat = new Material(fxSh);
-
-            Shader stackSh = Resources.Load<Shader>("Shaders/URPSpriteStackFlash")
-                             ?? Shader.Find("Modern8bitTanks/URPSpriteStackFlash")
-                             ?? Shader.Find("Sprites/Default");
-            _stackFlashMat = new Material(stackSh);
-
-            Shader groundSh = Resources.Load<Shader>("Shaders/URPHd2dDesertGround")
-                              ?? Shader.Find("Modern8bitTanks/URPHd2dDesertGround");
-            if (groundSh != null) _groundHd2dMat = new Material(groundSh);
-
             VehicleCatalog cat = MetaLoader.LoadVehicleCatalog();
             _allVehicles = cat != null && cat.vehicles != null ? cat.vehicles : Array.Empty<VehicleDef>();
             _vehicleMap.Clear();
@@ -304,7 +285,7 @@ namespace Modern8bitTanks
             if (!_vehicleMap.ContainsKey(_sessionState.SelectedPlayerVehicleId) && _allVehicles.Length > 0)
                 _sessionState.SelectedPlayerVehicleId = _allVehicles[0].id;
 
-            _previewSfxClip = Resources.Load<AudioClip>("SFX/reload_clank") ?? TankAudioSynthesizer.CreateReloadClank();
+            _previewSfxClip = Resources.Load<AudioClip>("SFX/reload_clank");
         }
 
         private void OnFontTextureRebuilt(Font f)
@@ -968,7 +949,6 @@ namespace Modern8bitTanks
         private void OnDestroy()
         {
             Font.textureRebuilt -= OnFontTextureRebuilt;
-            if (_groundHd2dMat != null) Destroy(_groundHd2dMat);
         }
     }
 }

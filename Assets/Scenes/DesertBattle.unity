@@ -3813,7 +3813,12 @@ MonoBehaviour:
   integerWindowbox: 0
   postProcessEnabled: 1
   _hud: {fileID: 1430315597}
+  _emissiveFxMat: {fileID: 2100000, guid: eac57f259c8a19c4e9681027c51f390d, type: 2}
+  _groundHd2dMat: {fileID: 2100000, guid: 924664d7eddab5a4da1fdb11b5eb8b02, type: 2}
+  _smokePuffSprite: {fileID: 21300000, guid: 8bf16b14608837747aaed2852cf17109, type: 3}
   _audio: {fileID: 1837662239}
+  _whitePxSprite: {fileID: 21300000, guid: ae8f073f390f8af449aca045b371844b, type: 3}
+  _stackFlashMat: {fileID: 2100000, guid: b53d8785100743345b06df30af2e71d1, type: 2}
   spawnAssets: {fileID: 11400000, guid: 9530887957730e64d9a14c80ee9d0371, type: 2}
   _fxRoot: {fileID: 617431312}
   _aimLine: {fileID: 888631233}

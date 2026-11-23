@@ -68,12 +68,11 @@ namespace Modern8bitTanks
         private DesertAtmosphere _atmosphere;
         [SerializeField] private BattleHUD _hud;
         private Vector2 _lastValidMouseWorld;
-        private Material _emissiveFxMat;
-        private Material _groundHd2dMat;
+        [SerializeField] private Material _emissiveFxMat;
+        [SerializeField] private Material _groundHd2dMat;
         private MaterialPropertyBlock _fxMpb;
         private static readonly int EmissionIntensityId = Shader.PropertyToID("_EmissionIntensity");
-        private Sprite _smokePuffSprite;
-        private Texture2D _smokePuffTex;
+        [SerializeField] private Sprite _smokePuffSprite;
 
         // Audio clips (CC0 recordings + procedural mechanical SFX)
         private AudioClip _sfxCannonAbrams;
@@ -95,7 +94,7 @@ namespace Modern8bitTanks
 
         [SerializeField] private BattleAudioController _audio;
 
-        private Sprite _whitePxSprite;
+        [SerializeField] private Sprite _whitePxSprite;
 
         // Runtime mutable DesertGround
         private Texture2D _runtimeGroundTex;
@@ -108,7 +107,7 @@ namespace Modern8bitTanks
         private readonly Dictionary<string, VehicleDef> _vehicleMap = new();
         private readonly Dictionary<string, Texture2D> _hullTexCache = new();
         private readonly Dictionary<string, Texture2D> _turretTexCache = new();
-        private Material _stackFlashMat;
+        [SerializeField] private Material _stackFlashMat;
         private bool _enemyManuallySelected;
 
         // Scene & dynamic entities
@@ -433,61 +432,19 @@ namespace Modern8bitTanks
             _sfxExplosion = Resources.Load<AudioClip>("SFX/explosion");
             _sfxMg = Resources.Load<AudioClip>("SFX/mg");
 
-            _sfxAbramsTurbine = Resources.Load<AudioClip>("SFX/engine_abrams") ?? TankAudioSynthesizer.CreateAbramsTurbineLoop();
-            _sfxT90Diesel = Resources.Load<AudioClip>("SFX/engine_t90") ?? TankAudioSynthesizer.CreateT90DieselLoop();
-            _sfxTrackClatter = Resources.Load<AudioClip>("SFX/tracks") ?? TankAudioSynthesizer.CreateTrackClatterLoop();
-            _sfxTurretServo = Resources.Load<AudioClip>("SFX/turret_servo") ?? TankAudioSynthesizer.CreateTurretServoLoop();
-            _sfxReloadClank = Resources.Load<AudioClip>("SFX/reload_clank") ?? TankAudioSynthesizer.CreateReloadClank();
-            _sfxSmokePop = Resources.Load<AudioClip>("SFX/smoke_pop") ?? TankAudioSynthesizer.CreateSmokePop();
-            _sfxMetalCrash = Resources.Load<AudioClip>("SFX/metal_crash") ?? TankAudioSynthesizer.CreateMetalCrash();
+            _sfxAbramsTurbine = Resources.Load<AudioClip>("SFX/engine_abrams");
+            _sfxT90Diesel = Resources.Load<AudioClip>("SFX/engine_t90");
+            _sfxTrackClatter = Resources.Load<AudioClip>("SFX/tracks");
+            _sfxTurretServo = Resources.Load<AudioClip>("SFX/turret_servo");
+            _sfxReloadClank = Resources.Load<AudioClip>("SFX/reload_clank");
+            _sfxSmokePop = Resources.Load<AudioClip>("SFX/smoke_pop");
+            _sfxMetalCrash = Resources.Load<AudioClip>("SFX/metal_crash");
             _sfxMissileLaunch = Resources.Load<AudioClip>("SFX/missile_launch") ?? _sfxSmokePop;
             _sfxMissileHeavy = Resources.Load<AudioClip>("SFX/missile_heavy") ?? _sfxMissileLaunch;
             _sfxMissileMotor = Resources.Load<AudioClip>("SFX/missile_motor");
             _sfxBattleBgm = Resources.Load<AudioClip>("SFX/battle_bgm");
 
-            var whiteTex = new Texture2D(1, 1, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };
-            whiteTex.SetPixel(0, 0, Color.white);
-            whiteTex.Apply();
-            _whitePxSprite = Sprite.Create(whiteTex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
-
-            // Soft billowing smoke puff texture for smoke grenades & explosion smoke plumes
-            _smokePuffTex = CreateRadialFxTexture(48, 1.35f);
-            _smokePuffSprite = Sprite.Create(_smokePuffTex, new Rect(0, 0, 48, 48), new Vector2(0.5f, 0.5f), 48f);
-
-            Shader fxSh = Resources.Load<Shader>("Shaders/URPEmissiveEffect")
-                          ?? Shader.Find("Modern8bitTanks/URPEmissiveEffect")
-                          ?? Shader.Find("Sprites/Default");
-            _emissiveFxMat = new Material(fxSh);
             _fxMpb = new MaterialPropertyBlock();
-
-            Shader groundSh = Resources.Load<Shader>("Shaders/URPHd2dDesertGround")
-                              ?? Shader.Find("Modern8bitTanks/URPHd2dDesertGround");
-            if (groundSh != null) _groundHd2dMat = new Material(groundSh);
-        }
-
-        private static Texture2D CreateRadialFxTexture(int size, float falloffPow)
-        {
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
-            {
-                filterMode = FilterMode.Bilinear,
-                wrapMode = TextureWrapMode.Clamp
-            };
-            var px = new Color32[size * size];
-            float c = (size - 1) * 0.5f;
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    float dx = (x - c) / c;
-                    float dy = (y - c) / c;
-                    float r = Mathf.Sqrt(dx * dx + dy * dy);
-                    float a = Mathf.Pow(Mathf.Clamp01(1f - r), falloffPow);
-                    px[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(a * 255f));
-                }
-            }
-            tex.SetPixels32(px);
-            tex.Apply(false, false);
-            return tex;
         }
 
         public void TogglePostProcess()
@@ -3051,8 +3008,6 @@ namespace Modern8bitTanks
         {
             CleanupMultiplayerBattle();
             Time.timeScale = 1f;
-            if (_groundHd2dMat != null) Destroy(_groundHd2dMat);
-            if (_smokePuffTex != null) Destroy(_smokePuffTex);
         }
     }
 }

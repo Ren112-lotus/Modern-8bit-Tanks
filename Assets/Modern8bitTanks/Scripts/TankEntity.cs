@@ -146,43 +146,6 @@ namespace Modern8bitTanks
                 sortingGroup.sortingOrder = Mathf.Clamp(Mathf.RoundToInt(-transform.position.y * 100f), -10000, 10000);
         }
 
-        public void InitializeInEditor(
-            string type,
-            TankMetaEntry tankMeta,
-            Texture2D hullSheet,
-            Texture2D turretSheet,
-            float ppu,
-            Material mat,
-            float startAngleDeg)
-        {
-            tankType = type;
-            meta = tankMeta;
-            pixelsPerUnit = ppu;
-            initialAngleDeg = startAngleDeg;
-            hullAngleDeg = startAngleDeg;
-            turretAngleDeg = startAngleDeg;
-            reloadDuration = type == "abrams" ? 1.15f : 1.25f;
-            sortingGroup = GetComponent<SortingGroup>();
-
-            if (hullStack == null)
-            {
-                var hullGo = new GameObject("HullStack");
-                hullGo.transform.SetParent(transform, false);
-                hullStack = hullGo.AddComponent<SpriteStackRenderer>();
-            }
-            hullStack.Configure(hullSheet, meta.hullSlices, ppu, mat, 0, 0f, groundShadow: true);
-
-            if (turretStack == null)
-            {
-                var turretGo = new GameObject("TurretStack");
-                turretGo.transform.SetParent(transform, false);
-                turretStack = turretGo.AddComponent<SpriteStackRenderer>();
-            }
-            turretStack.Configure(turretSheet, meta.turretSlices, ppu, mat, meta.hullSlices * 2 + 4, meta.hullBaseHeight, groundShadow: false);
-
-            SyncEditModePreview();
-        }
-
         /// <summary>
         /// Swaps this tank's sprite slices, stats, and weapon profile to a catalog vehicle.
         /// </summary>
@@ -205,22 +168,10 @@ namespace Modern8bitTanks
             sortingGroup = GetComponent<SortingGroup>();
             Material useMat = mat != null ? mat : (hullStack != null ? hullStack.sliceMaterial : null);
 
-            if (hullStack == null)
-            {
-                var hullGo = new GameObject("HullStack");
-                hullGo.transform.SetParent(transform, false);
-                hullStack = hullGo.AddComponent<SpriteStackRenderer>();
-            }
-            if (hullSheet != null)
+            if (hullSheet != null && hullStack != null)
                 hullStack.Configure(hullSheet, meta.hullSlices, pixelsPerUnit, useMat, 0, 0f, groundShadow: true);
 
-            if (turretStack == null)
-            {
-                var turretGo = new GameObject("TurretStack");
-                turretGo.transform.SetParent(transform, false);
-                turretStack = turretGo.AddComponent<SpriteStackRenderer>();
-            }
-            if (turretSheet != null)
+            if (turretSheet != null && turretStack != null)
                 turretStack.Configure(turretSheet, meta.turretSlices, pixelsPerUnit, useMat, meta.hullSlices * 2 + 4, meta.hullBaseHeight, groundShadow: false);
 
             _turretHeightSlices = meta.hullBaseHeight;

@@ -53,29 +53,6 @@ namespace Modern8bitTanks
             }
         }
 
-        public void InitializeInEditor(string propKind, PropMetaEntry propMeta, Texture2D sheet, float angleDeg, float ppu, Material mat)
-        {
-            kind = propKind;
-            meta = propMeta;
-            initialAngleDeg = angleDeg;
-            pixelsPerUnit = ppu;
-            sortingGroup = GetComponent<SortingGroup>();
-
-            if (stack == null)
-            {
-                var stackGo = new GameObject("PropStack");
-                stackGo.transform.SetParent(transform, false);
-                stack = stackGo.AddComponent<SpriteStackRenderer>();
-            }
-            stack.angleDeg = angleDeg;
-            stack.metallicWear = (kind == "fuel_tank" || kind == "tank_trap" || kind == "watch_tower" || kind == "city_factory")
-                ? 0.55f
-                : 0.08f;
-            stack.Configure(sheet, meta.slices, ppu, mat, 0, 0f, groundShadow: true);
-            approxRadiusUnits = (Mathf.Max(meta.width, meta.length) * 0.52f) / ppu;
-            UpdateSortOrder();
-        }
-
         public void ConfigureRuntime(string propKind, PropMetaEntry propMeta, Texture2D sheet, float angleDeg, float ppu, Material mat)
         {
             isDynamicSpawned = true;

@@ -12,9 +12,7 @@ namespace Modern8bitTanks
             var decal = _scorchDecals[_nextScorchDecal];
             if (decal == null)
             {
-                var mark = new GameObject("Scorch mark");
-                mark.transform.SetParent(_fxRoot, false);
-                decal = mark.AddComponent<SpriteRenderer>();
+                decal = CreateEffect("Scorch mark");
                 decal.sprite = _smokePuffSprite;
                 decal.sortingOrder = -29998;
                 _scorchDecals[_nextScorchDecal] = decal;

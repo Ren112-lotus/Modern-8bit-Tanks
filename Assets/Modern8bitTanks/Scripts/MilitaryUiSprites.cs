@@ -19,25 +19,6 @@ namespace Modern8bitTanks
 
         private static Sprite Load(string name) => Resources.Load<Sprite>($"MilitaryUI/{name}");
 
-        public static RectTransform CreateTiledSprite(Transform parent, string name, Sprite sprite, int x, int y, int w, int h, Color tint)
-        {
-            var go = new GameObject(name) { layer = 5 };
-            go.transform.SetParent(parent, false);
-            var rt = go.AddComponent<RectTransform>();
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.zero;
-            rt.pivot = Vector2.zero;
-            rt.anchoredPosition = new Vector2(x, y);
-            rt.sizeDelta = new Vector2(w, h);
-            var img = go.AddComponent<Image>();
-            img.sprite = sprite;
-            img.type = Image.Type.Tiled;
-            img.pixelsPerUnitMultiplier = 1f;
-            img.color = tint;
-            img.raycastTarget = false;
-            return rt;
-        }
-
         public static RectTransform CreateSlicedSprite(Transform parent, string name, Sprite sprite, int x, int y, int w, int h, Color tint, out Image imgOut)
         {
             var go = new GameObject(name) { layer = 5 };
@@ -55,26 +36,6 @@ namespace Modern8bitTanks
             img.color = tint;
             img.raycastTarget = false;
             imgOut = img;
-            return rt;
-        }
-
-        public static RectTransform CreateIcon(Transform parent, string name, Sprite icon, int x, int y, Color tint)
-        {
-            int w = icon != null ? (int)icon.rect.width : 9;
-            int h = icon != null ? (int)icon.rect.height : 9;
-            var go = new GameObject(name) { layer = 5 };
-            go.transform.SetParent(parent, false);
-            var rt = go.AddComponent<RectTransform>();
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.zero;
-            rt.pivot = Vector2.zero;
-            rt.anchoredPosition = new Vector2(x, y);
-            rt.sizeDelta = new Vector2(w, h);
-            var img = go.AddComponent<Image>();
-            img.sprite = icon;
-            img.type = Image.Type.Simple;
-            img.color = tint;
-            img.raycastTarget = false;
             return rt;
         }
     }
