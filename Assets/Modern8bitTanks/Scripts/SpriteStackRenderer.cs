@@ -36,8 +36,10 @@ namespace Modern8bitTanks
         private bool _wasDropping;
 
         private const string VisualContainerName = "__StackVisuals";
+        private static SpriteStackVisuals visualPrefab;
         private Transform _visualRoot;
         private readonly List<Texture2D> _sliceTextures = new();
+        private readonly List<Sprite> _sliceSprites = new();
         private readonly List<SpriteRenderer> _renderers = new();
         private readonly List<Transform> _holders = new();
         private readonly List<SpriteRenderer> _fillRenderers = new();
@@ -120,35 +122,35 @@ namespace Modern8bitTanks
             _sliceH = sourceSheet.height;
             if (_sliceW <= 0 || _sliceH <= 0) return;
 
-            var rootGo = new GameObject(VisualContainerName);
-            rootGo.transform.SetParent(transform, false);
-            // Never serialize temporary preview/runtime slice children into .prefab or .unity files!
-            rootGo.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
-            _visualRoot = rootGo.transform;
+            if (visualPrefab == null)
+                visualPrefab = Resources.Load<SpriteStackVisuals>("SpriteStack/SpriteStackVisuals");
+            if (visualPrefab == null)
+            {
+                Debug.LogError("The sprite stack visuals prefab is missing.", this);
+                return;
+            }
+
+            var visuals = Instantiate(visualPrefab, transform, false);
+            visuals.name = VisualContainerName;
+            visuals.gameObject.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
+            _visualRoot = visuals.transform;
+
+            var contact = visuals.ContactShadow;
+            var cast = visuals.CastShadow;
+            contact.transform.parent.gameObject.SetActive(addGroundShadow);
+            cast.transform.parent.gameObject.SetActive(addGroundShadow);
+            if (addGroundShadow)
+            {
+                _aoShadowSr = contact;
+                _aoShadowHolder = contact.transform.parent;
+                _aoShadowSr.sortingOrder = baseSortingOrder - 2;
+                _shadowSr = cast;
+                _shadowHolder = cast.transform.parent;
+                _shadowSr.sortingOrder = baseSortingOrder - 3;
+            }
 
             Color32[] srcPixels = sourceSheet.GetPixels32();
             int sheetW = sourceSheet.width;
-
-            if (addGroundShadow)
-            {
-                // Layer 1: Tight HD-2D Contact Ambient Occlusion shadow grounding treads/base onto sand
-                _aoShadowHolder = new GameObject("AoShadowHolder").transform;
-                _aoShadowHolder.SetParent(_visualRoot, false);
-                var aoGo = new GameObject("AoShadow");
-                aoGo.transform.SetParent(_aoShadowHolder, false);
-                _aoShadowSr = aoGo.AddComponent<SpriteRenderer>();
-                _aoShadowSr.sortingOrder = baseSortingOrder - 2;
-                _aoShadowSr.color = new Color(0.11f, 0.09f, 0.14f, 0.34f);
-
-                // Layer 2: Directional afternoon sun-cast shadow (cool desert indigo-umber!)
-                _shadowHolder = new GameObject("ShadowHolder").transform;
-                _shadowHolder.SetParent(_visualRoot, false);
-                var shGo = new GameObject("Shadow");
-                shGo.transform.SetParent(_shadowHolder, false);
-                _shadowSr = shGo.AddComponent<SpriteRenderer>();
-                _shadowSr.sortingOrder = baseSortingOrder - 3;
-                _shadowSr.color = new Color(0.15f, 0.13f, 0.20f, 0.28f);
-            }
 
             for (int z = 0; z < sliceCount; z++)
             {
@@ -183,31 +185,22 @@ namespace Modern8bitTanks
                 );
                 spr.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
 
-                // Primary slice layer
-                var holder = new GameObject($"Holder_{z:00}").transform;
-                holder.SetParent(_visualRoot, false);
-                _holders.Add(holder);
-
-                var sGo = new GameObject($"Slice_{z:00}");
-                sGo.transform.SetParent(holder, false);
-                var sr = sGo.AddComponent<SpriteRenderer>();
+                _sliceSprites.Add(spr);
+                var layer = Instantiate(visuals.Layer, _visualRoot, false);
+                layer.name = $"Layer_{z:00}";
+                var sr = layer.Slice;
                 sr.sprite = spr;
                 sr.sortingOrder = baseSortingOrder + z * 2;
                 if (sliceMaterial != null) sr.sharedMaterial = sliceMaterial;
                 _renderers.Add(sr);
+                _holders.Add(sr.transform.parent);
 
-                // Half-step gap-fill sub-layer (shares exact same Sprite — keeps tall vehicle spacing 100% solid!)
-                var fHolder = new GameObject($"FillHolder_{z:00}").transform;
-                fHolder.SetParent(_visualRoot, false);
-                _fillHolders.Add(fHolder);
-
-                var fGo = new GameObject($"FillSlice_{z:00}");
-                fGo.transform.SetParent(fHolder, false);
-                var fSr = fGo.AddComponent<SpriteRenderer>();
-                fSr.sprite = spr;
-                fSr.sortingOrder = baseSortingOrder + z * 2 + 1;
-                if (sliceMaterial != null) fSr.sharedMaterial = sliceMaterial;
-                _fillRenderers.Add(fSr);
+                var fill = layer.Fill;
+                fill.sprite = spr;
+                fill.sortingOrder = baseSortingOrder + z * 2 + 1;
+                if (sliceMaterial != null) fill.sharedMaterial = sliceMaterial;
+                _fillRenderers.Add(fill);
+                _fillHolders.Add(fill.transform.parent);
 
                 if (addGroundShadow && z == 1)
                 {
@@ -455,6 +448,14 @@ namespace Modern8bitTanks
             _aoShadowSr = null;
             _shadowHolder = null;
             _shadowSr = null;
+
+            foreach (var sprite in _sliceSprites)
+            {
+                if (sprite == null) continue;
+                if (Application.isPlaying) Destroy(sprite);
+                else DestroyImmediate(sprite);
+            }
+            _sliceSprites.Clear();
 
             foreach (var tex in _sliceTextures)
             {
