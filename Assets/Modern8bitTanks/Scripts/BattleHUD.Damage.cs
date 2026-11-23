@@ -11,6 +11,8 @@ namespace Modern8bitTanks
         private const int HitCamW = 138;
         private const int HitCamH = 94;
 
+        private static readonly Color TextLight = new Color(0.96f, 0.95f, 0.89f, 1f);
+
         // War Thunder Dark Obsidian-Glass X-Ray Palette
         private static readonly Color WtAccent = new Color32(236, 188, 92, 255);
 
