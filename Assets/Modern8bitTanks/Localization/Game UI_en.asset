@@ -762,6 +762,38 @@ MonoBehaviour:
     m_Localized: 'READY [ENTER]'
     m_Metadata:
       m_Items: []
+  - m_Id: 15410685534213
+    m_Localized: ROLLING OUT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534214
+    m_Localized: READY TO ROLL!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534215
+    m_Localized: TREADS CHECKED AND READY TO ROLL!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534216
+    m_Localized: 'POP SMOKE [Q] TO ESCAPE DANGER!'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534217
+    m_Localized: 'SWITCH SHELLS WITH [1][2][3]!'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534218
+    m_Localized: KEEP FRONT ARMOR FACING ENEMIES!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534219
+    m_Localized: USE COVER TO STAY SAFE ON THE FIELD!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534220
+    m_Localized: TAKE AIM AND MAKE EVERY SHOT COUNT!
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

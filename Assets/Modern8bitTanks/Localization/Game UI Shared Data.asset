@@ -759,6 +759,38 @@ MonoBehaviour:
     m_Key: 'READY [ENTER]'
     m_Metadata:
       m_Items: []
+  - m_Id: 15410685534213
+    m_Key: SORTIE LOADING
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534214
+    m_Key: SORTIE READY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534215
+    m_Key: LOADING TIP 1
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534216
+    m_Key: LOADING TIP 2
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534217
+    m_Key: LOADING TIP 3
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534218
+    m_Key: LOADING TIP 4
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534219
+    m_Key: LOADING TIP 5
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534220
+    m_Key: LOADING TIP 6
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:
