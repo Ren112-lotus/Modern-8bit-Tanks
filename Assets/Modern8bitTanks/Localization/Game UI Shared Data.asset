@@ -572,7 +572,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 720363564
-    m_Key: GUIDED ATGM [3]
+    m_Key: 'GUIDED ATGM [3]'
     m_Metadata:
       m_Items: []
   - m_Id: 720363565
@@ -789,6 +789,26 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 15410685534220
     m_Key: LOADING TIP 6
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534221
+    m_Key: LOADING CHECK ARMOR
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534222
+    m_Key: LOADING CHECK AMMO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534223
+    m_Key: LOADING CHECK FCS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534224
+    m_Key: 'LOADING ARMOR {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534225
+    m_Key: 'LOADING PEN {0} / {1}'
     m_Metadata:
       m_Items: []
   m_Metadata:

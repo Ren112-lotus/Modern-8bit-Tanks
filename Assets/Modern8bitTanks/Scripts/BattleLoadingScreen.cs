@@ -7,14 +7,14 @@ using UnityEngine.UI;
 namespace Modern8bitTanks
 {
     /// <summary>
-    /// Cute 8-bit storybook loading screen displayed when entering the Battle scene.
-    /// Lives across scene transitions via DontDestroyOnLoad and animates using unscaled time.
+    /// Military 8-bit tactical FCS loading screen displayed when entering the Battle scene.
+    /// Uses the game's existing MilitaryUI sprites, map backdrops, and selected vehicle slice sheets.
     /// </summary>
     public sealed class BattleLoadingScreen : MonoBehaviour
     {
         private const int RefWidth = PixelWindowbox.RenderWidth;   // 480
         private const int RefHeight = PixelWindowbox.RenderHeight; // 360
-        private const int MaxParticles = 16;
+        private const int ProgressSegments = 24;
 
         private static readonly string[] TipKeys =
         {
@@ -26,126 +26,78 @@ namespace Modern8bitTanks
             "LOADING TIP 6"
         };
 
-        private static readonly Color OutlineBrown = new(0.337f, 0.239f, 0.204f, 1f);
-        private static readonly Color TextBrown = new(0.353f, 0.247f, 0.208f, 1f);
-        private static readonly Color TextSoft = new(0.490f, 0.376f, 0.322f, 1f);
-        private static readonly Color ReadyCoral = new(0.898f, 0.353f, 0.471f, 1f);
-        private static readonly Color ShadowTint = new(0.337f, 0.239f, 0.204f, 0.22f);
-
-        private struct MapTheme
-        {
-            public Color BackdropSky;
-            public Color BackdropGround;
-            public Color StageSky;
-            public Color StageHorizon;
-            public Color StageGround;
-            public Color StageRoad;
-            public Color RoadDash;
-            public Color BadgeTint;
-            public Color FillTint;
-        }
-
-        private sealed class FloatingParticle
-        {
-            public Image Image;
-            public RectTransform Rect;
-            public bool Active;
-            public float Age;
-            public float Lifetime;
-            public Vector2 Position;
-            public Vector2 Velocity;
-            public float StartScale;
-            public float EndScale;
-            public float SpinSpeed;
-        }
-
-        private sealed class DriftingCloud
-        {
-            public RectTransform Rect;
-            public float Speed;
-            public float BaseY;
-            public float Phase;
-            public float MinX;
-            public float MaxX;
-        }
-
-        private sealed class TwinkleStar
-        {
-            public RectTransform Rect;
-            public Image Image;
-            public float Phase;
-            public float Speed;
-            public float BaseScale;
-        }
+        // Authentic Modern-8bit-Tanks Military FCS Palette (matches BattleHUD & HangarController)
+        private static readonly Color VoidBg = new(0.05f, 0.06f, 0.05f, 1f);
+        private static readonly Color BackdropDim = new(0.56f, 0.56f, 0.52f, 1f);
+        private static readonly Color VignetteTint = new(0.04f, 0.05f, 0.04f, 0.42f);
+        private static readonly Color PanelTint = new(0.92f, 0.94f, 0.88f, 0.97f);
+        private static readonly Color HeaderTint = new(0.88f, 0.90f, 0.84f, 1f);
+        private static readonly Color RadarBg = new(0.05f, 0.08f, 0.07f, 0.96f);
+        private static readonly Color RadarGrid = new(0.16f, 0.27f, 0.22f, 0.55f);
+        private static readonly Color RadarBorder = new(0.28f, 0.36f, 0.28f, 0.92f);
+        private static readonly Color SpecCardBg = new(0.06f, 0.08f, 0.06f, 0.86f);
+        private static readonly Color BarTrackBg = new(0.05f, 0.06f, 0.05f, 0.95f);
+        private static readonly Color BarSegmentOff = new(0.14f, 0.17f, 0.13f, 0.90f);
+        private static readonly Color AbramsGold = new(0.96f, 0.78f, 0.38f, 1f);
+        private static readonly Color ReadyGreen = new(0.56f, 0.94f, 0.42f, 1f);
+        private static readonly Color TextLight = new(0.93f, 0.92f, 0.86f, 1f);
+        private static readonly Color TextMuted = new(0.68f, 0.70f, 0.62f, 1f);
+        private static readonly Color ScanBeamColor = new(0.56f, 0.94f, 0.42f, 0.22f);
 
         private Canvas _canvas;
         private CanvasGroup _rootGroup;
-        private RectTransform _cardRect;
+        private RectTransform _panelRect;
         private Font _font;
-        private Font _titleFont;
 
-        // Loaded pixel sprites
-        private Sprite _tankFrame0;
-        private Sprite _tankFrame1;
-        private Sprite _tankHappy;
-        private Sprite _puffSprite;
-        private Sprite _heartSprite;
-        private Sprite _starSprite;
-        private Sprite _cloudSprite;
-        private Sprite _flagSprite;
-        private Sprite _decorDesert;
-        private Sprite _decorCity;
-        private Sprite _decorForest;
-        private Sprite _panelSprite;
-        private Sprite _barFrameSprite;
-        private Sprite _barFillSprite;
+        // Dynamic visuals
+        private RawImage _mapBackdropImage;
+        private RawImage _scanlinesImage;
+        private RawImage _hazardTopImage;
+        private RawImage _hazardBottomImage;
+        private Image _crosshairImage;
+        private RectTransform _crosshairRect;
+        private Image _radarBorderImage;
+        private RectTransform _scanBeamRect;
 
-        // Dynamic UI references
-        private Image _backdropSkyImage;
-        private Image _backdropGroundImage;
-        private Image _stageSkyImage;
-        private Image _stageHorizonImage;
-        private Image _stageGroundImage;
-        private Image _stageRoadImage;
-        private readonly List<Image> _roadDashImages = new();
-        private Image _badgePanelImage;
-        private Image _barFillImage;
-        private RectTransform _barFillRect;
-        private float _barMaxFillWidth;
+        // Live composite preview of the player's selected tank
+        private RawImage _hullPreviewImage;
+        private RectTransform _hullPreviewRect;
+        private RawImage _turretPreviewImage;
+        private RectTransform _turretPreviewRect;
+        private Texture2D _hullPreviewTex;
+        private Texture2D _turretPreviewTex;
 
+        // Text elements
         private Text _headingText;
-        private Text _badgeText;
+        private Text _theaterText;
+        private Text _vehicleNameText;
+        private Text _vehicleMetaText;
+        private Text _armorStatText;
+        private Text _weaponStatText;
+        private readonly Text[] _checkLabels = new Text[3];
+        private readonly Text[] _checkStates = new Text[3];
+        private Text _statusText;
         private Text _percentText;
         private Text _tipText;
 
-        private RectTransform _tankRect;
-        private Image _tankImage;
-        private RectTransform _flagRect;
-        private RectTransform _titleHeartLeft;
-        private RectTransform _titleHeartRight;
-        private readonly Image[] _decorImages = new Image[3];
+        // Segmented tactical progress bar
+        private readonly Image[] _barSegments = new Image[ProgressSegments];
 
-        private readonly List<DriftingCloud> _clouds = new();
-        private readonly List<TwinkleStar> _stars = new();
-        private readonly FloatingParticle[] _particles = new FloatingParticle[MaxParticles];
-
-        // Animation state
+        // State
         private float _progress;
         private float _animTime;
-        private float _puffTimer;
-        private int _puffCounter;
-        private bool _celebrating;
-        private float _celebrateTime;
-        private float _tankStartX;
-        private float _tankEndX;
-        private float _tankBaseY;
+        private bool _ready;
+        private bool _turretless;
+        private float _baseHullAngle = 90f; // SliceAngleToDir(90) = (+1, 0) -> faces right on the tactical monitor
 
-        private string _vehicleDisplayName = "";
+        private VehicleDef _currentVehicle;
         private string _mapKey = "DESERT";
         private string _modeKey = "1v1 DUEL";
         private string _tipKey = "LOADING TIP 1";
 
-        private static Dictionary<string, string> _vehicleNameCache;
+        private static Dictionary<string, VehicleDef> _vehicleCache;
+        private static readonly string[] CheckKeys = { "LOADING CHECK ARMOR", "LOADING CHECK AMMO", "LOADING CHECK FCS" };
+        private static readonly float[] CheckThresholds = { 0.30f, 0.65f, 0.96f };
 
         public bool IsVisible => gameObject.activeSelf;
 
@@ -159,34 +111,9 @@ namespace Modern8bitTanks
             return screen;
         }
 
-        private void LoadAssets()
-        {
-            _font = Resources.Load<Font>("Fonts/Silkscreen-Regular")
-                    ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _titleFont = Resources.Load<Font>("Fonts/PressStart2P-Regular") ?? _font;
-            ForceFontPointFilter(_font);
-            ForceFontPointFilter(_titleFont);
-            Font.textureRebuilt += OnFontTextureRebuilt;
-
-            _tankFrame0 = Resources.Load<Sprite>("Loading/ChibiTank_0");
-            _tankFrame1 = Resources.Load<Sprite>("Loading/ChibiTank_1");
-            _tankHappy = Resources.Load<Sprite>("Loading/ChibiTank_Happy");
-            _puffSprite = Resources.Load<Sprite>("Loading/CutePuff");
-            _heartSprite = Resources.Load<Sprite>("Loading/CuteHeart");
-            _starSprite = Resources.Load<Sprite>("Loading/CuteStar");
-            _cloudSprite = Resources.Load<Sprite>("Loading/CuteCloud");
-            _flagSprite = Resources.Load<Sprite>("Loading/GoalFlag");
-            _decorDesert = Resources.Load<Sprite>("Loading/CuteDecor_Desert");
-            _decorCity = Resources.Load<Sprite>("Loading/CuteDecor_City");
-            _decorForest = Resources.Load<Sprite>("Loading/CuteDecor_Forest");
-            _panelSprite = Resources.Load<Sprite>("Loading/CutePanel");
-            _barFrameSprite = Resources.Load<Sprite>("Loading/CuteBarFrame");
-            _barFillSprite = Resources.Load<Sprite>("Loading/CuteBarFill");
-        }
-
         private void OnFontTextureRebuilt(Font f)
         {
-            if (f == _font || f == _titleFont) ForceFontPointFilter(f);
+            if (f == _font) ForceFontPointFilter(f);
         }
 
         private static void ForceFontPointFilter(Font f)
@@ -197,7 +124,10 @@ namespace Modern8bitTanks
 
         private void BuildUi()
         {
-            LoadAssets();
+            _font = Resources.Load<Font>("Fonts/Silkscreen-Regular")
+                    ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            ForceFontPointFilter(_font);
+            Font.textureRebuilt += OnFontTextureRebuilt;
 
             _canvas = gameObject.AddComponent<Canvas>();
             _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -215,229 +145,259 @@ namespace Modern8bitTanks
             _rootGroup.blocksRaycasts = true;
             _rootGroup.interactable = false;
 
-            // Full-screen pastel backdrop (blocks clicks & fills any aspect ratio cleanly)
-            _backdropSkyImage = CreateSolidImage(transform, "BackdropSky", Color.white, raycast: true);
-            StretchFull(_backdropSkyImage.rectTransform);
+            // Full-screen solid base (blocks clicks & prevents any edge gap)
+            var voidBg = CreateSolidImage(transform, "VoidBackground", VoidBg, raycast: true);
+            StretchFull(voidBg.rectTransform);
 
-            // Soft full-width pastel hill band at the bottom
-            _backdropGroundImage = CreateSolidImage(transform, "BackdropGround", Color.white);
-            var bgGroundRt = _backdropGroundImage.rectTransform;
-            bgGroundRt.anchorMin = new Vector2(0f, 0f);
-            bgGroundRt.anchorMax = new Vector2(1f, 0.28f);
-            bgGroundRt.offsetMin = Vector2.zero;
-            bgGroundRt.offsetMax = Vector2.zero;
+            // Dimmed map terrain backdrop
+            var mapGo = new GameObject("MapBackdrop", typeof(RectTransform), typeof(RawImage));
+            mapGo.transform.SetParent(transform, false);
+            _mapBackdropImage = mapGo.GetComponent<RawImage>();
+            _mapBackdropImage.color = BackdropDim;
+            _mapBackdropImage.raycastTarget = false;
+            StretchFull(_mapBackdropImage.rectTransform);
+
+            // Dark tactical vignette overlay
+            var dim = CreateSolidImage(transform, "BackdropDim", VignetteTint);
+            StretchFull(dim.rectTransform);
+
+            // Subtle CRT scanline texture across screen
+            if (MilitaryUiSprites.Scanlines != null)
+            {
+                var scanGo = new GameObject("Scanlines", typeof(RectTransform), typeof(RawImage));
+                scanGo.transform.SetParent(transform, false);
+                _scanlinesImage = scanGo.GetComponent<RawImage>();
+                _scanlinesImage.texture = MilitaryUiSprites.Scanlines.texture;
+                _scanlinesImage.color = new Color(1f, 1f, 1f, 0.16f);
+                _scanlinesImage.raycastTarget = false;
+                _scanlinesImage.uvRect = new Rect(0f, 0f, 32f, 45f);
+                StretchFull(_scanlinesImage.rectTransform);
+            }
 
             // Centered 480x360 retro composition container
-            var rootRt = CreateContainer(transform, "StageRoot", RefWidth, RefHeight);
+            var root = CreateContainer(transform, "StageRoot", RefWidth, RefHeight);
 
-            // Ambient twinkling stars & floating clouds behind card
-            BuildAmbientSky(rootRt);
+            // Main armored briefing panel (380 x 244)
+            const float panelW = 380f;
+            const float panelH = 244f;
+            var panelShadow = CreateSolidImage(root, "PanelShadow", new Color(0f, 0f, 0f, 0.55f));
+            panelShadow.rectTransform.sizeDelta = new Vector2(panelW + 4f, panelH + 4f);
+            panelShadow.rectTransform.anchoredPosition = new Vector2(2f, -2f);
 
-            // Soft drop shadow behind main storybook card
-            const float cardW = 356f;
-            const float cardH = 242f;
-            var cardShadow = CreateSpriteImage(rootRt, "CardShadow", _panelSprite, cardW, cardH, ShadowTint, sliced: true);
-            cardShadow.rectTransform.anchoredPosition = new Vector2(4f, -4f);
+            var panelImg = CreateSpriteImage(root, "ArmorPanel", MilitaryUiSprites.ArmorPanel, panelW, panelH, PanelTint, sliced: true);
+            _panelRect = panelImg.rectTransform;
+            _panelRect.anchoredPosition = Vector2.zero;
 
-            // Main rounded pastel card
-            var cardImg = CreateSpriteImage(rootRt, "StorybookCard", _panelSprite, cardW, cardH, Color.white, sliced: true);
-            _cardRect = cardImg.rectTransform;
-            _cardRect.anchoredPosition = Vector2.zero;
+            // Top & bottom scrolling hazard stripes
+            _hazardTopImage = CreateHazardStrip(_panelRect, "HazardTop", panelW - 12f, 6f, new Vector2(0f, panelH * 0.5f - 8f));
+            _hazardBottomImage = CreateHazardStrip(_panelRect, "HazardBottom", panelW - 12f, 6f, new Vector2(0f, -panelH * 0.5f + 8f));
 
-            // Header row: [Heart]  DEPLOYING...  [Heart]
-            _headingText = CreatePixelText(_cardRect, "HeadingText", "", 16, TextBrown, 280f, 24f, TextAnchor.MiddleCenter);
-            _headingText.rectTransform.anchoredPosition = new Vector2(0f, 94f);
-            AddOutlineShadow(_headingText.gameObject);
+            // Header bar
+            const float headerW = panelW - 16f;
+            var headerImg = CreateSpriteImage(_panelRect, "HeaderBar", MilitaryUiSprites.ArmorHeaderBar, headerW, 24f, HeaderTint, sliced: true);
+            var headerRt = headerImg.rectTransform;
+            headerRt.anchoredPosition = new Vector2(0f, 94f);
 
-            var hl = CreateSpriteImage(_cardRect, "HeartLeft", _heartSprite, 20f, 20f, Color.white, sliced: false);
-            _titleHeartLeft = hl.rectTransform;
-            _titleHeartLeft.anchoredPosition = new Vector2(-132f, 95f);
+            _crosshairImage = CreateSpriteImage(headerRt, "HeaderCrosshair", MilitaryUiSprites.IconCrosshair, 14f, 14f, AbramsGold, sliced: false);
+            _crosshairRect = _crosshairImage.rectTransform;
+            _crosshairRect.anchoredPosition = new Vector2(-headerW * 0.5f + 14f, 0f);
 
-            var hr = CreateSpriteImage(_cardRect, "HeartRight", _heartSprite, 20f, 20f, Color.white, sliced: false);
-            _titleHeartRight = hr.rectTransform;
-            _titleHeartRight.anchoredPosition = new Vector2(132f, 95f);
+            _headingText = CreatePixelText(headerRt, "HeadingText", "", 16, TextLight, 210f, 20f, TextAnchor.MiddleLeft);
+            _headingText.rectTransform.anchoredPosition = new Vector2(-headerW * 0.5f + 132f, 0f);
+            AddDropShadow(_headingText.gameObject);
 
-            // Vehicle / Map / Mode pastel pill badge
-            _badgePanelImage = CreateSpriteImage(_cardRect, "InfoBadge", _barFrameSprite, 300f, 20f, Color.white, sliced: true);
-            _badgePanelImage.rectTransform.anchoredPosition = new Vector2(0f, 66f);
+            _theaterText = CreatePixelText(headerRt, "TheaterText", "", 8, AbramsGold, 150f, 16f, TextAnchor.MiddleRight);
+            _theaterText.rectTransform.anchoredPosition = new Vector2(headerW * 0.5f - 82f, 0f);
+            AddDropShadow(_theaterText.gameObject);
 
-            _badgeText = CreatePixelText(_badgePanelImage.rectTransform, "BadgeText", "", 8, TextBrown, 288f, 16f, TextAnchor.MiddleCenter);
-            _badgeText.rectTransform.anchoredPosition = Vector2.zero;
+            // =================================================================
+            // Left Column: Tactical Vehicle Scan Monitor (176 x 122)
+            // =================================================================
+            const float monitorW = 176f;
+            const float monitorH = 122f;
+            var monitorFrame = CreateSolidImage(_panelRect, "MonitorBorder", RadarBorder);
+            _radarBorderImage = monitorFrame;
+            monitorFrame.rectTransform.sizeDelta = new Vector2(monitorW + 2f, monitorH + 2f);
+            monitorFrame.rectTransform.anchoredPosition = new Vector2(-92f, 14f);
 
-            // Central cute diorama stage frame
-            const float stageW = 316f;
-            const float stageH = 104f;
-            var stageBorder = CreateSpriteImage(_cardRect, "DioramaFrame", _barFrameSprite, stageW + 6f, stageH + 6f, Color.white, sliced: true);
-            stageBorder.rectTransform.anchoredPosition = new Vector2(0f, -2f);
+            var monitorClip = CreateContainer(monitorFrame.rectTransform, "MonitorClip", monitorW, monitorH);
+            monitorClip.gameObject.AddComponent<RectMask2D>();
 
-            var stageClip = CreateContainer(stageBorder.rectTransform, "DioramaClip", stageW, stageH);
-            stageClip.anchoredPosition = Vector2.zero;
-            stageClip.gameObject.AddComponent<RectMask2D>();
+            var monitorBg = CreateSolidImage(monitorClip, "MonitorBg", RadarBg);
+            StretchFull(monitorBg.rectTransform);
 
-            // Sky inside diorama
-            _stageSkyImage = CreateSolidImage(stageClip, "StageSky", Color.white);
-            StretchFull(_stageSkyImage.rectTransform);
-
-            // Soft horizon strip
-            _stageHorizonImage = CreateSolidImage(stageClip, "StageHorizon", Color.white);
-            var horRt = _stageHorizonImage.rectTransform;
-            horRt.anchorMin = new Vector2(0f, 0f);
-            horRt.anchorMax = new Vector2(1f, 0f);
-            horRt.pivot = new Vector2(0.5f, 0f);
-            horRt.sizeDelta = new Vector2(0f, 44f);
-            horRt.anchoredPosition = Vector2.zero;
-
-            // Ground strip
-            _stageGroundImage = CreateSolidImage(stageClip, "StageGround", Color.white);
-            var grRt = _stageGroundImage.rectTransform;
-            grRt.anchorMin = new Vector2(0f, 0f);
-            grRt.anchorMax = new Vector2(1f, 0f);
-            grRt.pivot = new Vector2(0.5f, 0f);
-            grRt.sizeDelta = new Vector2(0f, 28f);
-            grRt.anchoredPosition = Vector2.zero;
-
-            // Cute road track strip
-            _stageRoadImage = CreateSolidImage(stageClip, "StageRoad", Color.white);
-            var rdRt = _stageRoadImage.rectTransform;
-            rdRt.anchorMin = new Vector2(0f, 0f);
-            rdRt.anchorMax = new Vector2(1f, 0f);
-            rdRt.pivot = new Vector2(0.5f, 0f);
-            rdRt.sizeDelta = new Vector2(0f, 12f);
-            rdRt.anchoredPosition = new Vector2(0f, 4f);
-
-            // Dashed center markings along the road
-            _roadDashImages.Clear();
-            for (int i = 0; i < 16; i++)
+            // Subtle tactical radar grid lines
+            for (int gx = -64; gx <= 64; gx += 32)
             {
-                var dash = CreateSolidImage(rdRt, $"Dash_{i}", Color.white);
-                dash.rectTransform.sizeDelta = new Vector2(12f, 2f);
-                dash.rectTransform.anchoredPosition = new Vector2(-142f + i * 22f, 0f);
-                _roadDashImages.Add(dash);
+                var vLine = CreateSolidImage(monitorClip, $"GridV_{gx}", RadarGrid);
+                vLine.rectTransform.sizeDelta = new Vector2(1f, monitorH);
+                vLine.rectTransform.anchoredPosition = new Vector2(gx, 0f);
+            }
+            for (int gy = -32; gy <= 32; gy += 32)
+            {
+                var hLine = CreateSolidImage(monitorClip, $"GridH_{gy}", RadarGrid);
+                hLine.rectTransform.sizeDelta = new Vector2(monitorW, 1f);
+                hLine.rectTransform.anchoredPosition = new Vector2(0f, gy);
             }
 
-            // Mini clouds drifting inside diorama window
-            AddCloud(stageClip, "StageCloud_0", -90f, 30f, 14f, -190f, 190f, 0.85f);
-            AddCloud(stageClip, "StageCloud_1", 70f, 36f, 9f, -190f, 190f, 0.70f);
+            // Corner HUD brackets inside monitor
+            BuildCornerBrackets(monitorClip, monitorW, monitorH, AbramsGold);
 
-            // Map-themed cute props along the background edge of the road (strict integer 1x / 2x pixel scales!)
-            float[] decorX = { -116f, -14f, 68f };
-            float[] decorSize = { 48f, 24f, 48f };
-            float[] decorY = { 24f, 34f, 24f };
-            for (int i = 0; i < _decorImages.Length; i++)
+            // Composite pixel-art tank preview (hull + rotating turret)
+            var tankAnchor = CreateContainer(monitorClip, "TankPreviewAnchor", 128f, 128f);
+            tankAnchor.anchoredPosition = new Vector2(0f, -2f);
+
+            var hullGo = new GameObject("HullPreview", typeof(RectTransform), typeof(RawImage));
+            hullGo.transform.SetParent(tankAnchor, false);
+            _hullPreviewImage = hullGo.GetComponent<RawImage>();
+            _hullPreviewImage.raycastTarget = false;
+            _hullPreviewRect = _hullPreviewImage.rectTransform;
+            _hullPreviewRect.anchorMin = new Vector2(0.5f, 0.5f);
+            _hullPreviewRect.anchorMax = new Vector2(0.5f, 0.5f);
+            _hullPreviewRect.pivot = new Vector2(0.5f, 0.5f);
+
+            var turretGo = new GameObject("TurretPreview", typeof(RectTransform), typeof(RawImage));
+            turretGo.transform.SetParent(tankAnchor, false);
+            _turretPreviewImage = turretGo.GetComponent<RawImage>();
+            _turretPreviewImage.raycastTarget = false;
+            _turretPreviewRect = _turretPreviewImage.rectTransform;
+            _turretPreviewRect.anchorMin = new Vector2(0.5f, 0.5f);
+            _turretPreviewRect.anchorMax = new Vector2(0.5f, 0.5f);
+            _turretPreviewRect.pivot = new Vector2(0.5f, 0.5f);
+
+            // Sweeping FCS scan beam
+            var beam = CreateSolidImage(monitorClip, "ScanBeam", ScanBeamColor);
+            _scanBeamRect = beam.rectTransform;
+            _scanBeamRect.sizeDelta = new Vector2(monitorW, 6f);
+            _scanBeamRect.anchoredPosition = new Vector2(0f, monitorH * 0.5f);
+
+            var beamLine = CreateSolidImage(_scanBeamRect, "ScanBeamCore", new Color(0.56f, 0.94f, 0.42f, 0.72f));
+            beamLine.rectTransform.sizeDelta = new Vector2(monitorW, 1f);
+            beamLine.rectTransform.anchoredPosition = new Vector2(0f, -2f);
+
+            // =================================================================
+            // Right Column: Vehicle Specs & Pre-Flight Checklist (176 x 122)
+            // =================================================================
+            const float infoW = 176f;
+            const float infoH = 122f;
+            var infoBorder = CreateSolidImage(_panelRect, "InfoBorder", RadarBorder);
+            infoBorder.rectTransform.sizeDelta = new Vector2(infoW + 2f, infoH + 2f);
+            infoBorder.rectTransform.anchoredPosition = new Vector2(92f, 14f);
+
+            var infoBg = CreateSolidImage(infoBorder.rectTransform, "InfoBg", SpecCardBg);
+            infoBg.rectTransform.sizeDelta = new Vector2(infoW, infoH);
+            var infoRt = infoBg.rectTransform;
+
+            _vehicleNameText = CreatePixelText(infoRt, "VehicleName", "", 8, AbramsGold, infoW - 14f, 14f, TextAnchor.MiddleLeft);
+            _vehicleNameText.rectTransform.anchoredPosition = new Vector2(0f, 47f);
+            AddDropShadow(_vehicleNameText.gameObject);
+
+            _vehicleMetaText = CreatePixelText(infoRt, "VehicleMeta", "", 8, TextMuted, infoW - 14f, 12f, TextAnchor.MiddleLeft);
+            _vehicleMetaText.rectTransform.anchoredPosition = new Vector2(0f, 33f);
+
+            // Stat row 1: Armor
+            var armorIcon = CreateSpriteImage(infoRt, "ArmorIcon", MilitaryUiSprites.IconArmor, 10f, 10f, TextMuted, sliced: false);
+            armorIcon.rectTransform.anchoredPosition = new Vector2(-infoW * 0.5f + 12f, 16f);
+            _armorStatText = CreatePixelText(infoRt, "ArmorStat", "", 8, TextLight, infoW - 28f, 12f, TextAnchor.MiddleLeft);
+            _armorStatText.rectTransform.anchoredPosition = new Vector2(6f, 16f);
+
+            // Stat row 2: Firepower / Weapon
+            var shellIcon = CreateSpriteImage(infoRt, "ShellIcon", MilitaryUiSprites.IconShell, 10f, 10f, TextMuted, sliced: false);
+            shellIcon.rectTransform.anchoredPosition = new Vector2(-infoW * 0.5f + 12f, 2f);
+            _weaponStatText = CreatePixelText(infoRt, "WeaponStat", "", 8, TextLight, infoW - 28f, 12f, TextAnchor.MiddleLeft);
+            _weaponStatText.rectTransform.anchoredPosition = new Vector2(6f, 2f);
+
+            // Divider line
+            var div = CreateSolidImage(infoRt, "Divider", RadarBorder);
+            div.rectTransform.sizeDelta = new Vector2(infoW - 14f, 1f);
+            div.rectTransform.anchoredPosition = new Vector2(0f, -10f);
+
+            // Pre-flight system checklist (3 rows)
+            for (int i = 0; i < 3; i++)
             {
-                float sz = decorSize[i];
-                var decor = CreateSpriteImage(stageClip, $"Decor_{i}", _decorDesert, sz, sz, Color.white, sliced: false);
-                decor.rectTransform.anchorMin = new Vector2(0.5f, 0f);
-                decor.rectTransform.anchorMax = new Vector2(0.5f, 0f);
-                decor.rectTransform.pivot = new Vector2(0.5f, 0f);
-                decor.rectTransform.anchoredPosition = new Vector2(decorX[i], decorY[i]);
-                _decorImages[i] = decor;
+                float y = -22f - i * 14f;
+                _checkLabels[i] = CreatePixelText(infoRt, $"CheckLabel_{i}", "", 8, TextMuted, 118f, 12f, TextAnchor.MiddleLeft);
+                _checkLabels[i].rectTransform.anchoredPosition = new Vector2(-22f, y);
+
+                _checkStates[i] = CreatePixelText(infoRt, $"CheckState_{i}", "[..]", 8, AbramsGold, 44f, 12f, TextAnchor.MiddleRight);
+                _checkStates[i].rectTransform.anchoredPosition = new Vector2(60f, y);
             }
 
-            // Goal Flag standing proudly on the right side of the road
-            var flagImg = CreateSpriteImage(stageClip, "GoalFlag", _flagSprite, 36f, 56f, Color.white, sliced: false);
-            _flagRect = flagImg.rectTransform;
-            _flagRect.anchorMin = new Vector2(0.5f, 0f);
-            _flagRect.anchorMax = new Vector2(0.5f, 0f);
-            _flagRect.pivot = new Vector2(0.35f, 0f);
-            _flagRect.anchoredPosition = new Vector2(128f, 12f);
+            // =================================================================
+            // Bottom Section: Tactical Segmented Progress Bar + Tip
+            // =================================================================
+            const float barTotalW = 360f;
+            _statusText = CreatePixelText(_panelRect, "StatusText", "", 8, TextMuted, 260f, 12f, TextAnchor.MiddleLeft);
+            _statusText.rectTransform.anchoredPosition = new Vector2(-50f, -59f);
 
-            // Particle layer (exhaust puffs, floating hearts & stars)
-            var particleLayer = CreateContainer(stageClip, "Particles", stageW, stageH);
-            particleLayer.anchoredPosition = Vector2.zero;
-            for (int i = 0; i < MaxParticles; i++)
+            _percentText = CreatePixelText(_panelRect, "PercentText", "0%", 8, AbramsGold, 80f, 12f, TextAnchor.MiddleRight);
+            _percentText.rectTransform.anchoredPosition = new Vector2(140f, -59f);
+
+            var barBorder = CreateSolidImage(_panelRect, "BarBorder", RadarBorder);
+            barBorder.rectTransform.sizeDelta = new Vector2(barTotalW + 2f, 14f);
+            barBorder.rectTransform.anchoredPosition = new Vector2(0f, -74f);
+
+            var barTrack = CreateSolidImage(barBorder.rectTransform, "BarTrack", BarTrackBg);
+            barTrack.rectTransform.sizeDelta = new Vector2(barTotalW, 12f);
+
+            // 24 crisp military segments inside the bar
+            float innerW = barTotalW - 6f;
+            float gap = 2f;
+            float segW = Mathf.Floor((innerW - gap * (ProgressSegments - 1)) / ProgressSegments);
+            float usedW = segW * ProgressSegments + gap * (ProgressSegments - 1);
+            float startX = -usedW * 0.5f + segW * 0.5f;
+            for (int i = 0; i < ProgressSegments; i++)
             {
-                var pImg = CreateSpriteImage(particleLayer, $"Particle_{i}", _puffSprite, 16f, 16f, Color.white, sliced: false);
-                pImg.gameObject.SetActive(false);
-                _particles[i] = new FloatingParticle
-                {
-                    Image = pImg,
-                    Rect = pImg.rectTransform
-                };
+                var seg = CreateSolidImage(barTrack.rectTransform, $"Seg_{i}", BarSegmentOff);
+                seg.rectTransform.sizeDelta = new Vector2(segW, 8f);
+                seg.rectTransform.anchoredPosition = new Vector2(startX + i * (segW + gap), 0f);
+                _barSegments[i] = seg;
             }
 
-            // Hero Chibi Tank (72x56 = crisp 2x integer scale of 36x28)
-            _tankImage = CreateSpriteImage(stageClip, "ChibiTank", _tankFrame0, 72f, 56f, Color.white, sliced: false);
-            _tankRect = _tankImage.rectTransform;
-            _tankRect.anchorMin = new Vector2(0.5f, 0f);
-            _tankRect.anchorMax = new Vector2(0.5f, 0f);
-            _tankRect.pivot = new Vector2(0.5f, 0f);
-            _tankStartX = -114f;
-            _tankEndX = 96f;
-            _tankBaseY = 8f;
-            _tankRect.anchoredPosition = new Vector2(_tankStartX, _tankBaseY);
+            // Tactical tip strip
+            var tipStar = CreateSpriteImage(_panelRect, "TipIcon", MilitaryUiSprites.IconStar, 10f, 10f, AbramsGold, sliced: false);
+            tipStar.rectTransform.anchoredPosition = new Vector2(-172f, -97f);
 
-            // Candy progress bar + percentage readout
-            const float barW = 276f;
-            const float barH = 18f;
-            var barFrame = CreateSpriteImage(_cardRect, "ProgressBarFrame", _barFrameSprite, barW, barH, Color.white, sliced: true);
-            barFrame.rectTransform.anchoredPosition = new Vector2(-20f, -72f);
-
-            _barMaxFillWidth = barW - 8f;
-            _barFillImage = CreateSpriteImage(barFrame.rectTransform, "ProgressBarFill", _barFillSprite, 0f, barH - 6f, Color.white, sliced: true);
-            _barFillRect = _barFillImage.rectTransform;
-            _barFillRect.anchorMin = new Vector2(0f, 0.5f);
-            _barFillRect.anchorMax = new Vector2(0f, 0.5f);
-            _barFillRect.pivot = new Vector2(0f, 0.5f);
-            _barFillRect.anchoredPosition = new Vector2(4f, 0f);
-
-            _percentText = CreatePixelText(_cardRect, "PercentText", "0%", 8, TextBrown, 40f, 16f, TextAnchor.MiddleRight);
-            _percentText.rectTransform.anchoredPosition = new Vector2(138f, -72f);
-
-            // Bottom cute tip row
-            var tipStar = CreateSpriteImage(_cardRect, "TipStar", _starSprite, 14f, 14f, Color.white, sliced: false);
-            tipStar.rectTransform.anchoredPosition = new Vector2(-148f, -98f);
-
-            _tipText = CreatePixelText(_cardRect, "TipText", "", 8, TextSoft, 286f, 20f, TextAnchor.MiddleLeft);
-            _tipText.rectTransform.anchoredPosition = new Vector2(10f, -98f);
+            _tipText = CreatePixelText(_panelRect, "TipText", "", 8, TextLight, 342f, 18f, TextAnchor.MiddleLeft);
+            _tipText.rectTransform.anchoredPosition = new Vector2(8f, -97f);
+            AddDropShadow(_tipText.gameObject);
         }
 
-        private void BuildAmbientSky(RectTransform root)
+        private static RawImage CreateHazardStrip(Transform parent, string name, float width, float height, Vector2 pos)
         {
-            // Big fluffy clouds floating across the outer pastel sky
-            AddCloud(root, "BgCloud_0", -170f, 134f, 12f, -290f, 290f, 1.5f);
-            AddCloud(root, "BgCloud_1", 120f, 144f, 8f, -290f, 290f, 1.25f);
-            AddCloud(root, "BgCloud_2", -30f, -142f, 10f, -290f, 290f, 1.15f);
-
-            // Twinkling pixel stars around the card corners
-            Vector2[] starPositions =
-            {
-                new(-206f, 122f),
-                new(208f, 114f),
-                new(-214f, -44f),
-                new(212f, -66f),
-                new(-182f, -138f),
-                new(192f, -136f)
-            };
-            for (int i = 0; i < starPositions.Length; i++)
-            {
-                var starImg = CreateSpriteImage(root, $"BgStar_{i}", _starSprite, 16f, 16f, Color.white, sliced: false);
-                starImg.rectTransform.anchoredPosition = starPositions[i];
-                _stars.Add(new TwinkleStar
-                {
-                    Rect = starImg.rectTransform,
-                    Image = starImg,
-                    Phase = i * 1.15f,
-                    Speed = 2.6f + (i % 3) * 0.7f,
-                    BaseScale = (i % 2 == 0) ? 1.0f : 0.75f
-                });
-            }
+            var go = new GameObject(name, typeof(RectTransform), typeof(RawImage));
+            go.transform.SetParent(parent, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(width, height);
+            rt.anchoredPosition = pos;
+            var img = go.GetComponent<RawImage>();
+            img.texture = MilitaryUiSprites.HazardTape != null ? MilitaryUiSprites.HazardTape.texture : null;
+            img.color = new Color(0.95f, 0.85f, 0.45f, 0.85f);
+            img.raycastTarget = false;
+            img.uvRect = new Rect(0f, 0f, width / 16f, 1f);
+            return img;
         }
 
-        private void AddCloud(RectTransform parent, string name, float startX, float y, float speed, float minX, float maxX, float scale)
+        private static void BuildCornerBrackets(RectTransform parent, float w, float h, Color color)
         {
-            var img = CreateSpriteImage(parent, name, _cloudSprite, Mathf.Round(40f * scale), Mathf.Round(20f * scale),
-                new Color(1f, 1f, 1f, 0.92f), sliced: false);
-            img.rectTransform.anchoredPosition = new Vector2(startX, y);
-            _clouds.Add(new DriftingCloud
+            float hx = w * 0.5f - 5f;
+            float hy = h * 0.5f - 5f;
+            Color c = new(color.r, color.g, color.b, 0.72f);
+            float[] sx = { -1f, 1f, -1f, 1f };
+            float[] sy = { 1f, 1f, -1f, -1f };
+            for (int i = 0; i < 4; i++)
             {
-                Rect = img.rectTransform,
-                Speed = speed,
-                BaseY = y,
-                Phase = startX * 0.03f,
-                MinX = minX,
-                MaxX = maxX
-            });
+                var hBar = CreateSolidImage(parent, $"BracketH_{i}", c);
+                hBar.rectTransform.sizeDelta = new Vector2(8f, 1f);
+                hBar.rectTransform.anchoredPosition = new Vector2(sx[i] * (hx - 3.5f), sy[i] * hy);
+
+                var vBar = CreateSolidImage(parent, $"BracketV_{i}", c);
+                vBar.rectTransform.sizeDelta = new Vector2(1f, 8f);
+                vBar.rectTransform.anchoredPosition = new Vector2(sx[i] * hx, sy[i] * (hy - 3.5f));
+            }
         }
 
         public void Prepare(BattleSessionState sessionState, MultiplayerSessionState multiplayer)
@@ -453,7 +413,8 @@ namespace Modern8bitTanks
                 if (!string.IsNullOrEmpty(onlineVehicle)) vehicleId = onlineVehicle;
             }
 
-            _vehicleDisplayName = ResolveVehicleName(vehicleId);
+            _currentVehicle = ResolveVehicleDef(vehicleId);
+            _turretless = _currentVehicle != null && _currentVehicle.fixedGunTraverse > 0;
             _mapKey = map switch
             {
                 BattleMap.City => "CITY",
@@ -470,13 +431,124 @@ namespace Modern8bitTanks
             };
             _tipKey = TipKeys[UnityEngine.Random.Range(0, TipKeys.Length)];
 
-            ApplyMapTheme(map);
+            ApplyMapBackdrop(map);
+            BuildVehiclePreview(_currentVehicle);
             ResetAnimationState();
             RefreshLabels();
             UiText.Prepare(_canvas, RefreshLabels);
         }
 
-        public async UniTask FadeInAsync(float duration = 0.22f)
+        private void ApplyMapBackdrop(BattleMap map)
+        {
+            string resName = map switch
+            {
+                BattleMap.City => "Hangar/CityBackdrop",
+                BattleMap.Forest => "Hangar/ForestBackdrop",
+                _ => "Hangar/DesertBackdrop"
+            };
+            Texture2D tex = Resources.Load<Texture2D>(resName);
+            _mapBackdropImage.texture = tex;
+            _mapBackdropImage.color = tex != null ? BackdropDim : VoidBg;
+        }
+
+        private void BuildVehiclePreview(VehicleDef def)
+        {
+            ReleasePreviewTextures();
+            if (def == null)
+            {
+                _hullPreviewImage.enabled = false;
+                _turretPreviewImage.enabled = false;
+                return;
+            }
+
+            Texture2D hullSheet = Resources.Load<Texture2D>($"Vehicles/{def.id}_hull_slices");
+            Texture2D turretSheet = Resources.Load<Texture2D>($"Vehicles/{def.id}_turret_slices");
+
+            _hullPreviewTex = CompositeTopDownSlices(hullSheet, def.hullSlices);
+            _turretPreviewTex = CompositeTopDownSlices(turretSheet, def.turretSlices);
+
+            float maxDim = 1f;
+            if (_hullPreviewTex != null) maxDim = Mathf.Max(maxDim, Mathf.Max(_hullPreviewTex.width, _hullPreviewTex.height));
+            if (_turretPreviewTex != null) maxDim = Mathf.Max(maxDim, Mathf.Max(_turretPreviewTex.width, _turretPreviewTex.height));
+
+            // Keep crisp integer 2x pixel scale when it fits inside the tactical monitor, otherwise fit cleanly
+            float scale = maxDim <= 48f ? 2f : Mathf.Min(2f, 96f / maxDim);
+
+            if (_hullPreviewTex != null)
+            {
+                _hullPreviewImage.texture = _hullPreviewTex;
+                _hullPreviewImage.enabled = true;
+                _hullPreviewRect.sizeDelta = new Vector2(_hullPreviewTex.width * scale, _hullPreviewTex.height * scale);
+                _hullPreviewRect.anchoredPosition = Vector2.zero;
+                _hullPreviewRect.localRotation = Quaternion.Euler(0f, 0f, _baseHullAngle);
+            }
+            else
+            {
+                _hullPreviewImage.enabled = false;
+            }
+
+            if (_turretPreviewTex != null)
+            {
+                _turretPreviewImage.texture = _turretPreviewTex;
+                _turretPreviewImage.enabled = true;
+                _turretPreviewRect.sizeDelta = new Vector2(_turretPreviewTex.width * scale, _turretPreviewTex.height * scale);
+                // Hull faces right (-90 deg rotates sprite +Y toward +X), so local +Y pivot offset maps to +X
+                _turretPreviewRect.anchoredPosition = new Vector2(def.hullPivotOffsetY * scale, 0f);
+                _turretPreviewRect.localRotation = Quaternion.Euler(0f, 0f, _baseHullAngle);
+            }
+            else
+            {
+                _turretPreviewImage.enabled = false;
+            }
+        }
+
+        private static Texture2D CompositeTopDownSlices(Texture2D sheet, int sliceCount)
+        {
+            if (sheet == null || !sheet.isReadable || sliceCount <= 0) return null;
+            int sw = sheet.width / sliceCount;
+            int sh = sheet.height;
+            if (sw <= 0 || sh <= 0) return null;
+
+            Color32[] src = sheet.GetPixels32();
+            Color32[] dst = new Color32[sw * sh];
+            int fullW = sheet.width;
+
+            for (int z = 0; z < sliceCount; z++)
+            {
+                // Subtle height-based tactical shading so lower slices read deeper than upper armor decks
+                float height01 = sliceCount > 1 ? (float)z / (sliceCount - 1) : 1f;
+                float shade = Mathf.Lerp(0.76f, 1.04f, height01);
+                int xBase = z * sw;
+
+                for (int y = 0; y < sh; y++)
+                {
+                    int srcRow = y * fullW + xBase;
+                    int dstRow = y * sw;
+                    for (int x = 0; x < sw; x++)
+                    {
+                        Color32 c = src[srcRow + x];
+                        if (c.a < 16) continue;
+                        dst[dstRow + x] = new Color32(
+                            (byte)Mathf.Clamp(Mathf.RoundToInt(c.r * shade), 0, 255),
+                            (byte)Mathf.Clamp(Mathf.RoundToInt(c.g * shade), 0, 255),
+                            (byte)Mathf.Clamp(Mathf.RoundToInt(c.b * shade), 0, 255),
+                            255);
+                    }
+                }
+            }
+
+            var tex = new Texture2D(sw, sh, TextureFormat.RGBA32, false)
+            {
+                name = $"{sheet.name}_LoadingComposite",
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            tex.SetPixels32(dst);
+            tex.Apply(false, true);
+            return tex;
+        }
+
+        public async UniTask FadeInAsync(float duration = 0.18f)
         {
             gameObject.SetActive(true);
             float elapsed = 0f;
@@ -484,14 +556,10 @@ namespace Modern8bitTanks
             {
                 elapsed += Mathf.Min(0.05f, Time.unscaledDeltaTime);
                 float t = Mathf.Clamp01(elapsed / Mathf.Max(0.01f, duration));
-                float ease = 1f - (1f - t) * (1f - t);
-                _rootGroup.alpha = ease;
-                float s = Mathf.Lerp(0.92f, 1.0f, ease);
-                _cardRect.localScale = new Vector3(s, s, 1f);
+                _rootGroup.alpha = 1f - (1f - t) * (1f - t);
                 await UniTask.Yield(PlayerLoopTiming.Update);
             }
             _rootGroup.alpha = 1f;
-            _cardRect.localScale = Vector3.one;
         }
 
         public void SetProgress(float value)
@@ -500,14 +568,12 @@ namespace Modern8bitTanks
             UpdateProgressVisuals();
         }
 
-        public async UniTask CelebrateAndFadeOutAsync(float holdDuration = 0.24f, float fadeDuration = 0.24f)
+        public async UniTask CelebrateAndFadeOutAsync(float holdDuration = 0.22f, float fadeDuration = 0.22f)
         {
             _progress = 1f;
-            _celebrating = true;
-            _celebrateTime = 0f;
+            _ready = true;
             UpdateProgressVisuals();
             RefreshLabels();
-            SpawnCelebrationBurst();
 
             float hold = 0f;
             while (hold < holdDuration)
@@ -539,137 +605,104 @@ namespace Modern8bitTanks
         {
             _progress = 0f;
             _animTime = 0f;
-            _puffTimer = 0f;
-            _puffCounter = 0;
-            _celebrating = false;
-            _celebrateTime = 0f;
-
-            for (int i = 0; i < _particles.Length; i++)
-            {
-                _particles[i].Active = false;
-                _particles[i].Image.gameObject.SetActive(false);
-            }
-
-            if (_tankImage != null && _tankFrame0 != null)
-                _tankImage.sprite = _tankFrame0;
-            if (_tankRect != null)
-            {
-                _tankRect.anchoredPosition = new Vector2(_tankStartX, _tankBaseY);
-                _tankRect.localRotation = Quaternion.identity;
-                _tankRect.localScale = Vector3.one;
-            }
-            if (_flagRect != null)
-                _flagRect.localRotation = Quaternion.identity;
-
+            _ready = false;
+            if (_radarBorderImage != null) _radarBorderImage.color = RadarBorder;
             UpdateProgressVisuals();
-        }
-
-        private void ApplyMapTheme(BattleMap map)
-        {
-            MapTheme theme = map switch
-            {
-                BattleMap.City => new MapTheme
-                {
-                    BackdropSky = new Color(0.82f, 0.89f, 0.98f, 1f),
-                    BackdropGround = new Color(0.75f, 0.80f, 0.90f, 1f),
-                    StageSky = new Color(0.84f, 0.92f, 1.00f, 1f),
-                    StageHorizon = new Color(0.96f, 0.88f, 0.92f, 1f),
-                    StageGround = new Color(0.76f, 0.83f, 0.72f, 1f),
-                    StageRoad = new Color(0.68f, 0.69f, 0.74f, 1f),
-                    RoadDash = new Color(0.99f, 0.96f, 0.88f, 1f),
-                    BadgeTint = new Color(0.92f, 0.95f, 1.00f, 1f),
-                    FillTint = Color.white
-                },
-                BattleMap.Forest => new MapTheme
-                {
-                    BackdropSky = new Color(0.84f, 0.96f, 0.92f, 1f),
-                    BackdropGround = new Color(0.71f, 0.89f, 0.72f, 1f),
-                    StageSky = new Color(0.86f, 0.97f, 0.96f, 1f),
-                    StageHorizon = new Color(0.78f, 0.94f, 0.80f, 1f),
-                    StageGround = new Color(0.64f, 0.86f, 0.62f, 1f),
-                    StageRoad = new Color(0.87f, 0.77f, 0.62f, 1f),
-                    RoadDash = new Color(0.99f, 0.96f, 0.86f, 1f),
-                    BadgeTint = new Color(0.91f, 0.99f, 0.92f, 1f),
-                    FillTint = Color.white
-                },
-                _ => new MapTheme // Desert: warm peach cream & sunny sand
-                {
-                    BackdropSky = new Color(1.00f, 0.92f, 0.85f, 1f),
-                    BackdropGround = new Color(0.96f, 0.84f, 0.66f, 1f),
-                    StageSky = new Color(1.00f, 0.94f, 0.84f, 1f),
-                    StageHorizon = new Color(0.99f, 0.86f, 0.70f, 1f),
-                    StageGround = new Color(0.95f, 0.81f, 0.59f, 1f),
-                    StageRoad = new Color(0.86f, 0.71f, 0.52f, 1f),
-                    RoadDash = new Color(1.00f, 0.96f, 0.86f, 1f),
-                    BadgeTint = new Color(1.00f, 0.96f, 0.88f, 1f),
-                    FillTint = Color.white
-                }
-            };
-
-            _backdropSkyImage.color = theme.BackdropSky;
-            _backdropGroundImage.color = theme.BackdropGround;
-            _stageSkyImage.color = theme.StageSky;
-            _stageHorizonImage.color = theme.StageHorizon;
-            _stageGroundImage.color = theme.StageGround;
-            _stageRoadImage.color = theme.StageRoad;
-            _badgePanelImage.color = theme.BadgeTint;
-            _barFillImage.color = theme.FillTint;
-
-            for (int i = 0; i < _roadDashImages.Count; i++)
-                _roadDashImages[i].color = theme.RoadDash;
-
-            Sprite decorSprite = map switch
-            {
-                BattleMap.City => _decorCity,
-                BattleMap.Forest => _decorForest,
-                _ => _decorDesert
-            };
-            for (int i = 0; i < _decorImages.Length; i++)
-            {
-                if (_decorImages[i] != null && decorSprite != null)
-                    _decorImages[i].sprite = decorSprite;
-            }
         }
 
         private void RefreshLabels()
         {
             if (_headingText != null)
             {
-                if (_celebrating)
+                if (_ready)
                 {
                     _headingText.text = UiText.Get("SORTIE READY");
-                    _headingText.color = ReadyCoral;
+                    _headingText.color = ReadyGreen;
                 }
                 else
                 {
-                    int dots = (Mathf.FloorToInt(_animTime * 3.2f) % 3) + 1;
+                    int dots = (Mathf.FloorToInt(_animTime * 3.0f) % 3) + 1;
                     _headingText.text = UiText.Get("SORTIE LOADING") + new string('.', dots);
-                    _headingText.color = TextBrown;
+                    _headingText.color = TextLight;
                 }
             }
 
-            if (_badgeText != null)
+            if (_theaterText != null)
+                _theaterText.text = $"{UiText.Get(_mapKey)}  /  {UiText.Get(_modeKey)}";
+
+            if (_currentVehicle != null)
             {
-                string mapText = UiText.Get(_mapKey);
-                string modeText = UiText.Get(_modeKey);
-                _badgeText.text = string.IsNullOrEmpty(_vehicleDisplayName)
-                    ? $"{mapText}  /  {modeText}"
-                    : $"{_vehicleDisplayName}  /  {mapText}  /  {modeText}";
+                string displayName = string.IsNullOrEmpty(_currentVehicle.name)
+                    ? _currentVehicle.id.ToUpperInvariant()
+                    : _currentVehicle.name.ToUpperInvariant();
+                _vehicleNameText.text = displayName;
+                _vehicleMetaText.text = $"{_currentVehicle.NationLabel}  /  TIER {_currentVehicle.TierRoman}  /  {_currentVehicle.role}";
+                _armorStatText.text = UiText.Format("LOADING ARMOR {0}", Mathf.RoundToInt(_currentVehicle.armorFront * 100f));
+                _weaponStatText.text = UiText.Format("LOADING PEN {0} / {1}", Mathf.RoundToInt(_currentVehicle.penetration), _currentVehicle.WeaponLabel);
+            }
+            else
+            {
+                _vehicleNameText.text = "";
+                _vehicleMetaText.text = "";
+                _armorStatText.text = "";
+                _weaponStatText.text = "";
+            }
+
+            for (int i = 0; i < 3; i++)
+            {
+                if (_checkLabels[i] != null)
+                    _checkLabels[i].text = UiText.Get(CheckKeys[i]);
             }
 
             if (_tipText != null)
                 _tipText.text = UiText.Get(_tipKey);
+
+            UpdateChecklistAndStatus();
         }
 
         private void UpdateProgressVisuals()
         {
-            if (_barFillRect != null)
+            int litCount = Mathf.RoundToInt(_progress * ProgressSegments);
+            Color litColor = _ready ? ReadyGreen : AbramsGold;
+            for (int i = 0; i < ProgressSegments; i++)
             {
-                float fillWidth = _progress <= 0.005f ? 0f : Mathf.Max(8f, _barMaxFillWidth * _progress);
-                _barFillRect.sizeDelta = new Vector2(fillWidth, _barFillRect.sizeDelta.y);
+                if (_barSegments[i] != null)
+                    _barSegments[i].color = i < litCount ? litColor : BarSegmentOff;
             }
+
             if (_percentText != null)
+            {
                 _percentText.text = $"{Mathf.RoundToInt(_progress * 100f)}%";
+                _percentText.color = _ready ? ReadyGreen : AbramsGold;
+            }
+
+            if (_radarBorderImage != null)
+                _radarBorderImage.color = _ready ? ReadyGreen : RadarBorder;
+
+            UpdateChecklistAndStatus();
+        }
+
+        private void UpdateChecklistAndStatus()
+        {
+            int activeStage = 0;
+            for (int i = 0; i < 3; i++)
+            {
+                bool done = _ready || _progress >= CheckThresholds[i];
+                if (done) activeStage = Mathf.Min(2, i + 1);
+                if (_checkStates[i] != null)
+                {
+                    _checkStates[i].text = done ? "[OK]" : "[..]";
+                    _checkStates[i].color = done ? ReadyGreen : AbramsGold;
+                }
+                if (_checkLabels[i] != null)
+                    _checkLabels[i].color = done ? TextLight : TextMuted;
+            }
+
+            if (_statusText != null)
+            {
+                _statusText.text = _ready ? UiText.Get("SORTIE READY") : UiText.Get(CheckKeys[activeStage]);
+                _statusText.color = _ready ? ReadyGreen : TextMuted;
+            }
         }
 
         private void Update()
@@ -677,201 +710,87 @@ namespace Modern8bitTanks
             float dt = Mathf.Min(0.05f, Time.unscaledDeltaTime);
             _animTime += dt;
 
-            // Animate drifting clouds
-            for (int i = 0; i < _clouds.Count; i++)
+            // Scroll tactical hazard tapes
+            float hazardSpeed = _ready ? 0.15f : 0.75f;
+            if (_hazardTopImage != null)
             {
-                var c = _clouds[i];
-                Vector2 pos = c.Rect.anchoredPosition;
-                pos.x += c.Speed * dt;
-                if (pos.x > c.MaxX) pos.x = c.MinX;
-                pos.y = c.BaseY + Mathf.Sin(_animTime * 1.4f + c.Phase) * 2.0f;
-                c.Rect.anchoredPosition = pos;
+                Rect uv = _hazardTopImage.uvRect;
+                uv.x = (_animTime * hazardSpeed) % 1f;
+                _hazardTopImage.uvRect = uv;
+            }
+            if (_hazardBottomImage != null)
+            {
+                Rect uv = _hazardBottomImage.uvRect;
+                uv.x = (1f - (_animTime * hazardSpeed) % 1f);
+                _hazardBottomImage.uvRect = uv;
             }
 
-            // Animate twinkling background stars
-            for (int i = 0; i < _stars.Count; i++)
+            // Rotate header crosshair slowly
+            if (_crosshairRect != null)
             {
-                var s = _stars[i];
-                float pulse = 0.72f + 0.32f * Mathf.Sin(_animTime * s.Speed + s.Phase);
-                float sc = s.BaseScale * pulse;
-                s.Rect.localScale = new Vector3(sc, sc, 1f);
-                s.Rect.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(_animTime * 1.8f + s.Phase) * 14f);
+                float speed = _ready ? 0f : -60f;
+                _crosshairRect.localRotation = Quaternion.Euler(0f, 0f, _ready ? 0f : _animTime * speed);
+                if (_crosshairImage != null)
+                    _crosshairImage.color = _ready ? ReadyGreen : AbramsGold;
             }
 
-            // Animate header hearts bobbing cheerfully
-            if (_titleHeartLeft != null && _titleHeartRight != null)
+            // Sweep turret smoothly across the tactical radar monitor
+            if (_turretPreviewRect != null && _turretPreviewImage.enabled)
             {
-                float hBob = Mathf.Sin(_animTime * 5.2f) * 2.5f;
-                float hScale = 1f + Mathf.Sin(_animTime * 5.2f) * 0.09f;
-                _titleHeartLeft.anchoredPosition = new Vector2(-132f, 95f + hBob);
-                _titleHeartRight.anchoredPosition = new Vector2(132f, 95f - hBob);
-                _titleHeartLeft.localScale = new Vector3(hScale, hScale, 1f);
-                _titleHeartRight.localScale = new Vector3(hScale, hScale, 1f);
+                float sweep = _turretless ? 0f : Mathf.Sin(_animTime * 1.9f) * 20f;
+                if (_ready) sweep = 0f;
+                _turretPreviewRect.localRotation = Quaternion.Euler(0f, 0f, _baseHullAngle + sweep);
             }
 
-            // Gently scroll road dashes while tank is marching
-            if (!_celebrating && _roadDashImages.Count > 0)
+            // Sweep vertical FCS scan beam top -> bottom across the monitor
+            if (_scanBeamRect != null)
             {
-                float dashShift = (_animTime * 26f) % 22f;
-                for (int i = 0; i < _roadDashImages.Count; i++)
-                    _roadDashImages[i].rectTransform.anchoredPosition = new Vector2(-142f + i * 22f - dashShift, 0f);
+                float cycle = (_animTime * 0.75f) % 1f;
+                float y = Mathf.Lerp(64f, -64f, cycle);
+                _scanBeamRect.anchoredPosition = new Vector2(0f, y);
             }
 
-            // Animate hero chibi tank!
-            UpdateTankAnimation(dt);
-
-            // Animate floating exhaust puffs, hearts & stars
-            UpdateParticles(dt);
-
-            // Animated loading ellipsis dots
-            if (!_celebrating && _headingText != null)
+            // Animate header ellipsis while loading
+            if (!_ready && _headingText != null)
             {
-                int dots = (Mathf.FloorToInt(_animTime * 3.2f) % 3) + 1;
+                int dots = (Mathf.FloorToInt(_animTime * 3.0f) % 3) + 1;
                 string expected = UiText.Get("SORTIE LOADING") + new string('.', dots);
                 if (_headingText.text != expected)
                     _headingText.text = expected;
             }
         }
 
-        private void UpdateTankAnimation(float dt)
+        private static VehicleDef ResolveVehicleDef(string vehicleId)
         {
-            if (_tankRect == null || _tankImage == null) return;
-
-            float x = Mathf.Lerp(_tankStartX, _tankEndX, _progress);
-            if (_celebrating)
+            if (string.IsNullOrEmpty(vehicleId)) return null;
+            if (_vehicleCache == null)
             {
-                _celebrateTime += dt;
-                if (_tankHappy != null) _tankImage.sprite = _tankHappy;
-
-                // Joyful little hop on reaching the goal flag!
-                float hopPhase = Mathf.Clamp01(_celebrateTime / 0.22f);
-                float hopY = Mathf.Sin(hopPhase * Mathf.PI) * 12f;
-                float squashX = 1f + Mathf.Sin(hopPhase * Mathf.PI * 2f) * 0.06f;
-                float squashY = 1f - Mathf.Sin(hopPhase * Mathf.PI * 2f) * 0.06f;
-                _tankRect.anchoredPosition = new Vector2(x, _tankBaseY + hopY);
-                _tankRect.localScale = new Vector3(squashX, squashY, 1f);
-                _tankRect.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(hopPhase * Mathf.PI) * 5f);
-
-                if (_flagRect != null)
-                    _flagRect.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(_celebrateTime * 26f) * 8f);
-                return;
-            }
-
-            // Chugging tread cycle + bouncy suspension
-            bool altFrame = (Mathf.FloorToInt(_animTime * 7.5f) % 2) == 1;
-            Sprite desired = altFrame ? (_tankFrame1 ?? _tankFrame0) : _tankFrame0;
-            if (desired != null && _tankImage.sprite != desired)
-                _tankImage.sprite = desired;
-
-            float bounce = Mathf.Abs(Mathf.Sin(_animTime * 11.5f)) * 2.4f;
-            float tilt = Mathf.Sin(_animTime * 11.5f) * 2.2f;
-            _tankRect.anchoredPosition = new Vector2(x, _tankBaseY + bounce);
-            _tankRect.localRotation = Quaternion.Euler(0f, 0f, tilt);
-            _tankRect.localScale = Vector3.one;
-
-            if (_flagRect != null)
-                _flagRect.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(_animTime * 3.5f) * 3f);
-
-            // Spawn cute exhaust puffs (and occasional hearts/stars!) behind the tank
-            _puffTimer += dt;
-            if (_puffTimer >= 0.15f)
-            {
-                _puffTimer = 0f;
-                _puffCounter++;
-                Vector2 exhaustPos = new(x - 32f, -24f + bounce);
-                if (_puffCounter % 4 == 0)
-                {
-                    Sprite cute = (_puffCounter % 8 == 0) ? _starSprite : _heartSprite;
-                    SpawnParticle(cute, exhaustPos + new Vector2(0f, 8f), new Vector2(-18f, 32f), 0.72f, 0.75f, 1.15f, 45f);
-                }
-                else
-                {
-                    SpawnParticle(_puffSprite, exhaustPos, new Vector2(-24f, 18f + UnityEngine.Random.Range(-4f, 6f)),
-                        0.62f, 0.65f, 1.35f, UnityEngine.Random.Range(-30f, 30f));
-                }
-            }
-        }
-
-        private void SpawnCelebrationBurst()
-        {
-            float x = _tankEndX;
-            SpawnParticle(_heartSprite, new Vector2(x + 4f, 16f), new Vector2(-16f, 52f), 0.55f, 0.9f, 1.35f, -35f);
-            SpawnParticle(_starSprite, new Vector2(x + 12f, 18f), new Vector2(18f, 56f), 0.55f, 0.9f, 1.35f, 65f);
-            SpawnParticle(_starSprite, new Vector2(x - 6f, 14f), new Vector2(-26f, 42f), 0.55f, 0.75f, 1.15f, -55f);
-            SpawnParticle(_heartSprite, new Vector2(x + 22f, 12f), new Vector2(26f, 44f), 0.55f, 0.75f, 1.15f, 40f);
-        }
-
-        private void SpawnParticle(Sprite sprite, Vector2 pos, Vector2 vel, float lifetime, float startScale, float endScale, float spinSpeed)
-        {
-            if (sprite == null) return;
-            for (int i = 0; i < _particles.Length; i++)
-            {
-                var p = _particles[i];
-                if (p.Active) continue;
-                p.Active = true;
-                p.Age = 0f;
-                p.Lifetime = lifetime;
-                p.Position = pos;
-                p.Velocity = vel;
-                p.StartScale = startScale;
-                p.EndScale = endScale;
-                p.SpinSpeed = spinSpeed;
-                p.Image.sprite = sprite;
-                p.Image.color = Color.white;
-                p.Rect.anchoredPosition = pos;
-                p.Rect.localScale = new Vector3(startScale, startScale, 1f);
-                p.Rect.localRotation = Quaternion.identity;
-                p.Image.gameObject.SetActive(true);
-                return;
-            }
-        }
-
-        private void UpdateParticles(float dt)
-        {
-            for (int i = 0; i < _particles.Length; i++)
-            {
-                var p = _particles[i];
-                if (!p.Active) continue;
-                p.Age += dt;
-                if (p.Age >= p.Lifetime)
-                {
-                    p.Active = false;
-                    p.Image.gameObject.SetActive(false);
-                    continue;
-                }
-
-                float t = p.Age / p.Lifetime;
-                p.Position += p.Velocity * dt;
-                p.Velocity *= Mathf.Pow(0.45f, dt);
-                p.Rect.anchoredPosition = p.Position;
-
-                float scale = Mathf.Lerp(p.StartScale, p.EndScale, t);
-                p.Rect.localScale = new Vector3(scale, scale, 1f);
-                p.Rect.Rotate(0f, 0f, p.SpinSpeed * dt);
-
-                Color c = p.Image.color;
-                c.a = 1f - t * t;
-                p.Image.color = c;
-            }
-        }
-
-        private static string ResolveVehicleName(string vehicleId)
-        {
-            if (string.IsNullOrEmpty(vehicleId)) return "";
-            if (_vehicleNameCache == null)
-            {
-                _vehicleNameCache = new Dictionary<string, string>(StringComparer.Ordinal);
+                _vehicleCache = new Dictionary<string, VehicleDef>(StringComparer.Ordinal);
                 VehicleCatalog catalog = MetaLoader.LoadVehicleCatalog();
                 if (catalog != null && catalog.vehicles != null)
                 {
                     foreach (var v in catalog.vehicles)
                     {
                         if (v != null && !string.IsNullOrEmpty(v.id))
-                            _vehicleNameCache[v.id] = string.IsNullOrEmpty(v.name) ? v.id.ToUpperInvariant() : v.name.ToUpperInvariant();
+                            _vehicleCache[v.id] = v;
                     }
                 }
             }
-            return _vehicleNameCache.TryGetValue(vehicleId, out string name) ? name : vehicleId.ToUpperInvariant();
+            return _vehicleCache.TryGetValue(vehicleId, out VehicleDef def) ? def : null;
+        }
+
+        private void ReleasePreviewTextures()
+        {
+            if (_hullPreviewTex != null)
+            {
+                Destroy(_hullPreviewTex);
+                _hullPreviewTex = null;
+            }
+            if (_turretPreviewTex != null)
+            {
+                Destroy(_turretPreviewTex);
+                _turretPreviewTex = null;
+            }
         }
 
         private static RectTransform CreateContainer(Transform parent, string name, float width, float height)
@@ -937,10 +856,10 @@ namespace Modern8bitTanks
             return text;
         }
 
-        private static void AddOutlineShadow(GameObject go)
+        private static void AddDropShadow(GameObject go)
         {
             var shadow = go.AddComponent<Shadow>();
-            shadow.effectColor = new Color(1f, 1f, 1f, 0.9f);
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.85f);
             shadow.effectDistance = new Vector2(1f, -1f);
         }
 
@@ -955,6 +874,7 @@ namespace Modern8bitTanks
         private void OnDestroy()
         {
             Font.textureRebuilt -= OnFontTextureRebuilt;
+            ReleasePreviewTextures();
         }
     }
 }

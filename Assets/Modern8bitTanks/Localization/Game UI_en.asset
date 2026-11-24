@@ -763,35 +763,55 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534213
-    m_Localized: ROLLING OUT
+    m_Localized: DEPLOYING
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534214
-    m_Localized: READY TO ROLL!
+    m_Localized: COMBAT READY
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534215
-    m_Localized: TREADS CHECKED AND READY TO ROLL!
+    m_Localized: 'USE SMOKE [Q] TO BREAK SIGHT AND EVADE ATGMS.'
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534216
-    m_Localized: 'POP SMOKE [Q] TO ESCAPE DANGER!'
+    m_Localized: 'SWITCH AMMO WITH [1][2][3] TO MATCH TARGET ARMOR.'
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534217
-    m_Localized: 'SWITCH SHELLS WITH [1][2][3]!'
+    m_Localized: KEEP YOUR FRONT ARMOR FACING THE ENEMY.
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534218
-    m_Localized: KEEP FRONT ARMOR FACING ENEMIES!
+    m_Localized: USE COVER WHILE RELOADING BETWEEN SHOTS.
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534219
-    m_Localized: USE COVER TO STAY SAFE ON THE FIELD!
+    m_Localized: WATCH THE HIT CAMERA TO TRACK INTERNAL DAMAGE.
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534220
-    m_Localized: TAKE AIM AND MAKE EVERY SHOT COUNT!
+    m_Localized: 'PRESS [H] IN BATTLE TO CYCLE HUD DENSITY.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534221
+    m_Localized: ARMOR CHECK
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534222
+    m_Localized: AMMO LOAD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534223
+    m_Localized: FCS SYNC
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534224
+    m_Localized: 'ARMOR {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534225
+    m_Localized: 'PEN {0} / {1}'
     m_Metadata:
       m_Items: []
   references:
