@@ -320,15 +320,9 @@ namespace Modern8bitTanks
 
         private void RefreshMapBackdropTheme(BattleMap map)
         {
-            RefreshMapBackdropSprite(map);
+            mapBackdropRenderer.sprite = Resources.Load<Sprite>($"Hangar/{map}Backdrop");
             _postProcess?.ApplyMapTheme(map);
             _atmosphere?.ApplyMapTheme(map);
-        }
-
-        private void RefreshMapBackdropSprite(BattleMap map)
-        {
-            string backdrop = _titleOpen ? $"{map}TitleBackdrop" : $"{map}Backdrop";
-            mapBackdropRenderer.sprite = Resources.Load<Sprite>($"Hangar/{backdrop}");
         }
 
         private void SelectBattleMap(BattleMap map)
