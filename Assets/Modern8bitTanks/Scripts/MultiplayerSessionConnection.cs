@@ -20,6 +20,7 @@ namespace Modern8bitTanks
 
         private BattleSessionState _sessionState;
         private MultiplayerSessionState _multiplayer;
+        private GameSceneLoader _sceneLoader;
         private ISession _session;
         private bool _connecting = true;
         private bool _connectionLost;
@@ -28,6 +29,7 @@ namespace Modern8bitTanks
         private bool _loadingBattle;
         private bool _returnToHangar;
         private bool _unlockingLobby;
+        private bool _loadingBattleScene;
         private AsyncOperation _sceneLoad;
         private int _localSlot = -1;
 
@@ -41,7 +43,7 @@ namespace Modern8bitTanks
         public bool IsReturningToLobby => !_loadingBattle && _returnToHangar && !_leaving;
         public string JoinCode => _session?.Code;
 
-        internal async UniTask ConnectAsync(BattleSessionState sessionState, MultiplayerSessionState multiplayer, string code)
+        internal async UniTask ConnectAsync(BattleSessionState sessionState, MultiplayerSessionState multiplayer, GameSceneLoader sceneLoader, string code)
         {
             if (multiplayer.Connection != null || NetworkManager.Singleton != null)
                 throw new InvalidOperationException("A room is already open.");
@@ -51,6 +53,7 @@ namespace Modern8bitTanks
             DontDestroyOnLoad(connection.gameObject);
             connection._sessionState = sessionState;
             connection._multiplayer = multiplayer;
+            connection._sceneLoader = sceneLoader;
             multiplayer.Attach(connection);
             try
             {
@@ -149,7 +152,7 @@ namespace Modern8bitTanks
         private void Update()
         {
             if (_leaving || Room == null) return;
-            if (_sceneLoad != null && !_sceneLoad.isDone) return;
+            if (_loadingBattleScene || (_sceneLoad != null && !_sceneLoad.isDone)) return;
             _sceneLoad = null;
             if (_loadingBattle && Room.ExpectedMask == 0)
             {
@@ -163,7 +166,23 @@ namespace Modern8bitTanks
             _localSlot = Room.LocalSlot;
             _loadingBattle = true;
             _returnToHangar = true;
-            _sceneLoad = SceneManager.LoadSceneAsync(BattleSessionState.BattleSceneName);
+            if (_sceneLoader != null)
+                LoadOnlineBattleAsync().Forget();
+            else
+                _sceneLoad = SceneManager.LoadSceneAsync(BattleSessionState.BattleSceneName);
+        }
+
+        private async UniTask LoadOnlineBattleAsync()
+        {
+            _loadingBattleScene = true;
+            try
+            {
+                await _sceneLoader.LoadAsync(BattleSessionState.BattleSceneName);
+            }
+            finally
+            {
+                _loadingBattleScene = false;
+            }
         }
 
         internal void ReadyInLobby()
@@ -206,6 +225,7 @@ namespace Modern8bitTanks
             {
                 Time.timeScale = 1f;
                 _sessionState.HasEnteredGarage = true;
+                _sceneLoader?.HideLoadingOverlay();
                 if (_loadingBattle) _ = SceneManager.LoadSceneAsync(BattleSessionState.HangarSceneName);
             }
 

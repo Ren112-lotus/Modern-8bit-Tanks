@@ -135,7 +135,7 @@ namespace Modern8bitTanks
 
             _onlineBusy = true;
             _onlineError = null;
-            try { await multiplayerSessionPrefab.ConnectAsync(_sessionState, _multiplayer, code); }
+            try { await multiplayerSessionPrefab.ConnectAsync(_sessionState, _multiplayer, _sceneLoader, code); }
             catch (Exception exception)
             {
                 _onlineError = host ? "COULD NOT CREATE ROOM. TRY AGAIN." : "COULD NOT JOIN. CHECK THE CODE AND TRY AGAIN.";

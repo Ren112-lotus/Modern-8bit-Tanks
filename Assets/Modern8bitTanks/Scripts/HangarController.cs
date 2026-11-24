@@ -438,6 +438,7 @@ namespace Modern8bitTanks
 
         private void Update()
         {
+            if (_sceneLoader != null && _sceneLoader.IsLoading) return;
             float dt = Mathf.Min(0.04f, Time.deltaTime);
             var kb = Keyboard.current;
             var mouse = Mouse.current;

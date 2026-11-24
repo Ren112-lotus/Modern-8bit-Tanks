@@ -908,6 +908,7 @@ namespace Modern8bitTanks
         private void Update()
         {
             if (_multiplayer.Connection != null && _multiplayer.Connection.IsReturningToLobby) return;
+            if (!_multiplayer.IsInBattle && _sceneLoader != null && _sceneLoader.IsLoading) return;
             float dt = Mathf.Min(0.04f, Time.deltaTime);
             var kb = Keyboard.current;
             HandleBriefingInput(kb);
