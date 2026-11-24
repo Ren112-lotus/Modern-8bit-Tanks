@@ -305,7 +305,7 @@ namespace Modern8bitTanks
 
             LoadVehicleCatalog();
             await budget.YieldIfSpentAsync();
-            LoadRuntimeResources();
+            await LoadRuntimeResourcesAsync(cancellationToken);
 
             _audio.Initialize(_sfxTrackClatter, _sfxTurretServo, _sfxMissileMotor);
             _audio.StartBattleBgm(_sfxBattleBgm);
@@ -448,28 +448,48 @@ namespace Modern8bitTanks
             return true;
         }
 
-        private void LoadRuntimeResources()
+        private async UniTask LoadRuntimeResourcesAsync(CancellationToken cancellationToken)
         {
-            _sfxCannonAbrams = Resources.Load<AudioClip>("SFX/cannon");
-            _sfxCannonT90 = Resources.Load<AudioClip>("SFX/cannon2");
-            _sfxRicochet = Resources.Load<AudioClip>("SFX/ricochet");
-            _sfxExplosion = Resources.Load<AudioClip>("SFX/explosion");
-            _sfxMg = Resources.Load<AudioClip>("SFX/mg");
+            _sfxCannonAbrams = await LoadBattleClipAsync("cannon", cancellationToken);
+            _sfxCannonT90 = await LoadBattleClipAsync("cannon2", cancellationToken);
+            _sfxRicochet = await LoadBattleClipAsync("ricochet", cancellationToken);
+            _sfxExplosion = await LoadBattleClipAsync("explosion", cancellationToken);
+            _sfxMg = await LoadBattleClipAsync("mg", cancellationToken);
 
-            _sfxAbramsTurbine = Resources.Load<AudioClip>("SFX/engine_abrams");
-            _sfxT90Diesel = Resources.Load<AudioClip>("SFX/engine_t90");
-            _sfxTrackClatter = Resources.Load<AudioClip>("SFX/tracks");
-            _sfxTurretServo = Resources.Load<AudioClip>("SFX/turret_servo");
-            _sfxReloadClank = Resources.Load<AudioClip>("SFX/reload_clank");
-            _sfxSmokePop = Resources.Load<AudioClip>("SFX/smoke_pop");
-            _sfxMetalCrash = Resources.Load<AudioClip>("SFX/metal_crash");
-            _sfxMissileLaunch = Resources.Load<AudioClip>("SFX/missile_launch") ?? _sfxSmokePop;
-            _sfxMissileHeavy = Resources.Load<AudioClip>("SFX/missile_heavy") ?? _sfxMissileLaunch;
-            _sfxMissileMotor = Resources.Load<AudioClip>("SFX/missile_motor");
-            _sfxBattleBgm = Resources.Load<AudioClip>("SFX/battle_bgm");
-            LoadVoiceResources();
+            _sceneLoader.ReportBattleInitialization(0.08f);
+            _sfxAbramsTurbine = await LoadBattleClipAsync("engine_abrams", cancellationToken);
+            _sfxT90Diesel = await LoadBattleClipAsync("engine_t90", cancellationToken);
+            _sfxTrackClatter = await LoadBattleClipAsync("tracks", cancellationToken);
+            _sfxTurretServo = await LoadBattleClipAsync("turret_servo", cancellationToken);
+            _sfxReloadClank = await LoadBattleClipAsync("reload_clank", cancellationToken);
+            _sfxSmokePop = await LoadBattleClipAsync("smoke_pop", cancellationToken);
+            _sfxMetalCrash = await LoadBattleClipAsync("metal_crash", cancellationToken);
+            _sfxMissileLaunch = await LoadBattleClipAsync("missile_launch", cancellationToken) ?? _sfxSmokePop;
+            _sfxMissileHeavy = await LoadBattleClipAsync("missile_heavy", cancellationToken) ?? _sfxMissileLaunch;
+            _sfxMissileMotor = await LoadBattleClipAsync("missile_motor", cancellationToken);
+            _sfxBattleBgm = await LoadBattleClipAsync("battle_bgm", cancellationToken);
+            _sceneLoader.ReportBattleInitialization(0.18f);
+            await LoadVoiceResourcesAsync(cancellationToken);
 
             _fxMpb = new MaterialPropertyBlock();
+        }
+
+        private static async UniTask<AudioClip> LoadBattleClipAsync(string path, CancellationToken cancellationToken)
+        {
+            var request = Resources.LoadAsync<AudioClip>($"SFX/{path}");
+            var clip = (AudioClip)await request.ToUniTask(cancellationToken: cancellationToken);
+            if (clip == null) return null;
+
+            // Some importers decode synchronously. Give each unloaded clip its own frame.
+            if (clip.loadState == AudioDataLoadState.Unloaded)
+            {
+                await UniTask.NextFrame(cancellationToken: cancellationToken);
+                clip.LoadAudioData();
+            }
+            while (clip.loadState == AudioDataLoadState.Loading)
+                await UniTask.NextFrame(cancellationToken: cancellationToken);
+
+            return clip.loadState == AudioDataLoadState.Failed ? null : clip;
         }
 
         public void TogglePostProcess()

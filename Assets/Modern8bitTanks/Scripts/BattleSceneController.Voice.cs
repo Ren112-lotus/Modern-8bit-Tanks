@@ -1,3 +1,5 @@
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -28,14 +30,16 @@ namespace Modern8bitTanks
         private readonly struct VoiceRule
         {
             public readonly string Prefix;
+            public readonly int Variants;
             public readonly int Priority;
             public readonly float CooldownSec;
             public readonly int CooldownGroup;
             public readonly bool BypassGlobalGap;
 
-            public VoiceRule(string prefix, int priority, float cooldownSec, int cooldownGroup = -1, bool bypassGlobalGap = false)
+            public VoiceRule(string prefix, int variants, int priority, float cooldownSec, int cooldownGroup = -1, bool bypassGlobalGap = false)
             {
                 Prefix = prefix;
+                Variants = variants;
                 Priority = priority;
                 CooldownSec = cooldownSec;
                 CooldownGroup = cooldownGroup;
@@ -49,21 +53,21 @@ namespace Modern8bitTanks
 
         private static readonly VoiceRule[] VoiceRules =
         {
-            new("voice_battle_start_",        priority: 3, cooldownSec: 5.0f, bypassGlobalGap: true), // BattleStart
-            new("voice_enemy_kill_",          priority: 3, cooldownSec: 1.8f),                        // EnemyKill
-            new("voice_victory_",             priority: 4, cooldownSec: 5.0f, bypassGlobalGap: true), // Victory
-            new("voice_defeat_",              priority: 4, cooldownSec: 4.0f, bypassGlobalGap: true), // Defeat
-            new("voice_critical_hit_",        priority: 2, cooldownSec: 3.8f),                        // CriticalHit
-            new("voice_shot_ricochet_",       priority: 1, cooldownSec: 4.5f),                        // ShotRicochet
-            new("voice_player_fire_",         priority: 3, cooldownSec: 6.0f),                        // PlayerFire
-            new("voice_player_damage_",       priority: 2, cooldownSec: 5.5f, cooldownGroup: DamageCooldownGroup), // PlayerDamage
-            new("voice_player_damage_track_", priority: 2, cooldownSec: 5.5f, cooldownGroup: DamageCooldownGroup), // PlayerDamageTrack
-            new("voice_player_damage_gun_",   priority: 2, cooldownSec: 5.5f, cooldownGroup: DamageCooldownGroup), // PlayerDamageGun
-            new("voice_cp_captured_",         priority: 3, cooldownSec: 4.5f),                        // CpCaptured
-            new("voice_cp_lost_",             priority: 3, cooldownSec: 4.5f),                        // CpLost
-            new("voice_armor_bounce_",        priority: 1, cooldownSec: 5.0f),                        // ArmorBounce
-            new("voice_smoke_deploy_",        priority: 1, cooldownSec: 4.5f),                        // SmokeDeploy
-            new("voice_wave_clear_",          priority: 4, cooldownSec: 4.0f, bypassGlobalGap: true)  // WaveClear
+            new("voice_battle_start_", variants: 3, priority: 3, cooldownSec: 5.0f, bypassGlobalGap: true), // BattleStart
+            new("voice_enemy_kill_", variants: 6, priority: 3, cooldownSec: 1.8f),                        // EnemyKill
+            new("voice_victory_", variants: 3, priority: 4, cooldownSec: 5.0f, bypassGlobalGap: true), // Victory
+            new("voice_defeat_", variants: 3, priority: 4, cooldownSec: 4.0f, bypassGlobalGap: true), // Defeat
+            new("voice_critical_hit_", variants: 3, priority: 2, cooldownSec: 3.8f),                        // CriticalHit
+            new("voice_shot_ricochet_", variants: 3, priority: 1, cooldownSec: 4.5f),                        // ShotRicochet
+            new("voice_player_fire_", variants: 2, priority: 3, cooldownSec: 6.0f),                        // PlayerFire
+            new("voice_player_damage_", variants: 2, priority: 2, cooldownSec: 5.5f, cooldownGroup: DamageCooldownGroup), // PlayerDamage
+            new("voice_player_damage_track_", variants: 1, priority: 2, cooldownSec: 5.5f, cooldownGroup: DamageCooldownGroup), // PlayerDamageTrack
+            new("voice_player_damage_gun_", variants: 1, priority: 2, cooldownSec: 5.5f, cooldownGroup: DamageCooldownGroup), // PlayerDamageGun
+            new("voice_cp_captured_", variants: 2, priority: 3, cooldownSec: 4.5f),                        // CpCaptured
+            new("voice_cp_lost_", variants: 2, priority: 3, cooldownSec: 4.5f),                        // CpLost
+            new("voice_armor_bounce_", variants: 2, priority: 1, cooldownSec: 5.0f),                        // ArmorBounce
+            new("voice_smoke_deploy_", variants: 2, priority: 1, cooldownSec: 4.5f),                        // SmokeDeploy
+            new("voice_wave_clear_", variants: 2, priority: 4, cooldownSec: 4.0f, bypassGlobalGap: true)  // WaveClear
         };
 
         private AudioClip[][] _voiceClips;
@@ -80,51 +84,25 @@ namespace Modern8bitTanks
         private int LocalVoiceTeamSign =>
             _multiplayer.IsInBattle && _multiplayer.LocalSlot >= 4 ? -1 : 1;
 
-        private void LoadVoiceResources()
+        private async UniTask LoadVoiceResourcesAsync(CancellationToken cancellationToken)
         {
             _voiceClips = new AudioClip[VoiceEventCount][];
             _lastVoiceClipIndex = new int[VoiceEventCount];
             _voiceEventCooldownUntil = new float[VoiceEventCount];
+            Array.Fill(_lastVoiceClipIndex, -1);
+
             for (int i = 0; i < VoiceEventCount; i++)
-                _lastVoiceClipIndex[i] = -1;
-
-            AudioClip[] all = Resources.LoadAll<AudioClip>("SFX/Voice");
-            if (all == null || all.Length == 0)
             {
-                for (int i = 0; i < VoiceEventCount; i++)
-                    _voiceClips[i] = Array.Empty<AudioClip>();
-                return;
-            }
-
-            Array.Sort(all, (a, b) => string.CompareOrdinal(a != null ? a.name : "", b != null ? b.name : ""));
-
-            var buckets = new List<AudioClip>[VoiceEventCount];
-            for (int i = 0; i < VoiceEventCount; i++)
-                buckets[i] = new List<AudioClip>();
-
-            foreach (var clip in all)
-            {
-                if (clip == null) continue;
-                string name = clip.name;
-
-                // Match the longest prefix first so voice_player_damage_track_ beats voice_player_damage_
-                int bestIdx = -1;
-                int bestLen = -1;
-                for (int i = 0; i < VoiceEventCount; i++)
+                VoiceRule rule = VoiceRules[i];
+                var clips = new List<AudioClip>(rule.Variants);
+                for (int variant = 1; variant <= rule.Variants; variant++)
                 {
-                    string prefix = VoiceRules[i].Prefix;
-                    if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && prefix.Length > bestLen)
-                    {
-                        bestIdx = i;
-                        bestLen = prefix.Length;
-                    }
+                    var clip = await LoadBattleClipAsync($"Voice/{rule.Prefix}{variant:00}", cancellationToken);
+                    if (clip != null) clips.Add(clip);
                 }
-                if (bestIdx >= 0)
-                    buckets[bestIdx].Add(clip);
+                _voiceClips[i] = clips.ToArray();
+                _sceneLoader.ReportBattleInitialization(Mathf.Lerp(0.18f, 0.34f, (i + 1f) / VoiceEventCount));
             }
-
-            for (int i = 0; i < VoiceEventCount; i++)
-                _voiceClips[i] = buckets[i].ToArray();
         }
 
         private void ResetVoiceState()
