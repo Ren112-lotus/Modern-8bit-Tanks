@@ -81,7 +81,7 @@ namespace Modern8bitTanks
             _titleTransitioning = false;
             _titleExitTimer = 0f;
             _titleDriveTime = 0f;
-            _atmosphere?.SetVisible(!open);
+            RefreshMapBackdropTheme(_sessionState.SelectedBattleMap);
 
             if (open)
             {

@@ -2924,13 +2924,12 @@ MonoBehaviour:
   - {fileID: 341577249}
   - {fileID: 341577248}
   mapBackdropRenderer: {fileID: 1026104196}
+  _garageBackdrop: {fileID: 21300000, guid: 0ffd40edc337cff4bbc213b5ee72c3ae, type: 3}
   showcaseTank: {fileID: 403131395}
   squash: 0.75
   spacingPx: 1
   showcaseZoom: 1.65
-  _whitePxSprite: {fileID: 21300000, guid: ae8f073f390f8af449aca045b371844b, type: 3}
   _stackFlashMat: {fileID: 2100000, guid: b53d8785100743345b06df30af2e71d1, type: 2}
-  _emissiveFxMat: {fileID: 2100000, guid: eac57f259c8a19c4e9681027c51f390d, type: 2}
   _groundHd2dMat: {fileID: 2100000, guid: 924664d7eddab5a4da1fdb11b5eb8b02, type: 2}
   _hangarXrayWrap: {fileID: 803286329}
   _hangarXrayGraphic: {fileID: 803286328}

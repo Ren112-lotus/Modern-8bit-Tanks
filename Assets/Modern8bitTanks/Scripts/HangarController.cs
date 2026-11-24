@@ -27,6 +27,7 @@ namespace Modern8bitTanks
         [Header("Scene References")]
         [UnityEngine.Serialization.FormerlySerializedAs("desertGroundRenderer")]
         public SpriteRenderer mapBackdropRenderer;
+        [SerializeField] private Sprite _garageBackdrop;
         public TankEntity showcaseTank;
 
         [Header("Display Settings")]
@@ -73,9 +74,7 @@ namespace Modern8bitTanks
 
         private Font _font;
         private Font _titleFont;
-        [SerializeField] private Sprite _whitePxSprite;
         [SerializeField] private Material _stackFlashMat;
-        [SerializeField] private Material _emissiveFxMat;
         [SerializeField] private Material _groundHd2dMat;
 
         private VehicleDef[] _allVehicles = Array.Empty<VehicleDef>();
@@ -247,7 +246,7 @@ namespace Modern8bitTanks
             SetupMapBackdrop();
             SetupCenterShowcaseTank();
 
-            _atmosphere.Initialize(WorldW, WorldH, _whitePxSprite, _emissiveFxMat);
+            _atmosphere.SetVisible(false);
             _sessionState.SelectedBattleMapChanged.Subscribe(RefreshMapBackdropTheme).AddTo(this);
 
             InitializeMenus();
@@ -320,9 +319,26 @@ namespace Modern8bitTanks
 
         private void RefreshMapBackdropTheme(BattleMap map)
         {
-            mapBackdropRenderer.sprite = Resources.Load<Sprite>($"Hangar/{map}Backdrop");
-            _postProcess?.ApplyMapTheme(map);
-            _atmosphere?.ApplyMapTheme(map);
+            if (_titleOpen)
+            {
+                mapBackdropRenderer.sprite = Resources.Load<Sprite>($"Hangar/{map}Backdrop");
+                mapBackdropRenderer.transform.localScale = Vector3.one;
+            }
+            else
+            {
+                mapBackdropRenderer.sprite = _garageBackdrop;
+                FitGarageBackdrop();
+            }
+
+            _postProcess?.ApplyMapTheme(_titleOpen ? map : BattleMap.City);
+        }
+
+        private void FitGarageBackdrop()
+        {
+            float height = _cam.orthographicSize * 2f;
+            Vector3 size = _garageBackdrop.bounds.size;
+            float scale = Mathf.Max(height * _cam.aspect / size.x, height / size.y);
+            mapBackdropRenderer.transform.localScale = new Vector3(scale, scale, 1f);
         }
 
         private void SelectBattleMap(BattleMap map)
@@ -619,6 +635,7 @@ namespace Modern8bitTanks
             {
                 float orthoSize = ((PixelWindowbox.RenderHeight / PPU) * 0.5f) / _currentShowcaseZoom;
                 _cam.orthographicSize = orthoSize;
+                FitGarageBackdrop();
                 float camX = Mathf.Round((WorldW * 0.5f) * PPU) / PPU;
                 float camY = Mathf.Round((WorldH * 0.5f) * PPU) / PPU;
                 _cam.transform.position = new Vector3(camX, camY, -20f);
