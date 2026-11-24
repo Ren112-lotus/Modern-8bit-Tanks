@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -66,13 +67,17 @@ namespace Modern8bitTanks
 
             bool isOnline = _multiplayer != null && _multiplayer.IsInBattle;
             float minDisplayTime = isOnline ? 0.72f : 1.15f;
+            var pausedRoots = new List<GameObject>();
 
             _loadingScreen.Prepare(_sessionState, _multiplayer);
             try
             {
                 await _loadingScreen.FadeInAsync(0.20f);
+                if (!_loadingScreen.IsVisible) return;
 
-                AsyncOperation operation = SceneManager.LoadSceneAsync(scene);
+                var previousScene = SceneManager.GetActiveScene();
+                // Single-mode loading runs an unused-asset sweep during scene activation.
+                AsyncOperation operation = SceneManager.LoadSceneAsync(scene, LoadSceneMode.Additive);
                 if (operation == null)
                 {
                     _loadingScreen.HideImmediate();
@@ -83,7 +88,7 @@ namespace Modern8bitTanks
                 float elapsed = 0f;
                 float shownProgress = 0f;
 
-                while (operation.progress < 0.9f || elapsed < minDisplayTime)
+                while (_loadingScreen.IsVisible && (operation.progress < 0.9f || elapsed < minDisplayTime))
                 {
                     elapsed += Mathf.Min(0.05f, Time.unscaledDeltaTime);
                     float loadProgress = Mathf.Clamp01(operation.progress / 0.9f);
@@ -94,23 +99,57 @@ namespace Modern8bitTanks
                     await UniTask.Yield(PlayerLoopTiming.Update);
                 }
 
-                _loadingScreen.SetProgress(SceneLoadedProgress);
+                if (_loadingScreen.IsVisible && SceneManager.GetActiveScene() == previousScene)
+                {
+                    _loadingScreen.SetProgress(SceneLoadedProgress);
+                    // Only one scene should drive input, cameras and audio during the handoff.
+                    foreach (GameObject root in previousScene.GetRootGameObjects())
+                    {
+                        if (!root.activeSelf) continue;
+                        pausedRoots.Add(root);
+                        root.SetActive(false);
+                    }
+                }
                 operation.allowSceneActivation = true;
                 await operation;
+
+                var battleScene = SceneManager.GetSceneByName(scene);
+                if (!_loadingScreen.IsVisible || SceneManager.GetActiveScene() != previousScene)
+                {
+                    if (battleScene.isLoaded) await SceneManager.UnloadSceneAsync(battleScene);
+                    return;
+                }
+
+                if (!SceneManager.SetActiveScene(battleScene))
+                    throw new System.InvalidOperationException("The Battle scene could not be activated.");
+                await SceneManager.UnloadSceneAsync(previousScene);
+                if (!_loadingScreen.IsVisible) return;
 
                 var battle = Object.FindAnyObjectByType<BattleSceneController>();
                 if (battle == null) throw new System.InvalidOperationException("The Battle scene has no controller.");
                 await battle.Initialization;
+                if (!_loadingScreen.IsVisible) return;
                 await UniTask.NextFrame();
 
                 await _loadingScreen.CelebrateAndFadeOutAsync(
                     holdDuration: isOnline ? 0.16f : 0.28f,
                     fadeDuration: 0.24f);
             }
+            catch (System.OperationCanceledException) when (!_loadingScreen.IsVisible)
+            {
+                // A multiplayer disconnect can unload Battle during initialization.
+            }
             catch
             {
                 if (_loadingScreen != null) _loadingScreen.HideImmediate();
                 throw;
+            }
+            finally
+            {
+                foreach (GameObject root in pausedRoots)
+                {
+                    if (root != null) root.SetActive(true);
+                }
             }
         }
     }
