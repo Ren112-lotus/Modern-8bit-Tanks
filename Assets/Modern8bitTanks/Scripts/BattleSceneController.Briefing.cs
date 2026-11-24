@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -37,13 +38,13 @@ namespace Modern8bitTanks
             NotifyVoiceBattleStart();
         }
 
-        private void ShowBattleBriefing()
+        private async UniTask ShowBattleBriefingAsync(BattleLoadBudget budget)
         {
             bool west = !_multiplayer.IsInBattle || _multiplayer.LocalSlot < MultiplayerSessionConnection.MaxPlayers / 2;
-            _hud.ShowBriefing(GetMapDisplayName(battleMap), BuildBriefingMap(west));
+            _hud.ShowBriefing(GetMapDisplayName(battleMap), await BuildBriefingMapAsync(west, budget));
         }
 
-        private Color32[] BuildBriefingMap(bool west)
+        private async UniTask<Color32[]> BuildBriefingMapAsync(bool west, BattleLoadBudget budget)
         {
             const int scale = BriefingMapScale;
             int width = BattlefieldLayout.Width / scale;
@@ -59,35 +60,56 @@ namespace Modern8bitTanks
             var opposing = new Color32(240, 119, 100, 255);
             var objective = new Color32(250, 213, 117, 255);
 
-            for (int y = 0; y < height; y++)
-            for (int x = 0; x < width; x++)
+            // Rasterize each prop only around its footprint. Earlier props still take priority.
+            const float samplesPerUnit = PPU / scale;
+            for (int i = _props.Count - 1; i >= 0; i--)
             {
-                int groundX = x * scale + scale / 2;
-                int groundY = y * scale + scale / 2;
-                Vector2 position = new(groundX, groundY);
-                Vector2 world = position / PPU;
-                Color32 terrain = _cleanGroundPixels[groundY * BattlefieldLayout.Width + groundX];
-                Color32 color = Color32.Lerp(terrain, background, 0.42f);
-                if (x % 32 == 0 || y % 32 == 0)
-                    color = Color32.Lerp(color, background, 0.21f);
-                int edge = Mathf.Min(Mathf.Min(groundX, BattlefieldLayout.Width - groundX),
-                    Mathf.Min(groundY, BattlefieldLayout.Height - groundY));
-                if (edge >= BorderPadPx && edge < BorderPadPx + scale)
-                    color = BattlefieldLayout.BoundaryColor;
+                var prop = _props[i];
+                if (prop == null || prop.stack == null) continue;
 
-                foreach (var prop in _props)
+                Vector2 center = (Vector2)prop.transform.position * samplesPerUnit - Vector2.one * 0.5f;
+                float radius = prop.SpriteRadius * samplesPerUnit * Mathf.Max(1f, prop.stack.squash);
+                int minX = Mathf.Max(0, Mathf.FloorToInt(center.x - radius));
+                int minY = Mathf.Max(0, Mathf.FloorToInt(center.y - radius));
+                int maxX = Mathf.Min(width - 1, Mathf.CeilToInt(center.x + radius));
+                int maxY = Mathf.Min(height - 1, Mathf.CeilToInt(center.y + radius));
+                Color32 color = prop.meta.fixedCover ? wall : prop.meta.heavyStructure ? structure : block;
+                for (int y = minY; y <= maxY; y++)
+                for (int x = minX; x <= maxX; x++)
                 {
-                    if (!prop.IsSolidAt(world)) continue;
-                    color = prop.meta.fixedCover ? wall : prop.meta.heavyStructure ? structure : block;
-                    break;
+                    Vector2 world = new(x * scale + scale / 2, y * scale + scale / 2);
+                    if (prop.IsSolidAt(world / PPU)) pixels[y * width + x] = color;
                 }
+                if (budget != null) await budget.YieldIfSpentAsync();
+            }
 
-                float radius = Vector2.Distance(position, CurrentLayout.ControlPoint);
-                if (Mathf.Abs(radius - ControlPointSystem.RadiusPixels) < scale || radius < 14f)
-                    color = objective;
-                if ((ownSpawn - position).sqrMagnitude < 24f * 24f) color = own;
-                if ((opposingSpawn - position).sqrMagnitude < 24f * 24f) color = opposing;
-                pixels[y * width + x] = color;
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    int groundX = x * scale + scale / 2;
+                    int groundY = y * scale + scale / 2;
+                    Vector2 position = new(groundX, groundY);
+                    Color32 terrain = _cleanGroundPixels[groundY * BattlefieldLayout.Width + groundX];
+                    Color32 color = Color32.Lerp(terrain, background, 0.42f);
+                    if (x % 32 == 0 || y % 32 == 0)
+                        color = Color32.Lerp(color, background, 0.21f);
+                    int edge = Mathf.Min(Mathf.Min(groundX, BattlefieldLayout.Width - groundX),
+                        Mathf.Min(groundY, BattlefieldLayout.Height - groundY));
+                    if (edge >= BorderPadPx && edge < BorderPadPx + scale)
+                        color = BattlefieldLayout.BoundaryColor;
+
+                    Color32 cover = pixels[y * width + x];
+                    if (cover.a != 0) color = cover;
+
+                    float radius = Vector2.Distance(position, CurrentLayout.ControlPoint);
+                    if (Mathf.Abs(radius - ControlPointSystem.RadiusPixels) < scale || radius < 14f)
+                        color = objective;
+                    if ((ownSpawn - position).sqrMagnitude < 24f * 24f) color = own;
+                    if ((opposingSpawn - position).sqrMagnitude < 24f * 24f) color = opposing;
+                    pixels[y * width + x] = color;
+                }
+                if (budget != null) await budget.YieldIfSpentAsync();
             }
             return pixels;
         }

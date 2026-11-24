@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -87,7 +88,7 @@ namespace Modern8bitTanks
             RenderBattleFrame(GetPlayerTank(), dt);
         }
 
-        private void SpawnMultiplayerTanks()
+        private async UniTask SpawnMultiplayerTanksAsync(BattleLoadBudget budget)
         {
             if (_playerTank != null) _playerTank.gameObject.SetActive(false);
             if (_primaryEnemyTank != null) _primaryEnemyTank.gameObject.SetActive(false);
@@ -104,6 +105,7 @@ namespace Modern8bitTanks
                 _networkSpawns[slot] = spawn;
                 var tank = SpawnTankFromPrefab(GetVehicleDef(vehicleId),
                     alpha ? "ally" : "enemy", spawn, alpha ? 90f : -90f, slot == _multiplayer.LocalSlot);
+                if (budget != null) await budget.YieldIfSpentAsync();
                 _networkTanks[slot] = tank;
                 if (tank == null) continue;
                 tank.alive = false;

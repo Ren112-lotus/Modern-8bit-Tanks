@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -148,45 +149,49 @@ namespace Modern8bitTanks
             return false;
         }
 
-        public Color32[] GroundPixels()
+        internal async UniTask<Color32[]> GroundPixelsAsync(BattleLoadBudget budget, System.Action<float> progress)
         {
             if (_ground != null) return _ground;
             var (earth, dark, verge, concrete) = TerrainPalette();
             var pixels = new Color32[Width * Height];
             for (int y = 0; y < Height; y++)
-            for (int x = 0; x < Width / 2; x++)
             {
-                int i = y * Width + x;
-                Color32 color = SampleTerrain(x, y, earth, dark, verge, out float patch, out float grain);
-
-                Vector2 point = new(x + 0.5f, y + 0.5f);
-                color = _map == BattleMap.City
-                    ? PaintCityDistricts(point, color, concrete, dark, verge, patch, grain)
-                    : PaintRidgeFeet(point, PaintNaturalDistricts(point, color, earth, verge, patch),
-                        earth, dark, verge, patch, grain);
-                color = PaintDeploymentAndPlaza(point, color, concrete, dark, verge, patch, grain);
-
-                int edgeX = Mathf.Min(x, Width - 1 - x);
-                int edgeY = Mathf.Min(y, Height - 1 - y);
-                int edge = Mathf.Min(edgeX, edgeY);
-                int distanceToBoundary = edge - BattleSceneController.BorderPadPx;
-                if (distanceToBoundary < 0) color = ShadeExterior(color, dark);
-                if (distanceToBoundary is >= -1 and <= 2)
+                for (int x = 0; x < Width / 2; x++)
                 {
-                    int along = edgeX < edgeY ? y : x;
-                    color = distanceToBoundary >= 0 && distanceToBoundary <= 1 && along % 25 < 16
-                        ? BoundaryColor
-                        : Color32.Lerp(color, dark, 0.47f);
-                }
+                    int i = y * Width + x;
+                    Color32 color = SampleTerrain(x, y, earth, dark, verge, out float patch, out float grain);
 
-                pixels[i] = color;
-                pixels[pixels.Length - 1 - i] = color;
+                    Vector2 point = new(x + 0.5f, y + 0.5f);
+                    color = _map == BattleMap.City
+                        ? PaintCityDistricts(point, color, concrete, dark, verge, patch, grain)
+                        : PaintRidgeFeet(point, PaintNaturalDistricts(point, color, earth, verge, patch),
+                            earth, dark, verge, patch, grain);
+                    color = PaintDeploymentAndPlaza(point, color, concrete, dark, verge, patch, grain);
+
+                    int edgeX = Mathf.Min(x, Width - 1 - x);
+                    int edgeY = Mathf.Min(y, Height - 1 - y);
+                    int edge = Mathf.Min(edgeX, edgeY);
+                    int distanceToBoundary = edge - BattleSceneController.BorderPadPx;
+                    if (distanceToBoundary < 0) color = ShadeExterior(color, dark);
+                    if (distanceToBoundary is >= -1 and <= 2)
+                    {
+                        int along = edgeX < edgeY ? y : x;
+                        color = distanceToBoundary >= 0 && distanceToBoundary <= 1 && along % 25 < 16
+                            ? BoundaryColor
+                            : Color32.Lerp(color, dark, 0.47f);
+                    }
+
+                    pixels[i] = color;
+                    pixels[pixels.Length - 1 - i] = color;
+                }
+                if ((y & 31) == 31) progress?.Invoke((y + 1) / (float)Height);
+                if (budget != null) await budget.YieldIfSpentAsync();
             }
             _ground = pixels;
             return _ground;
         }
 
-        internal Color32[] ExteriorPixels(int padding, int scale)
+        internal async UniTask<Color32[]> ExteriorPixelsAsync(int padding, int scale, BattleLoadBudget budget)
         {
             int width = (Width + padding * 2) / scale;
             int height = (Height + padding * 2) / scale;
@@ -194,18 +199,21 @@ namespace Modern8bitTanks
             var (earth, dark, verge, _) = TerrainPalette();
 
             for (int y = 0; y < height; y++)
-            for (int x = 0; x < width / 2; x++)
             {
-                int worldX = x * scale + scale / 2 - padding;
-                int worldY = y * scale + scale / 2 - padding;
-                if (worldX >= 0 && worldY >= 0 && worldY < Height) continue;
+                for (int x = 0; x < width / 2; x++)
+                {
+                    int worldX = x * scale + scale / 2 - padding;
+                    int worldY = y * scale + scale / 2 - padding;
+                    if (worldX >= 0 && worldY >= 0 && worldY < Height) continue;
 
-                Color32 color = ShadeExterior(SampleTerrain(worldX, worldY, earth, dark, verge, out _, out _), dark);
-                int i = y * width + x;
-                pixels[i] = color;
-                pixels[pixels.Length - 1 - i] = color;
+                    Color32 color = ShadeExterior(SampleTerrain(worldX, worldY, earth, dark, verge, out _, out _), dark);
+                    int i = y * width + x;
+                    pixels[i] = color;
+                    pixels[pixels.Length - 1 - i] = color;
+                }
+
+                if (budget != null) await budget.YieldIfSpentAsync();
             }
-
             return pixels;
         }
 

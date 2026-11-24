@@ -233,7 +233,7 @@ namespace Modern8bitTanks
             return IsSolidPixel(stack.WorldToLocalPixel(worldPos));
         }
 
-        private float SpriteRadius => 0.5f * new Vector2(stack.SliceWidth, stack.SliceHeight).magnitude / pixelsPerUnit;
+        internal float SpriteRadius => 0.5f * new Vector2(stack.SliceWidth, stack.SliceHeight).magnitude / pixelsPerUnit;
 
         private bool IsSolidPixel(Vector2 local)
         {

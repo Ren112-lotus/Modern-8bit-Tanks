@@ -6,6 +6,7 @@ namespace Modern8bitTanks
 {
     public sealed class GameSceneLoader
     {
+        private const float SceneLoadedProgress = 0.55f;
         private readonly BattleSessionState _sessionState;
         private readonly MultiplayerSessionState _multiplayer;
         private BattleLoadingScreen _loadingScreen;
@@ -22,6 +23,12 @@ namespace Modern8bitTanks
         public void HideLoadingOverlay()
         {
             if (_loadingScreen != null) _loadingScreen.HideImmediate();
+        }
+
+        internal void ReportBattleInitialization(float progress)
+        {
+            if (_loading && _loadingScreen != null && _loadingScreen.IsVisible)
+                _loadingScreen.SetProgress(Mathf.Lerp(SceneLoadedProgress, 0.98f, progress));
         }
 
         public async UniTask LoadAsync(string scene)
@@ -81,19 +88,20 @@ namespace Modern8bitTanks
                     elapsed += Mathf.Min(0.05f, Time.unscaledDeltaTime);
                     float loadProgress = Mathf.Clamp01(operation.progress / 0.9f);
                     float paceProgress = Mathf.Clamp01(elapsed / minDisplayTime);
-                    float target = Mathf.Min(loadProgress, paceProgress) * 0.96f;
+                    float target = Mathf.Min(loadProgress, paceProgress) * SceneLoadedProgress;
                     shownProgress = Mathf.MoveTowards(shownProgress, target, Time.unscaledDeltaTime * 2.4f);
                     _loadingScreen.SetProgress(shownProgress);
                     await UniTask.Yield(PlayerLoopTiming.Update);
                 }
 
-                _loadingScreen.SetProgress(1f);
+                _loadingScreen.SetProgress(SceneLoadedProgress);
                 operation.allowSceneActivation = true;
                 await operation;
 
-                // Allow the new Battle scene to initialize and present a clean frame behind the overlay.
-                await UniTask.Yield(PlayerLoopTiming.Update);
-                await UniTask.Yield(PlayerLoopTiming.Update);
+                var battle = Object.FindAnyObjectByType<BattleSceneController>();
+                if (battle == null) throw new System.InvalidOperationException("The Battle scene has no controller.");
+                await battle.Initialization;
+                await UniTask.NextFrame();
 
                 await _loadingScreen.CelebrateAndFadeOutAsync(
                     holdDuration: isOnline ? 0.16f : 0.28f,

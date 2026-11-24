@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace Modern8bitTanks
@@ -23,13 +24,17 @@ namespace Modern8bitTanks
 
         internal BattlefieldNavigation(BattlefieldLayout layout) => _layout = layout;
 
-        internal void Rebuild(IReadOnlyList<DestructibleProp> props = null)
+        internal void Rebuild(IReadOnlyList<DestructibleProp> props = null) =>
+            RebuildAsync(null, props).GetAwaiter().GetResult();
+
+        internal async UniTask RebuildAsync(BattleLoadBudget budget, IReadOnlyList<DestructibleProp> props = null)
         {
             Array.Fill(_distance, -1);
             int start = 0;
             int end = 0;
             for (int i = 0; i < _distance.Length; i++)
             {
+                if (budget != null && (i & 63) == 0) await budget.YieldIfSpentAsync();
                 Vector2 point = CellCenter(i);
                 _blocked[i] = IsBlocked(point, props);
                 if (_blocked[i] || (point - _layout.ControlPoint).sqrMagnitude > 24f * 24f) continue;
@@ -39,6 +44,7 @@ namespace Modern8bitTanks
 
             while (start < end)
             {
+                if (budget != null && (start & 63) == 0) await budget.YieldIfSpentAsync();
                 int cell = _queue[start++];
                 foreach (var step in Steps)
                 {

@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace Modern8bitTanks
@@ -14,7 +15,7 @@ namespace Modern8bitTanks
         internal BattlefieldLayout CurrentLayout { get; private set; }
         private BattlefieldNavigation _battlefieldNavigation;
 
-        private void PrepareBattlefieldLayout()
+        private async UniTask PrepareBattlefieldLayoutAsync(BattleLoadBudget budget)
         {
             CurrentLayout = null;
             _battlefieldNavigation = null;
@@ -33,7 +34,7 @@ namespace Modern8bitTanks
                 lastPlan = plan.Name;
                 var layout = new BattlefieldLayout(battleMap, random.Next(), plan, theme);
                 var navigation = new BattlefieldNavigation(layout);
-                navigation.Rebuild();
+                await navigation.RebuildAsync(budget);
                 if (!HasConnectedDeployment(layout, navigation)) continue;
 
                 CurrentLayout = layout;
@@ -54,7 +55,7 @@ namespace Modern8bitTanks
 
         private Vector2 BattlefieldSpawn(bool west, int index) => CurrentLayout.Spawn(west, index) / PPU;
 
-        private void RefreshExteriorTerrain()
+        private async UniTask RefreshExteriorTerrainAsync(BattleLoadBudget budget)
         {
             ReleaseExteriorTerrain();
             if (_exteriorTerrainRenderer == null || CurrentLayout == null) return;
@@ -67,7 +68,7 @@ namespace Modern8bitTanks
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp
             };
-            _exteriorTexture.SetPixels32(CurrentLayout.ExteriorPixels(ExteriorPaddingPx, ExteriorSampleScale));
+            _exteriorTexture.SetPixels32(await CurrentLayout.ExteriorPixelsAsync(ExteriorPaddingPx, ExteriorSampleScale, budget));
             _exteriorTexture.Apply(false, true);
             _exteriorSprite = Sprite.Create(_exteriorTexture, new Rect(0, 0, width, height),
                 new Vector2(0.5f, 0.5f), PPU / ExteriorSampleScale, 0, SpriteMeshType.FullRect);
@@ -92,13 +93,14 @@ namespace Modern8bitTanks
             _exteriorTexture = null;
         }
 
-        private void SpawnProceduralCover()
+        private async UniTask SpawnProceduralCoverAsync(BattleLoadBudget budget)
         {
             foreach (var placement in CurrentLayout.Cover)
             {
                 var prefab = placement.Prefab;
                 SpawnMapProp(prefab.kind, placement.Position / PPU, prefab.meta, prefab.stack.sourceSheet,
                     placement.Angle, prefab);
+                if (budget != null) await budget.YieldIfSpentAsync();
             }
         }
     }

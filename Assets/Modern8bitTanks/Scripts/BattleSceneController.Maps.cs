@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -20,17 +21,25 @@ namespace Modern8bitTanks
         /// Generates crisp pixel-art battlefield terrain for Desert, City, or Forest at any resolution
         /// (2048x1360 for expanded Battle maps, or smaller preview for Hangar turntable!).
         /// </summary>
-        public static Color32[] GenerateMapPixels(BattleMap map, int w = WorldWidthPx, int h = WorldHeightPx)
+        public static Color32[] GenerateMapPixels(BattleMap map, int w = WorldWidthPx, int h = WorldHeightPx) =>
+            GenerateMapPixelsAsync(map, w, h, null, null).GetAwaiter().GetResult();
+
+        private static UniTask<Color32[]> GenerateMapPixelsAsync(BattleMap map, int w, int h,
+            BattleLoadBudget budget, System.Action<float> progress)
         {
             return map switch
             {
-                BattleMap.City => GenerateCityPixels(w, h),
-                BattleMap.Forest => GenerateForestPixels(w, h),
-                _ => GenerateDesertPixels(w, h)
+                BattleMap.City => GenerateCityPixelsAsync(w, h, budget, progress),
+                BattleMap.Forest => GenerateForestPixelsAsync(w, h, budget, progress),
+                _ => GenerateDesertPixelsAsync(w, h, budget, progress)
             };
         }
 
-        public static Color32[] GenerateDesertPixels(int w = WorldWidthPx, int h = WorldHeightPx)
+        public static Color32[] GenerateDesertPixels(int w = WorldWidthPx, int h = WorldHeightPx) =>
+            GenerateDesertPixelsAsync(w, h, null, null).GetAwaiter().GetResult();
+
+        private static async UniTask<Color32[]> GenerateDesertPixelsAsync(int w, int h,
+            BattleLoadBudget budget, System.Action<float> progress)
         {
             var px = new Color32[w * h];
             Color32 sandBase   = new Color32(217, 183, 124, 255);
@@ -94,6 +103,8 @@ namespace Modern8bitTanks
                     }
                     px[y * w + x] = c;
                 }
+                if ((y & 31) == 31) progress?.Invoke((y + 1) / (float)h);
+                if (budget != null) await budget.YieldIfSpentAsync();
             }
 
             int tuftCount = Mathf.RoundToInt((w * h) / 1750f);
@@ -110,7 +121,11 @@ namespace Modern8bitTanks
             return px;
         }
 
-        public static Color32[] GenerateCityPixels(int w, int h)
+        public static Color32[] GenerateCityPixels(int w, int h) =>
+            GenerateCityPixelsAsync(w, h, null, null).GetAwaiter().GetResult();
+
+        private static async UniTask<Color32[]> GenerateCityPixelsAsync(int w, int h,
+            BattleLoadBudget budget, System.Action<float> progress)
         {
             var px = new Color32[w * h];
             Color32 asphalt      = new Color32( 78,  80,  84, 255);
@@ -195,6 +210,8 @@ namespace Modern8bitTanks
                     }
                     px[y * w + x] = c;
                 }
+                if ((y & 31) == 31) progress?.Invoke((y + 1) / (float)h);
+                if (budget != null) await budget.YieldIfSpentAsync();
             }
 
             // Scattered urban rubble chips & weathered patches
@@ -210,7 +227,11 @@ namespace Modern8bitTanks
             return px;
         }
 
-        public static Color32[] GenerateForestPixels(int w, int h)
+        public static Color32[] GenerateForestPixels(int w, int h) =>
+            GenerateForestPixelsAsync(w, h, null, null).GetAwaiter().GetResult();
+
+        private static async UniTask<Color32[]> GenerateForestPixelsAsync(int w, int h,
+            BattleLoadBudget budget, System.Action<float> progress)
         {
             var px = new Color32[w * h];
             Color32 grassBase  = new Color32( 88, 118,  62, 255);
@@ -265,6 +286,8 @@ namespace Modern8bitTanks
 
                     px[y * w + x] = c;
                 }
+                if ((y & 31) == 31) progress?.Invoke((y + 1) / (float)h);
+                if (budget != null) await budget.YieldIfSpentAsync();
             }
 
             // Scattered wildflowers, ferns, mossy rocks, & fallen pine needles
@@ -300,7 +323,7 @@ namespace Modern8bitTanks
             return tex;
         }
 
-        private void ClearAndSpawnMapProps(BattleMap map)
+        private async UniTask ClearAndSpawnMapPropsAsync(BattleMap map, BattleLoadBudget budget)
         {
             LoadPropsMetaIfNeeded();
 
@@ -321,7 +344,7 @@ namespace Modern8bitTanks
 
             if (UsesControlPoints)
             {
-                SpawnProceduralCover();
+                await SpawnProceduralCoverAsync(budget);
                 return;
             }
 

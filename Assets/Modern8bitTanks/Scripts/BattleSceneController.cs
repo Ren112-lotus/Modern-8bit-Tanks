@@ -1,6 +1,7 @@
 using Cysharp.Threading.Tasks;
 using VContainer;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -238,8 +239,19 @@ namespace Modern8bitTanks
             public float puffTimer;
         }
 
+        internal UniTask Initialization { get; private set; }
+        private bool _initialized;
+
         private void Awake()
         {
+            Initialization = InitializeAsync(destroyCancellationToken).Preserve();
+            if (!_sceneLoader.IsLoading) Initialization.Forget();
+        }
+
+        private async UniTask InitializeAsync(CancellationToken cancellationToken)
+        {
+            await UniTask.NextFrame(cancellationToken: cancellationToken);
+            var budget = new BattleLoadBudget(cancellationToken);
             _cam.orthographic = true;
             _cam.clearFlags = CameraClearFlags.SolidColor;
             _cam.backgroundColor = new Color(0.11f, 0.09f, 0.06f, 1f);
@@ -292,6 +304,7 @@ namespace Modern8bitTanks
             _postProcess.ApplyMapTheme(battleMap);
 
             LoadVehicleCatalog();
+            await budget.YieldIfSpentAsync();
             LoadRuntimeResources();
 
             _audio.Initialize(_sfxTrackClatter, _sfxTurretServo, _sfxMissileMotor);
@@ -306,8 +319,11 @@ namespace Modern8bitTanks
 
             _hud.Initialize(this, _windowbox, _multiplayer);
 
-            ResetRound();
+            await budget.YieldIfSpentAsync();
+            await ResetRoundAsync(budget);
             InitializeMultiplayerBattle();
+            _initialized = true;
+            _sceneLoader.ReportBattleInitialization(1f);
         }
 
         private void LoadVehicleCatalog()
@@ -609,6 +625,11 @@ namespace Modern8bitTanks
 
         public void ResetRound()
         {
+            if (_initialized) ResetRoundAsync().GetAwaiter().GetResult();
+        }
+
+        private async UniTask ResetRoundAsync(BattleLoadBudget budget = null)
+        {
             if (_multiplayer.IsInBattle && _networkTanks != null) return;
             Time.timeScale = 1f;
             _phase = UsesControlPoints ? GamePhase.Briefing : GamePhase.Playing;
@@ -635,19 +656,30 @@ namespace Modern8bitTanks
 
             ClearDynamicFXAndExtraTanks();
             battleMap = _multiplayer.IsInBattle ? BattleMap.Desert : _sessionState.SelectedBattleMap;
-            PrepareBattlefieldLayout();
+            await PrepareBattlefieldLayoutAsync(budget);
             PrepareRuntimeGround();
+            System.Action<float> terrainProgress = null;
+            if (budget != null)
+            {
+                terrainProgress = progress => _sceneLoader.ReportBattleInitialization(Mathf.Lerp(0.38f, 0.74f, progress));
+                terrainProgress(0f);
+                await budget.YieldIfSpentAsync();
+            }
             _cleanGroundPixels = UsesControlPoints
-                ? CurrentLayout.GroundPixels()
-                : GenerateMapPixels(battleMap, MapWidthPx, MapHeightPx);
+                ? await CurrentLayout.GroundPixelsAsync(budget, terrainProgress)
+                : await GenerateMapPixelsAsync(battleMap, MapWidthPx, MapHeightPx, budget, terrainProgress);
             RestoreCleanGround();
-            RefreshExteriorTerrain();
+            if (budget != null) await budget.YieldIfSpentAsync();
+            await RefreshExteriorTerrainAsync(budget);
+            if (budget != null) await budget.YieldIfSpentAsync();
             _postProcess?.ApplyMapTheme(battleMap);
             _atmosphere?.ApplyMapTheme(battleMap);
-            ClearAndSpawnMapProps(battleMap);
+            if (budget != null) _sceneLoader.ReportBattleInitialization(0.80f);
+            await ClearAndSpawnMapPropsAsync(battleMap, budget);
             ResetControlPoint();
 
-            SpawnModeTanks();
+            if (budget != null) _sceneLoader.ReportBattleInitialization(0.90f);
+            await SpawnModeTanksAsync(budget);
 
             TankEntity player = GetPlayerTank();
             if (player != null)
@@ -681,7 +713,7 @@ namespace Modern8bitTanks
                     BattleMode.SurvivalWave => UiText.Format("{0}  WAVE 1", mapTag),
                     _ => UiText.Format("{0}  VS  {1}", mapTag, eLabel)
                 };
-                if (_phase == GamePhase.Briefing) ShowBattleBriefing();
+                if (_phase == GamePhase.Briefing) await ShowBattleBriefingAsync(budget);
                 else
                 {
                     _hud.HideBriefing();
@@ -722,13 +754,13 @@ namespace Modern8bitTanks
             _groundDirty = false;
         }
 
-        private void SpawnModeTanks()
+        private async UniTask SpawnModeTanksAsync(BattleLoadBudget budget)
         {
             _rangeTargets.Clear();
             _tanks.Clear();
             if (_multiplayer.IsInBattle)
             {
-                SpawnMultiplayerTanks();
+                await SpawnMultiplayerTanksAsync(budget);
                 return;
             }
             VehicleDef playerDef = SelectedPlayerVehicle;
@@ -745,14 +777,17 @@ namespace Modern8bitTanks
 
             TryDeployTank(_playerTank, playerDef, "ally",
                 UsesControlPoints ? BattlefieldSpawn(true, 0) : new Vector2(westX, WorldH * 0.50f), 90f, isPlayerTank: true);
+            if (budget != null) await budget.YieldIfSpentAsync();
             TryDeployTank(_primaryEnemyTank, enemyDef, "enemy",
                 UsesControlPoints ? BattlefieldSpawn(false, 0) : new Vector2(eastX, WorldH * 0.50f), -90f, isPlayerTank: false);
+            if (budget != null) await budget.YieldIfSpentAsync();
 
             if (battleMode == BattleMode.Squad2v2)
             {
                 VehicleDef allyWing = BattleSessionState.PickRandomSameTierAlly(_allVehicles, playerDef);
                 VehicleDef enemyWing = BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: enemyDef != null ? enemyDef.id : null);
                 SpawnTankFromPrefab(allyWing, "ally", BattlefieldSpawn(true, 3), 90f, isPlayerTank: false);
+                if (budget != null) await budget.YieldIfSpentAsync();
                 SpawnTankFromPrefab(enemyWing, "enemy", BattlefieldSpawn(false, 3), -90f, isPlayerTank: false);
             }
             else if (battleMode == BattleMode.Battle5v5)
@@ -763,10 +798,12 @@ namespace Modern8bitTanks
                     VehicleDef allyMate = BattleSessionState.PickRandomSameTierAlly(_allVehicles, playerDef);
                     int deploymentSlot = k + 1;
                     SpawnTankFromPrefab(allyMate, "ally", BattlefieldSpawn(true, deploymentSlot), 90f, isPlayerTank: false);
+                    if (budget != null) await budget.YieldIfSpentAsync();
 
                     VehicleDef foe = BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: prevEnemyId);
                     if (foe != null) prevEnemyId = foe.id;
                     SpawnTankFromPrefab(foe, "enemy", BattlefieldSpawn(false, deploymentSlot), -90f, isPlayerTank: false);
+                    if (budget != null) await budget.YieldIfSpentAsync();
                 }
             }
         }
@@ -907,6 +944,7 @@ namespace Modern8bitTanks
         // ============================================================
         private void Update()
         {
+            if (!_initialized) return;
             if (_multiplayer.Connection != null && _multiplayer.Connection.IsReturningToLobby) return;
             if (!_multiplayer.IsInBattle && _sceneLoader != null && _sceneLoader.IsLoading) return;
             float dt = Mathf.Min(0.04f, Time.deltaTime);
