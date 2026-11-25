@@ -341,6 +341,14 @@ namespace Modern8bitTanks
 
         internal bool ContainsHangarAim(Vector2 viewport) => _hangarViewport.Contains(viewport);
 
+        internal bool TryGetHangarAimDirection(Vector2 viewport, out Vector2 direction)
+        {
+            direction = Vector2.zero;
+            if (!ContainsHangarAim(viewport)) return false;
+            direction = Rect.PointToNormalized(_hangarViewport, viewport) - _hangarShotOrigin;
+            return direction.sqrMagnitude >= 0.000001f;
+        }
+
         internal void ClearHangarShot()
         {
             _hangarShot = null;
@@ -364,10 +372,8 @@ namespace Modern8bitTanks
         {
             _hangarShot = null;
             hit = null;
-            if (!tank.alive || !aim.HasValue || !ContainsHangarAim(aim.Value)) return false;
-
-            Vector2 direction = Rect.PointToNormalized(_hangarViewport, aim.Value) - _hangarShotOrigin;
-            if (direction.sqrMagnitude < 0.000001f) return false;
+            if (!tank.alive || !aim.HasValue || !TryGetHangarAimDirection(aim.Value, out Vector2 direction))
+                return false;
             float edge = Mathf.Min(
                 ExitFraction(_hangarShotOrigin.x, direction.x, 0f, 1f),
                 ExitFraction(_hangarShotOrigin.y, direction.y, 0f, 1f));

@@ -645,6 +645,9 @@ namespace Modern8bitTanks
             if (showcaseTank != null)
             {
                 bool inspect = _xrayMode && !_treeOpen;
+                if (inspect && fireArmorPreview)
+                    ResetArmorPreviewDamage();
+
                 if (!_draggingTank && !inspect)
                     _manualAngleOffset = Mathf.Repeat(_manualAngleOffset + 24f * dt, 360f);
                 showcaseTank.hullAngleDeg = Mathf.Repeat(35f + _manualAngleOffset, 360f);

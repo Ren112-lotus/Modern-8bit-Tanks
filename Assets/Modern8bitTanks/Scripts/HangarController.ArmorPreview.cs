@@ -48,7 +48,8 @@ namespace Modern8bitTanks
 
             if (!mouse.leftButton.wasReleasedThisFrame) return false;
             bool fire = _armorPreviewPress is Vector2 press && !overUI &&
-                _windowbox.TryScreenToViewport(press, out Vector2 viewport) && _hangarXrayGraphic.ContainsHangarAim(viewport);
+                _windowbox.TryScreenToViewport(press, out Vector2 start) && _hangarXrayGraphic.ContainsHangarAim(start) &&
+                _windowbox.TryScreenToViewport(pointer, out Vector2 aim) && _hangarXrayGraphic.TryGetHangarAimDirection(aim, out _);
             _armorPreviewPress = null;
             return fire;
         }
