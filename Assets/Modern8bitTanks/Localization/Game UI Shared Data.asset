@@ -883,6 +883,22 @@ MonoBehaviour:
     m_Key: "DRAG TO DRAW / Z UNDO / C CLEAR"
     m_Metadata:
       m_Items: []
+  - m_Id: 15410685534244
+    m_Key: "DISPLAY NAME"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534245
+    m_Key: "ALLIES {0}/{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534246
+    m_Key: "ENEMIES {0}/{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534247
+    m_Key: "PLAYER {0}"
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

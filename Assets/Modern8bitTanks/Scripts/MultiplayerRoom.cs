@@ -14,6 +14,7 @@ namespace Modern8bitTanks
             public ulong ClientId;
             public byte Slot;
             public FixedString64Bytes VehicleId;
+            public FixedString64Bytes DisplayName;
             public bool ChoosingVehicle;
             public bool InLobby;
 
@@ -22,12 +23,14 @@ namespace Modern8bitTanks
                 serializer.SerializeValue(ref ClientId);
                 serializer.SerializeValue(ref Slot);
                 serializer.SerializeValue(ref VehicleId);
+                serializer.SerializeValue(ref DisplayName);
                 serializer.SerializeValue(ref ChoosingVehicle);
                 serializer.SerializeValue(ref InLobby);
             }
 
             public bool Equals(Member other) => ClientId == other.ClientId && Slot == other.Slot &&
-                VehicleId.Equals(other.VehicleId) && ChoosingVehicle == other.ChoosingVehicle && InLobby == other.InLobby;
+                VehicleId.Equals(other.VehicleId) && DisplayName.Equals(other.DisplayName) &&
+                ChoosingVehicle == other.ChoosingVehicle && InLobby == other.InLobby;
         }
 
         private NetworkList<Member> _members;
@@ -101,9 +104,19 @@ namespace Modern8bitTanks
 
         public string GetVehicleId(int slot)
         {
-            foreach (var member in _members)
-                if (member.Slot == slot) return member.VehicleId.IsEmpty ? null : member.VehicleId.ToString();
-            return null;
+            return TryGetMemberAtSlot(slot, out var member) && !member.VehicleId.IsEmpty ? member.VehicleId.ToString() : null;
+        }
+
+        internal bool TryGetMemberAtSlot(int slot, out Member member)
+        {
+            foreach (var entry in _members)
+            {
+                if (entry.Slot != slot) continue;
+                member = entry;
+                return true;
+            }
+            member = default;
+            return false;
         }
 
         public bool IsLocalChoosingVehicle
@@ -118,6 +131,25 @@ namespace Modern8bitTanks
 
         internal void SetVehicleSelection(string vehicleId, bool choosing) =>
             SelectVehicleRpc(Round, new FixedString64Bytes(vehicleId), choosing);
+
+        internal void SetDisplayName(string name) =>
+            SetDisplayNameRpc(new FixedString64Bytes(name));
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void SetDisplayNameRpc(FixedString64Bytes name, RpcParams rpcParams = default)
+        {
+            if (ExpectedMask != 0) return;
+            var displayName = new FixedString64Bytes(MultiplayerSessionState.NormalizeDisplayName(name.ToString()));
+            for (int i = 0; i < _members.Count; i++)
+            {
+                var member = _members[i];
+                if (member.ClientId != rpcParams.Receive.SenderClientId) continue;
+                if (member.DisplayName.Equals(displayName)) return;
+                member.DisplayName = displayName;
+                _members[i] = member;
+                return;
+            }
+        }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         private void SelectVehicleRpc(ushort round, FixedString64Bytes vehicleId, bool choosing, RpcParams rpcParams = default)

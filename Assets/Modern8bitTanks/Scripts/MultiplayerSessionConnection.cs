@@ -13,7 +13,7 @@ namespace Modern8bitTanks
     {
         public const int PlayersPerTeam = 5;
         public const int MaxPlayers = 2 * PlayersPerTeam;
-        private const ushort ProtocolVersion = 16;
+        private const ushort ProtocolVersion = 17;
         private const float RoomSyncTimeout = 15f;
 
         [SerializeField] private NetworkManager _network;
@@ -95,6 +95,7 @@ namespace Modern8bitTanks
 
                 if (connection == null || connection._connectionLost || connection.Room == null || connection.Room.LocalSlot < 0)
                     throw new InvalidOperationException("Could not synchronize the room. Check the code and try again.");
+                connection.Room.SetDisplayName(multiplayer.DisplayName);
                 connection.Room.SetVehicleSelection(sessionState.SelectedPlayerVehicleId, choosing: false);
                 connection._connecting = false;
             }
@@ -194,6 +195,7 @@ namespace Modern8bitTanks
             if (!IsReturningToLobby || Room == null || Room.ExpectedMask != 0) return;
             _returnToHangar = false;
             _localSlot = -1;
+            Room.SetDisplayName(_multiplayer.DisplayName);
             Room.SetVehicleSelection(_sessionState.SelectedPlayerVehicleId, choosing: false);
         }
 

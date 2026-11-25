@@ -886,6 +886,22 @@ MonoBehaviour:
     m_Localized: "DRAG TO DRAW / Z UNDO / C CLEAR"
     m_Metadata:
       m_Items: []
+  - m_Id: 15410685534244
+    m_Localized: "DISPLAY NAME"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534245
+    m_Localized: "ALLIES {0}/{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534246
+    m_Localized: "ENEMIES {0}/{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534247
+    m_Localized: "PLAYER {0}"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

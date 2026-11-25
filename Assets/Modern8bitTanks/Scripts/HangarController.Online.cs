@@ -1,5 +1,6 @@
 using Cysharp.Threading.Tasks;
 using System;
+using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,10 +18,12 @@ namespace Modern8bitTanks
         [SerializeField] private GameObject _onlineSelectVisuals;
         [SerializeField] private GameObject _onlineSelectHits;
         [SerializeField] private InputField _onlineCode;
+        [SerializeField] private InputField _onlineName;
         [SerializeField] private Text _onlineStatus;
         [SerializeField] private Text _onlineCodeLabel;
         private float _nextOnlineRefresh;
-        [SerializeField] private Text _onlineRoster;
+        [SerializeField] private Text _onlineFriendlyRoster;
+        [SerializeField] private Text _onlineHostileRoster;
         [SerializeField] private Text _onlineVehicle;
         [SerializeField] private Text _onlineBack;
         [SerializeField] private Text _garageTitleButton;
@@ -31,6 +34,49 @@ namespace Modern8bitTanks
         private bool _onlineBusy;
         private bool _waitingForVehicleSelection;
         private bool _choosingOnlineVehicle;
+        private int _onlineNameCancelFrame = -1;
+
+        private void InitializeOnlineProfile()
+        {
+            _onlineName.characterLimit = MultiplayerSessionState.MaxDisplayNameLength;
+            _onlineName.SetTextWithoutNotify(_multiplayer.DisplayName);
+            _onlineName.onEndEdit.AddListener(value =>
+            {
+                if (_onlineName.wasCanceled)
+                {
+                    _onlineNameCancelFrame = Time.frameCount;
+                    return;
+                }
+                SaveOnlineDisplayName(value);
+            });
+            _onlineFriendlyRoster.color = OnlineTeamColors.Friendly;
+            _onlineHostileRoster.color = OnlineTeamColors.Hostile;
+        }
+
+        private void SaveOnlineDisplayName(string value)
+        {
+            string name = _multiplayer.SaveDisplayName(value);
+            _onlineName.SetTextWithoutNotify(name);
+            var room = _multiplayer.Connection != null ? _multiplayer.Connection.Room : null;
+            if (room != null && room.IsSpawned) room.SetDisplayName(name);
+        }
+
+        private static string OnlineTeamRoster(MultiplayerRoom room, int localSlot, bool friendly)
+        {
+            const int teamSize = MultiplayerSessionConnection.PlayersPerTeam;
+            bool alpha = MultiplayerSessionConnection.IsAlphaSlot(localSlot) == friendly;
+            int firstSlot = alpha ? 0 : teamSize;
+            var roster = new StringBuilder(UiText.Format(friendly ? "ALLIES {0}/{1}" : "ENEMIES {0}/{1}", room.CountTeam(alpha), teamSize));
+            for (int slot = firstSlot; slot < firstSlot + teamSize; slot++)
+            {
+                roster.Append('\n');
+                if (slot == localSlot) roster.Append("> ");
+                roster.Append(room.TryGetMemberAtSlot(slot, out var member)
+                    ? member.DisplayName.IsEmpty ? UiText.Format("PLAYER {0}", slot + 1) : member.DisplayName.ToString()
+                    : "–");
+            }
+            return roster.ToString();
+        }
 
         private void SetOnlineRoomOpen(bool open)
         {
@@ -68,10 +114,10 @@ namespace Modern8bitTanks
             _onlineSelectHits.SetActive(canSelect);
             _onlineBack.text = UiText.Get(inRoom ? "LEAVE ROOM" : "BACK");
             _onlineCodeLabel.text = inRoom && !string.IsNullOrEmpty(connection.JoinCode) ? UiText.Format("CODE {0}", connection.JoinCode) : "";
-            const int teamSize = MultiplayerSessionConnection.PlayersPerTeam;
-            _onlineRoster.text = inRoom
-                ? $"ALPHA {room.CountTeam(true)}/{teamSize}    BRAVO {room.CountTeam(false)}/{teamSize}\nYOUR TEAM: {(MultiplayerSessionConnection.IsAlphaSlot(room.LocalSlot) ? "ALPHA" : "BRAVO")}"
-                : "";
+            _onlineName.interactable = !busy && (connection == null || !connection.IsStarting);
+            int localSlot = inRoom ? room.LocalSlot : -1;
+            _onlineFriendlyRoster.text = localSlot >= 0 ? OnlineTeamRoster(room, localSlot, friendly: true) : "";
+            _onlineHostileRoster.text = localSlot >= 0 ? OnlineTeamRoster(room, localSlot, friendly: false) : "";
             _onlineVehicle.text = inRoom && GetSelectedVehicle() is { } vehicle
                 ? UiText.Format("YOUR TANK: {0}", vehicle.name.ToUpperInvariant()) : "";
             if (connection != null && connection.IsLeaving)
@@ -134,6 +180,7 @@ namespace Modern8bitTanks
                 return;
             }
 
+            SaveOnlineDisplayName(_onlineName.text);
             _onlineBusy = true;
             _onlineError = null;
             try { await multiplayerSessionPrefab.ConnectAsync(_sessionState, _multiplayer, _sceneLoader, code); }

@@ -886,6 +886,22 @@ MonoBehaviour:
     m_Localized: "\u30c9\u30e9\u30c3\u30b0\u3067\u63cf\u753b / Z \u623b\u3059 / C \u6d88\u53bb"
     m_Metadata:
       m_Items: []
+  - m_Id: 15410685534244
+    m_Localized: "表示名"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534245
+    m_Localized: "味方 {0}/{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534246
+    m_Localized: "敵 {0}/{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534247
+    m_Localized: "プレイヤー {0}"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

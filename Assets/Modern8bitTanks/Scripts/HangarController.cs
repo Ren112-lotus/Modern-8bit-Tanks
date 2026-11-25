@@ -250,6 +250,7 @@ namespace Modern8bitTanks
             _sessionState.SelectedBattleMapChanged.Subscribe(RefreshMapBackdropTheme).AddTo(this);
 
             InitializeMenus();
+            InitializeOnlineProfile();
             InitializeTechTree();
             InitializeTitleStage();
 
@@ -473,7 +474,8 @@ namespace Modern8bitTanks
             if (_onlineOpen)
             {
                 _armorPreviewPress = null;
-                if (kb != null && kb.escapeKey.wasPressedThisFrame) CloseOnlineRoom();
+                if (kb != null && kb.escapeKey.wasPressedThisFrame && !_onlineName.isFocused && _onlineNameCancelFrame != Time.frameCount)
+                    CloseOnlineRoom();
                 RefreshOnlineRoom();
                 if (_titleOpen) UpdateTitleStage(dt);
                 return;

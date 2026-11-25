@@ -1748,6 +1748,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
   m_Name:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
+--- !u!114 &803286571 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8941170101000000034, guid: 6a957e490d7a04e4abaec1c2574005f0, type: 3}
+  m_PrefabInstance: {fileID: 803286224}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d199490a83bb2b844b9695cbf13b01ef, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.InputField
+--- !u!114 &803286572 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8941170101000000003, guid: 6a957e490d7a04e4abaec1c2574005f0, type: 3}
+  m_PrefabInstance: {fileID: 803286224}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
 --- !u!114 &803286347 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8115966441748704592, guid: 6a957e490d7a04e4abaec1c2574005f0, type: 3}
@@ -2871,9 +2893,11 @@ MonoBehaviour:
   _onlineSelectVisuals: {fileID: 803286352}
   _onlineSelectHits: {fileID: 803286351}
   _onlineCode: {fileID: 803286350}
+  _onlineName: {fileID: 803286571}
   _onlineStatus: {fileID: 803286349}
   _onlineCodeLabel: {fileID: 803286348}
-  _onlineRoster: {fileID: 803286347}
+  _onlineFriendlyRoster: {fileID: 803286347}
+  _onlineHostileRoster: {fileID: 803286572}
   _onlineVehicle: {fileID: 803286346}
   _onlineBack: {fileID: 803286345}
   _garageTitleButton: {fileID: 803286344}
