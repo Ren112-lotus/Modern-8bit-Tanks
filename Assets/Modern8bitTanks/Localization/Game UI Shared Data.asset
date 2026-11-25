@@ -812,91 +812,91 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534226
-    m_Key: "XRAY PIN ATTACKER"
+    m_Key: XRAY PIN ATTACKER
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534227
-    m_Key: "XRAY UNPIN ATTACKER"
+    m_Key: XRAY UNPIN ATTACKER
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534228
-    m_Key: "XRAY AIM"
+    m_Key: XRAY AIM
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534229
-    m_Key: "XRAY MISS"
+    m_Key: XRAY MISS
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534230
-    m_Key: "XRAY PENETRATED"
+    m_Key: XRAY PENETRATED
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534231
-    m_Key: "XRAY BLOCKED"
+    m_Key: XRAY BLOCKED
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534232
-    m_Key: "XRAY ARMOR RESULT"
+    m_Key: XRAY ARMOR RESULT
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534233
-    m_Key: "XRAY SHOT CONTROLS"
+    m_Key: XRAY SHOT CONTROLS
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534234
-    m_Key: "XRAY CREW COUNT"
+    m_Key: XRAY CREW COUNT
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534235
-    m_Key: "XRAY NO DAMAGE"
+    m_Key: XRAY NO DAMAGE
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534236
-    m_Key: "XRAY LEFT DRIVE"
+    m_Key: XRAY LEFT DRIVE
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534237
-    m_Key: "XRAY RIGHT DRIVE"
+    m_Key: XRAY RIGHT DRIVE
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534238
-    m_Key: "XRAY ENGINE"
+    m_Key: XRAY ENGINE
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534239
-    m_Key: "XRAY TRAVERSE"
+    m_Key: XRAY TRAVERSE
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534240
-    m_Key: "XRAY WEAPON"
+    m_Key: XRAY WEAPON
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534241
-    m_Key: "XRAY AMMO"
+    m_Key: XRAY AMMO
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534242
-    m_Key: "XRAY SHOT IN FLIGHT"
+    m_Key: XRAY SHOT IN FLIGHT
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534243
-    m_Key: "DRAG TO DRAW / Z UNDO / C CLEAR"
+    m_Key: DRAG TO DRAW / Z UNDO / C CLEAR
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534244
-    m_Key: "DISPLAY NAME"
+    m_Key: DISPLAY NAME
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534245
-    m_Key: "ALLIES {0}/{1}"
+    m_Key: ALLIES {0}/{1}
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534246
-    m_Key: "ENEMIES {0}/{1}"
+    m_Key: ENEMIES {0}/{1}
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534247
-    m_Key: "PLAYER {0}"
+    m_Key: PLAYER {0}
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534248
