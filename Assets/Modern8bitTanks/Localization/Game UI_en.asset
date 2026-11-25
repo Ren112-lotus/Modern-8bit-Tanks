@@ -814,6 +814,34 @@ MonoBehaviour:
     m_Localized: 'PEN {0} / {1}'
     m_Metadata:
       m_Items: []
+  - m_Id: 15410685534226
+    m_Localized: "[P] PIN {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534227
+    m_Localized: "[P] UNPIN {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534228
+    m_Localized: "AIM AT HULL  /  SHOT FROM BELOW"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534229
+    m_Localized: "MISS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534230
+    m_Localized: "PENETRATED"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534231
+    m_Localized: "BLOCKED"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534232
+    m_Localized: "{0}  PEN {1} / ARMOR {2}  {3}\u00b0"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

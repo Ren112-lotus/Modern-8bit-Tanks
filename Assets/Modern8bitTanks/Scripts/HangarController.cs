@@ -268,6 +268,7 @@ namespace Modern8bitTanks
             if (_onlineError != null || (connection != null && connection.Room != null && !connection.IsLeaving)) SetOnlineRoomOpen(true);
             UiText.Prepare(_pixelCanvas, () =>
             {
+                _armorPreviewLabelsDirty = true;
                 RefreshSettingsLabels();
                 RefreshAllUI();
             });
@@ -625,18 +626,21 @@ namespace Modern8bitTanks
 
             if (showcaseTank != null)
             {
-                if (!_draggingTank)
+                bool inspect = _xrayMode && !_treeOpen;
+                if (!_draggingTank && !inspect)
                     _manualAngleOffset = Mathf.Repeat(_manualAngleOffset + 24f * dt, 360f);
                 showcaseTank.hullAngleDeg = Mathf.Repeat(35f + _manualAngleOffset, 360f);
                 showcaseTank.turretAngleDeg = showcaseTank.hullAngleDeg + Mathf.Sin(Time.time * 0.95f) *
                     Mathf.Min(28f, showcaseTank.vehicleDef?.fixedGunTraverse is > 0 ? showcaseTank.vehicleDef.fixedGunTraverse : 28f);
 
-                bool inspect = _xrayMode && !_treeOpen;
                 if (showcaseTank.gameObject.activeSelf == inspect)
                     showcaseTank.gameObject.SetActive(!inspect);
                 showcaseTank.SyncVisuals(squash, spacingPx);
                 if (inspect)
+                {
                     _hangarXrayGraphic.ShowHangarInspect(showcaseTank, _cam, _windowbox.HudCamera);
+                    UpdateArmorPreview(kb, mouse);
+                }
             }
         }
 

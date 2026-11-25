@@ -811,6 +811,34 @@ MonoBehaviour:
     m_Key: 'LOADING PEN {0} / {1}'
     m_Metadata:
       m_Items: []
+  - m_Id: 15410685534226
+    m_Key: "XRAY PIN ATTACKER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534227
+    m_Key: "XRAY UNPIN ATTACKER"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534228
+    m_Key: "XRAY AIM FROM BELOW"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534229
+    m_Key: "XRAY MISS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534230
+    m_Key: "XRAY PENETRATED"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534231
+    m_Key: "XRAY BLOCKED"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534232
+    m_Key: "XRAY ARMOR RESULT"
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:
