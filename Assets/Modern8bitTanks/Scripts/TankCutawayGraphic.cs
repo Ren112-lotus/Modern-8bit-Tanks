@@ -259,9 +259,9 @@ namespace Modern8bitTanks
             );
         }
 
-        public void ShowHangarInspect(TankEntity tank, float hullAngleDeg, float turretAngleDeg, float scale = 1.65f)
+        internal void ShowHangarInspect(TankEntity tank, Camera worldCamera, Camera hudCamera)
         {
-            if (tank == null || tank.meta == null) return;
+            if (tank.meta == null || _xray == null) return;
             _mode = Mode.Hangar;
             _replayTarget = null;
             ReadVehicle(tank);
@@ -270,23 +270,22 @@ namespace Modern8bitTanks
             _disabled = TankModule.None;
             _crew = TankCrew.Driver | TankCrew.Gunner | TankCrew.Commander | (tank.CrewCapacity == 4 ? TankCrew.Loader : TankCrew.None);
 
-            if (_xray != null)
-            {
-                Vector2 c = new Vector2(_xray.Width * 0.50f, _xray.Height * 0.42f);
-                _xray.Render(
-                    tank.hullStack != null ? tank.hullStack.sourceSheet : null,
-                    tank.turretStack != null ? tank.turretStack.sourceSheet : null,
-                    tank.meta,
-                    hullAngleDeg: hullAngleDeg,
-                    turretAngleDeg: turretAngleDeg,
-                    squash: 0.75f,
-                    spacingPx: 1.0f,
-                    scale: scale,
-                    centerOverride: c,
-                    drawGrid: false,
-                    transparentBg: true
-                );
-            }
+            // The world and HUD render to separate textures but share the same viewport.
+            Rect backdrop = _bgImage.GetPixelAdjustedRect();
+            RectTransform backdropTransform = _bgImage.rectTransform;
+            Vector2 viewportMin = hudCamera.WorldToViewportPoint(backdropTransform.TransformPoint(backdrop.min));
+            Vector2 viewportMax = hudCamera.WorldToViewportPoint(backdropTransform.TransformPoint(backdrop.max));
+            Vector2 viewportSize = viewportMax - viewportMin;
+            var textureScale = new Vector2(_xray.Width / viewportSize.x, _xray.Height / viewportSize.y);
+
+            Vector2 Project(Vector3 world) =>
+                Vector2.Scale((Vector2)worldCamera.WorldToViewportPoint(world) - viewportMin, textureScale);
+
+            Vector3 hullOrigin = tank.hullStack.transform.position;
+            Vector2 hullCenter = Project(hullOrigin);
+            Vector2 turretCenter = Project(tank.turretStack.transform.position);
+            float pixelsPerTexel = Project(hullOrigin + Vector3.right / tank.hullStack.pixelsPerUnit).x - hullCenter.x;
+            _xray.RenderHangar(tank, hullCenter, turretCenter, pixelsPerTexel);
             SetVerticesDirty();
         }
 

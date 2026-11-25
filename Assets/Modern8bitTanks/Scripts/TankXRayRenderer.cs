@@ -211,7 +211,34 @@ namespace Modern8bitTanks
                 }
             }
 
-            // 3. War Thunder ghost-steel translucent shell (neutral cool steel so damaged modules & fire POP!)
+            PaintShell(drawGrid, transparentBg, cookoffHeat);
+        }
+
+        internal void RenderHangar(TankEntity tank, Vector2 hullCenter, Vector2 turretCenter, float scale)
+        {
+            var hull = tank.hullStack;
+            var turret = tank.turretStack;
+            int total = Width * Height;
+            System.Array.Clear(_partBuf, 0, total);
+            System.Array.Clear(_zBuf, 0, total);
+            System.Array.Clear(_lumBuf, 0, total);
+
+            _hullDeg = hull.angleDeg;
+            _squash = hull.squash;
+            _spacing = hull.spacingPx;
+            _scale = Mathf.Max(0.01f, scale);
+            _halfW = Mathf.Max(1f, tank.meta.hullWidth * 0.5f);
+            _halfL = Mathf.Max(1f, tank.meta.hullLength * 0.5f);
+            _centerPx = hullCenter;
+
+            float totalSlices = Mathf.Max(1f, turret.baseZOffsetSlices + turret.sliceCount);
+            RasterHangarStack(hull, hullCenter, totalSlices, partId: 1);
+            RasterHangarStack(turret, turretCenter, totalSlices, partId: 2);
+            PaintShell(drawGrid: false, transparentBg: true, cookoffHeat: 0f);
+        }
+
+        private void PaintShell(bool drawGrid, bool transparentBg, float cookoffHeat)
+        {
             Color32 clearCol = transparentBg ? new Color32(0, 0, 0, 0) : new Color32(14, 17, 20, 220);
             Color32 gridCol = new Color32(34, 42, 48, 85);
 
@@ -274,6 +301,24 @@ namespace Modern8bitTanks
 
             Texture.SetPixels32(_outPixels);
             Texture.Apply(false, false);
+        }
+
+        private void RasterHangarStack(SpriteStackRenderer stack, Vector2 centerPx, float totalSlices, byte partId)
+        {
+            Texture2D sheet = stack.sourceSheet;
+            int sliceCount = stack.sliceCount;
+            Color32[] sheetPx = GetSheetPixels(sheet);
+            if (sheetPx == null || sliceCount <= 0) return;
+
+            int sheetW = sheet.width;
+            int sliceW = sheetW / sliceCount;
+            int sliceH = sheet.height;
+            if (sliceW <= 0 || sliceH <= 0) return;
+
+            // Raster indices are integers. Sample the centers of the HUD texels.
+            centerPx -= new Vector2(0.5f, 0.5f);
+            RasterStack(sheetPx, sheetW, sliceW, sliceH, sliceCount, centerPx, stack.angleDeg,
+                stack.baseZOffsetSlices, totalSlices, partId);
         }
 
         private void RasterStack(

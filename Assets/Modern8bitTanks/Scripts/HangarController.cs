@@ -377,6 +377,8 @@ namespace Modern8bitTanks
                 return;
 
             showcaseTank.SetAssemblyDrop(1f);
+            // A larger vehicle must fit as soon as it replaces the previous model.
+            _currentShowcaseZoom = Mathf.Min(_currentShowcaseZoom, GetAdaptiveShowcaseZoom(def));
             RefreshAllUI();
         }
 
@@ -604,27 +606,6 @@ namespace Modern8bitTanks
                 }
             }
 
-            // Smoothly spin the player's centered showcase tank (or live 360 X-Ray hologram)!
-            if (showcaseTank != null)
-            {
-                if (!_draggingTank)
-                    _manualAngleOffset = Mathf.Repeat(_manualAngleOffset + 24f * dt, 360f);
-                showcaseTank.hullAngleDeg = Mathf.Repeat(35f + _manualAngleOffset, 360f);
-                showcaseTank.turretAngleDeg = showcaseTank.hullAngleDeg + Mathf.Sin(Time.time * 0.95f) *
-                    Mathf.Min(28f, showcaseTank.vehicleDef?.fixedGunTraverse is > 0 ? showcaseTank.vehicleDef.fixedGunTraverse : 28f);
-                if (_xrayMode && !_treeOpen)
-                {
-                    if (showcaseTank.gameObject.activeSelf) showcaseTank.gameObject.SetActive(false);
-                    if (_hangarXrayGraphic != null)
-                        _hangarXrayGraphic.ShowHangarInspect(showcaseTank, showcaseTank.hullAngleDeg, showcaseTank.turretAngleDeg, _currentShowcaseZoom);
-                }
-                else
-                {
-                    if (!showcaseTank.gameObject.activeSelf) showcaseTank.gameObject.SetActive(true);
-                    showcaseTank.SyncVisuals(squash, spacingPx);
-                }
-            }
-
             // Adaptive crisp showcase zoom (automatically frames small tankettes close-up & MBTs at crisp 2x pixels!)
             float targetZoom = GetAdaptiveShowcaseZoom(GetSelectedVehicle());
             _currentShowcaseZoom = Mathf.Lerp(_currentShowcaseZoom, targetZoom, 1f - Mathf.Exp(-10f * dt));
@@ -640,6 +621,22 @@ namespace Modern8bitTanks
                 float camY = Mathf.Round((WorldH * 0.5f) * PPU) / PPU;
                 _cam.transform.position = new Vector3(camX, camY, -20f);
                 _cam.transform.rotation = Quaternion.identity;
+            }
+
+            if (showcaseTank != null)
+            {
+                if (!_draggingTank)
+                    _manualAngleOffset = Mathf.Repeat(_manualAngleOffset + 24f * dt, 360f);
+                showcaseTank.hullAngleDeg = Mathf.Repeat(35f + _manualAngleOffset, 360f);
+                showcaseTank.turretAngleDeg = showcaseTank.hullAngleDeg + Mathf.Sin(Time.time * 0.95f) *
+                    Mathf.Min(28f, showcaseTank.vehicleDef?.fixedGunTraverse is > 0 ? showcaseTank.vehicleDef.fixedGunTraverse : 28f);
+
+                bool inspect = _xrayMode && !_treeOpen;
+                if (showcaseTank.gameObject.activeSelf == inspect)
+                    showcaseTank.gameObject.SetActive(!inspect);
+                showcaseTank.SyncVisuals(squash, spacingPx);
+                if (inspect)
+                    _hangarXrayGraphic.ShowHangarInspect(showcaseTank, _cam, _windowbox.HudCamera);
             }
         }
 
