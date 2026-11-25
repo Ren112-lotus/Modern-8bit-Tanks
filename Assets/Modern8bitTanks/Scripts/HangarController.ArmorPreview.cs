@@ -6,7 +6,7 @@ namespace Modern8bitTanks
 {
     public partial class HangarController
     {
-        private const double ArmorPreviewIdleResetSeconds = 15d;
+        private const double ArmorPreviewIdleResetSeconds = 5d;
 
         private VehicleDef _pinnedArmorPreviewAttacker;
         private VehicleDef _armorPreviewAttacker;
