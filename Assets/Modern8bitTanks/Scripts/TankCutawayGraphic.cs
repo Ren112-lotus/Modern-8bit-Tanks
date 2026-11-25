@@ -44,7 +44,8 @@ namespace Modern8bitTanks
         [SerializeField] private UnityEngine.UI.Text hangarAmmoLabel;
         [SerializeField] private UnityEngine.UI.Text hangarArmorResultLabel;
         private Rect _hangarViewport;
-        private (float X, TankHit? Hit, TankShotTrace Trace)? _hangarShot;
+        private Vector2 _hangarShotOrigin = new(0.5f, 0f);
+        private (Vector2 End, TankHit? Hit, TankShotTrace Trace)? _hangarShot;
 
         private Rect StatusBodyRect
         {
@@ -307,6 +308,16 @@ namespace Modern8bitTanks
             hangarArmorResultLabel.color = ArmorPreviewColor(outcome);
         }
 
+        internal void MoveHangarShotOrigin(Vector2 viewport)
+        {
+            if (!_hangarViewport.Contains(viewport)) return;
+            var center = new Vector2(0.5f, 0.5f);
+            Vector2 delta = Rect.PointToNormalized(_hangarViewport, viewport) - center;
+            float extent = Mathf.Max(Mathf.Abs(delta.x), Mathf.Abs(delta.y));
+            if (extent > 0.0001f)
+                _hangarShotOrigin = center + delta * (0.5f / extent);
+        }
+
         internal bool PreviewHangarShot(TankEntity tank, Camera worldCamera, Vector2? aim,
             ProjectileKind kind, AmmoType ammo, float penetration, out TankHit? hit)
         {
@@ -314,14 +325,18 @@ namespace Modern8bitTanks
             hit = null;
             if (!aim.HasValue || !_hangarViewport.Contains(aim.Value)) return false;
 
-            float x = aim.Value.x;
-            float aimX = (x - _hangarViewport.xMin) / _hangarViewport.width;
-            Vector2 from = worldCamera.ViewportToWorldPoint(new Vector3(x, _hangarViewport.yMin, 0f));
-            Vector2 to = worldCamera.ViewportToWorldPoint(new Vector3(x, _hangarViewport.yMax, 0f));
+            Vector2 direction = Rect.PointToNormalized(_hangarViewport, aim.Value) - _hangarShotOrigin;
+            if (direction.sqrMagnitude < 0.000001f) return false;
+            float edge = Mathf.Min(
+                ExitFraction(_hangarShotOrigin.x, direction.x, 0f, 1f),
+                ExitFraction(_hangarShotOrigin.y, direction.y, 0f, 1f));
+            Vector2 end = _hangarShotOrigin + direction * edge;
+            Vector2 from = worldCamera.ViewportToWorldPoint(Rect.NormalizedToPoint(_hangarViewport, _hangarShotOrigin));
+            Vector2 to = worldCamera.ViewportToWorldPoint(Rect.NormalizedToPoint(_hangarViewport, end));
             TankShotTrace trace = default;
             if (tank.TryGetArmorContact(from, to, tank.hullStack.squash, out ArmorContact contact))
                 hit = tank.PreviewArmorHit(contact, kind, penetration, ammo, out trace);
-            _hangarShot = (aimX, hit, trace);
+            _hangarShot = (end, hit, trace);
             return true;
         }
 
@@ -437,13 +452,18 @@ namespace Modern8bitTanks
             // 5. War Thunder Ballistic Replay: Shell + 7-Ray Spall Cone + Ricochet + Full-Vehicle Ammo Cookoff!
             if (_mode == Mode.Replay)
                 DrawReplayBallistics(mesh, Proj, hullMidZ + 1.2f, ammoLocal, ox, oy, rect.width, rect.height);
-            else if (_mode == Mode.Hangar && _hangarShot.HasValue)
+            else if (_mode == Mode.Hangar)
                 DrawHangarShot(mesh, Proj, rect);
         }
 
         private void DrawHangarShot(VertexHelper mesh, System.Func<Vector2, float, Vector2> project, Rect rect)
         {
-            var (x, hit, trace) = _hangarShot.Value;
+            Vector2 origin = Rect.NormalizedToPoint(rect, _hangarShotOrigin);
+            Vector2 marker = new(Mathf.Clamp(origin.x, rect.xMin + 3f, rect.xMax - 3f),
+                Mathf.Clamp(origin.y, rect.yMin + 3f, rect.yMax - 3f));
+            Diamond(mesh, marker, 2.5f, Tracer);
+            if (!_hangarShot.HasValue) return;
+            var (end, hit, trace) = _hangarShot.Value;
             Vector2 bottomLeft = project(new Vector2(-1f, -1f), 0f);
             Vector2 bottomRight = project(new Vector2(1f, -1f), 0f);
             Vector2 topLeft = project(new Vector2(-1f, 1f), 0f);
@@ -454,29 +474,32 @@ namespace Modern8bitTanks
             Line(mesh, topRight, topLeft, 1f, outline);
             Line(mesh, topLeft, bottomLeft, 1f, outline);
 
-            var origin = new Vector2(Mathf.Lerp(rect.xMin, rect.xMax, x), rect.yMin + 3f);
             Color tint = ArmorPreviewColor(hit?.Armor);
             if (!hit.HasValue)
             {
-                Line(mesh, origin, new Vector2(origin.x, rect.yMax - 3f), 1f, FadeAlpha(tint, 0.45f));
+                Line(mesh, origin, Rect.NormalizedToPoint(rect, end), 1f, FadeAlpha(tint, 0.45f));
                 return;
             }
 
             Vector2 impact = project(trace.Entry, 0f);
             Line(mesh, origin, impact, 1f, tint);
-            Line(mesh, impact + new Vector2(-3f, -5f), impact, 1f, tint);
-            Line(mesh, impact + new Vector2(3f, -5f), impact, 1f, tint);
+            Vector2 direction = (impact - origin).normalized;
+            Vector2 arrow = impact - direction * 5f;
+            Vector2 wing = Vector2.Perpendicular(direction) * 3f;
+            Line(mesh, arrow - wing, impact, 1f, tint);
+            Line(mesh, arrow + wing, impact, 1f, tint);
             if (hit.Value.Armor == ArmorHit.Penetrated)
             {
                 Vector2 delta = trace.End - trace.Entry;
-                float reach = Mathf.Clamp01(Mathf.Min(ExitFraction(trace.Entry.x, delta.x), ExitFraction(trace.Entry.y, delta.y)));
+                float reach = Mathf.Clamp01(Mathf.Min(ExitFraction(trace.Entry.x, delta.x, -1f, 1f),
+                    ExitFraction(trace.Entry.y, delta.y, -1f, 1f)));
                 Line(mesh, impact, project(trace.Entry + delta * reach, 0f), 2f, tint);
             }
             Diamond(mesh, impact, 2.5f, tint);
         }
 
-        private static float ExitFraction(float start, float delta) =>
-            Mathf.Abs(delta) < 0.0001f ? 1f : ((delta > 0f ? 1f : -1f) - start) / delta;
+        private static float ExitFraction(float start, float delta, float min, float max) =>
+            Mathf.Abs(delta) < 0.000001f ? float.PositiveInfinity : ((delta > 0f ? max : min) - start) / delta;
 
         private void DrawRunningGear(VertexHelper mesh, System.Func<Vector2, float, Vector2> proj, TankModule module, float sideX, float scale, bool engulfed)
         {

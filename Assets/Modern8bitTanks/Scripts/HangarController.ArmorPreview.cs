@@ -60,7 +60,11 @@ namespace Modern8bitTanks
             Vector2? aim = null;
             if (interactive && !_draggingTank && mouse != null &&
                 _windowbox.TryScreenToViewport(mouse.position.ReadValue(), out Vector2 viewport))
+            {
+                if (mouse.rightButton.isPressed)
+                    _hangarXrayGraphic.MoveHangarShotOrigin(viewport);
                 aim = viewport;
+            }
 
             bool secondaryAtgm = _armorPreviewAmmoIndex == _armorPreviewLoadout.Length;
             AmmoType ammo = secondaryAtgm ? AmmoType.TOW : _armorPreviewLoadout[_armorPreviewAmmoIndex];
@@ -82,7 +86,7 @@ namespace Modern8bitTanks
                 ArmorHit.Penetrated => UiText.Get("XRAY PENETRATED"),
                 ArmorHit.Blocked => UiText.Get("XRAY BLOCKED"),
                 ArmorHit.Ricochet => UiText.Get("RICOCHET"),
-                _ => UiText.Get(aiming ? "XRAY MISS" : "XRAY AIM FROM BELOW")
+                _ => UiText.Get(aiming ? "XRAY MISS" : "XRAY AIM")
             };
             if (hit.HasValue)
                 result = UiText.Format("XRAY ARMOR RESULT", result, readout.penetration, readout.armor, readout.angle);
