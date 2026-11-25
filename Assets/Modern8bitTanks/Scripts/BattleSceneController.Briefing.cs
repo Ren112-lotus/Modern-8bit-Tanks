@@ -8,6 +8,7 @@ namespace Modern8bitTanks
     {
         internal const int BriefingMapScale = 6;
         private bool _briefingConfirmed;
+        private bool _waitForPrimaryRelease;
 
         internal void ConfirmBriefing()
         {
@@ -24,13 +25,19 @@ namespace Modern8bitTanks
 
         private void HandleBriefingInput(Keyboard keyboard)
         {
-            if (_phase == GamePhase.Briefing && !_hud.IsMenuOpen && keyboard != null &&
-                (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame))
+            if (_phase != GamePhase.Briefing || _hud.IsMenuOpen || keyboard == null) return;
+
+            if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)
                 ConfirmBriefing();
+            else if (keyboard.zKey.wasPressedThisFrame)
+                _hud.UndoBriefingStroke();
+            else if (keyboard.cKey.wasPressedThisFrame)
+                _hud.ClearBriefingSketch();
         }
 
         private void BeginBattle()
         {
+            _waitForPrimaryRelease = Mouse.current?.leftButton.isPressed == true;
             _phase = GamePhase.Playing;
             _hud.HideBriefing();
             StartPlayerEngineAudio(GetPlayerTank());

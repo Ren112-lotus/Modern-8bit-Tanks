@@ -882,6 +882,10 @@ MonoBehaviour:
     m_Localized: "SHOT IN FLIGHT"
     m_Metadata:
       m_Items: []
+  - m_Id: 15410685534243
+    m_Localized: "DRAG TO DRAW / Z UNDO / C CLEAR"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

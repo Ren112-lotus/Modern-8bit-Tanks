@@ -1297,12 +1297,14 @@ namespace Modern8bitTanks
             bool left = kb.aKey.isPressed || kb.leftArrowKey.isPressed;
             bool right = kb.dKey.isPressed || kb.rightArrowKey.isPressed;
             bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+            bool primaryHeld = mouse != null && mouse.leftButton.isPressed;
+            _waitForPrimaryRelease &= primaryHeld;
             input = new TankControlInput
             {
                 Up = up, Down = down, Left = left, Right = right,
                 Repair = kb.fKey.wasPressedThisFrame,
                 AimWorld = GetMouseWorld2D(),
-                FirePrimary = (!overUI && mouse != null && mouse.leftButton.isPressed) || kb.spaceKey.isPressed,
+                FirePrimary = (!overUI && primaryHeld && !_waitForPrimaryRelease) || kb.spaceKey.isPressed,
                 FireSecondary = !overUI && mouse != null && mouse.rightButton.isPressed,
                 Smoke = kb.qKey.wasPressedThisFrame || kb.leftShiftKey.wasPressedThisFrame,
                 AmmoSlot = kb.digit1Key.wasPressedThisFrame ? 0 : kb.digit2Key.wasPressedThisFrame ? 1 : kb.digit3Key.wasPressedThisFrame ? 2 : -1,

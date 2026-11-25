@@ -8,6 +8,7 @@ namespace Modern8bitTanks
         [SerializeField] private GameObject briefingOverlay;
         [SerializeField] private GameObject briefingHits;
         [SerializeField] private RawImage briefingMap;
+        [SerializeField] private BriefingSketch briefingSketch;
         [SerializeField] private Text briefingLocation;
         [SerializeField] private Text briefingObjective;
         [SerializeField] private Text briefingReadyLabel;
@@ -22,6 +23,7 @@ namespace Modern8bitTanks
             _briefingMapName = mapName;
             _briefingVisible = true;
             _briefingReady = false;
+            briefingSketch.Clear();
             briefingReady.GetComponent<Button>().interactable = true;
             const int scale = BattleSceneController.BriefingMapScale;
             _briefingTexture ??= new Texture2D(BattlefieldLayout.Width / scale, BattlefieldLayout.Height / scale, TextureFormat.RGBA32, false)
@@ -48,8 +50,13 @@ namespace Modern8bitTanks
         internal void HideBriefing()
         {
             _briefingVisible = false;
+            briefingSketch.Clear();
             RefreshBriefingVisibility();
         }
+
+        internal void UndoBriefingStroke() => briefingSketch.Undo();
+
+        internal void ClearBriefingSketch() => briefingSketch.Clear();
 
         private void RefreshBriefingLabels()
         {

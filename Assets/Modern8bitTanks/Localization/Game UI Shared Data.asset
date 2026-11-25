@@ -879,6 +879,10 @@ MonoBehaviour:
     m_Key: "XRAY SHOT IN FLIGHT"
     m_Metadata:
       m_Items: []
+  - m_Id: 15410685534243
+    m_Key: "DRAG TO DRAW / Z UNDO / C CLEAR"
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:
