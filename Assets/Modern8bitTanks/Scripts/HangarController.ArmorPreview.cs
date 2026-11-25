@@ -6,6 +6,8 @@ namespace Modern8bitTanks
 {
     public partial class HangarController
     {
+        private const double ArmorPreviewIdleResetSeconds = 15d;
+
         private VehicleDef _pinnedArmorPreviewAttacker;
         private VehicleDef _armorPreviewAttacker;
         private AmmoType[] _armorPreviewLoadout;
@@ -15,6 +17,8 @@ namespace Modern8bitTanks
         private Vector2? _armorPreviewPress;
         private bool _armorPreviewHasFired;
         private TankHit? _armorPreviewLastHit;
+        private Vector2? _armorPreviewLastPointer;
+        private double _armorPreviewLastInteraction;
         private (int crew, TankModule modules, TankLoss loss, int fireSeconds)? _armorPreviewDamage;
 
         private static readonly (TankModule module, string label)[] ArmorPreviewModules =
@@ -61,6 +65,8 @@ namespace Modern8bitTanks
             _armorPreviewPress = null;
             _armorPreviewHasFired = false;
             _armorPreviewLastHit = null;
+            _armorPreviewLastPointer = null;
+            _armorPreviewLastInteraction = 0d;
             _armorPreviewReadout = null;
             _armorPreviewDamage = null;
             _hangarXrayGraphic?.ClearHangarShot();
@@ -70,8 +76,11 @@ namespace Modern8bitTanks
         {
             if (showcaseTank.vehicleDef == null) return;
             bool interactive = !_settingsOpen && !_deployOpen && !_onlineOpen;
+            bool pickAttacker = interactive && keyboard != null && keyboard.pKey.wasPressedThisFrame;
+            int requestedSlot = interactive && keyboard != null ? ReadArmorPreviewAmmoKey(keyboard) : -1;
             if (interactive)
             {
+                UpdateArmorPreviewIdleReset(mouse, fire || pickAttacker || requestedSlot >= 0);
                 if (keyboard != null && keyboard.rKey.wasPressedThisFrame)
                 {
                     ResetArmorPreviewDamage();
@@ -79,7 +88,7 @@ namespace Modern8bitTanks
                 }
                 showcaseTank.TickCombat(dt, autoService: false);
             }
-            if (interactive && keyboard != null && keyboard.pKey.wasPressedThisFrame)
+            if (pickAttacker)
             {
                 _pinnedArmorPreviewAttacker = _pinnedArmorPreviewAttacker == null ? showcaseTank.vehicleDef : null;
                 _armorPreviewLabelsDirty = true;
@@ -95,14 +104,10 @@ namespace Modern8bitTanks
             }
 
             int count = _armorPreviewLoadout.Length + (attacker.HasSecondaryAtgm ? 1 : 0);
-            if (interactive && keyboard != null)
+            if (requestedSlot >= 0 && requestedSlot < count && requestedSlot != _armorPreviewAmmoIndex)
             {
-                int slot = ReadArmorPreviewAmmoKey(keyboard);
-                if (slot >= 0 && slot < count && slot != _armorPreviewAmmoIndex)
-                {
-                    _armorPreviewAmmoIndex = slot;
-                    _armorPreviewLabelsDirty = true;
-                }
+                _armorPreviewAmmoIndex = requestedSlot;
+                _armorPreviewLabelsDirty = true;
             }
 
             if (_armorPreviewLabelsDirty)
@@ -164,6 +169,25 @@ namespace Modern8bitTanks
             if (hit.HasValue)
                 result = UiText.Format("XRAY ARMOR RESULT", result, readout.penetration, readout.armor, readout.angle);
             _hangarXrayGraphic.SetArmorPreviewResult(result, hit?.Armor);
+        }
+
+        private void UpdateArmorPreviewIdleReset(Mouse mouse, bool interacted)
+        {
+            if (mouse != null)
+            {
+                Vector2 pointer = mouse.position.ReadValue();
+                bool inPreview = _windowbox.TryScreenToViewport(pointer, out Vector2 viewport) &&
+                    _hangarXrayGraphic.ContainsHangarAim(viewport);
+                if (_draggingTank || inPreview)
+                    interacted |= pointer != _armorPreviewLastPointer || mouse.leftButton.isPressed || mouse.rightButton.isPressed;
+                _armorPreviewLastPointer = pointer;
+            }
+
+            double now = Time.unscaledTimeAsDouble;
+            if (interacted)
+                _armorPreviewLastInteraction = now;
+            if (_armorPreviewHasFired && now - _armorPreviewLastInteraction >= ArmorPreviewIdleResetSeconds)
+                ResetArmorPreviewDamage();
         }
 
         private void UpdateArmorPreviewDamageReadout()
