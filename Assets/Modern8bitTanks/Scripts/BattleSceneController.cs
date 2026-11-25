@@ -1680,7 +1680,6 @@ namespace Modern8bitTanks
             Vector2 dir = SpriteStackCamera.Squash(td, squash).normalized;
             t.Position2D -= dir * (0.8f / PPU);
 
-            float basePen = t.vehicleDef != null ? t.vehicleDef.penetration : 80f;
             float speedPx = ammo switch
             {
                 AmmoType.APFSDS => 305f,
@@ -1689,14 +1688,7 @@ namespace Modern8bitTanks
                 AmmoType.HE => 195f,
                 _ => 265f
             };
-            float pen = ammo switch
-            {
-                AmmoType.APFSDS => basePen * 1.08f,
-                AmmoType.APHE => basePen * 0.96f,
-                AmmoType.HEATFS => basePen * 1.02f,
-                AmmoType.HE => basePen * 0.36f,
-                _ => basePen
-            };
+            float pen = AmmoInfo.Penetration(ProjectileKind.Shell, ammo, t.vehicleDef);
             int bounces = (ammo == AmmoType.APFSDS || ammo == AmmoType.APHE) ? 1 : 0;
             SpawnProjectile(ProjectileKind.Shell, ammo, t, visMuz, gndMuz, dir * (speedPx / PPU), pen, armorBounces: bounces, life: 4.0f);
 
@@ -1777,9 +1769,8 @@ namespace Modern8bitTanks
             Vector2 dir = Rotate2D(baseDir, Random.Range(-0.025f, 0.025f));
 
             AmmoType ammo = t.CurrentAmmo == AmmoType.HEIBelt ? AmmoType.HEIBelt : AmmoType.APBelt;
-            float basePen = t.vehicleDef != null ? t.vehicleDef.penetration : 36f;
             float speedPx = ammo == AmmoType.HEIBelt ? 268f : 308f;
-            float penetration = ammo == AmmoType.HEIBelt ? basePen * 0.56f : basePen * 1.06f;
+            float penetration = AmmoInfo.Penetration(ProjectileKind.Autocannon, ammo, t.vehicleDef);
             SpawnProjectile(ProjectileKind.Autocannon, ammo, t, visMuz, gndMuz, dir * (speedPx / PPU), penetration, armorBounces: 0, life: 2.5f);
 
         }
@@ -1817,10 +1808,7 @@ namespace Modern8bitTanks
             Vector2 td = TankEntity.SliceAngleToDir(t.turretAngleDeg);
             Vector2 dir = SpriteStackCamera.Squash(td, squash).normalized;
 
-            float basePen = asSecondary
-                ? 82f + Mathf.Min(t.vehicleDef != null ? t.vehicleDef.tier : 8, 10) * 1.0f
-                : (t.vehicleDef != null ? t.vehicleDef.penetration : 88f);
-            float penetration = ammo == AmmoType.HE ? basePen * 0.42f : basePen * 1.08f;
+            float penetration = AmmoInfo.Penetration(ProjectileKind.ATGM, ammo, t.vehicleDef, asSecondary);
             float speedPx = ammo == AmmoType.GLATGM ? 232f : (ammo == AmmoType.HE ? 195f : 206f);
             SpawnProjectile(ProjectileKind.ATGM, ammo, t, visMuz, gndMuz, dir * (speedPx / PPU), penetration, armorBounces: 0, life: 5.5f);
 

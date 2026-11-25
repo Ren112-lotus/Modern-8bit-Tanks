@@ -47,6 +47,30 @@ namespace Modern8bitTanks
         public static bool IsGuided(AmmoType a) => a == AmmoType.TOW || a == AmmoType.GLATGM;
         public static bool IsChemical(AmmoType a) => a == AmmoType.HEATFS || a == AmmoType.TOW || a == AmmoType.GLATGM;
         public static bool IsExplosiveSplash(AmmoType a) => a == AmmoType.HE || a == AmmoType.HEIBelt;
+
+        internal static float Penetration(ProjectileKind kind, AmmoType ammo, VehicleDef vehicle, bool secondaryAtgm = false)
+        {
+            switch (kind)
+            {
+                case ProjectileKind.Shell:
+                    float multiplier = ammo switch
+                    {
+                        AmmoType.APFSDS => 1.08f,
+                        AmmoType.APHE => 0.96f,
+                        AmmoType.HEATFS => 1.02f,
+                        AmmoType.HE => 0.36f,
+                        _ => 1f
+                    };
+                    return (vehicle?.penetration ?? 80f) * multiplier;
+                case ProjectileKind.Autocannon:
+                    return (vehicle?.penetration ?? 36f) * (ammo == AmmoType.HEIBelt ? 0.56f : 1.06f);
+                case ProjectileKind.ATGM:
+                    float basePen = secondaryAtgm ? 82f + Mathf.Min(vehicle?.tier ?? 8, 10) : vehicle?.penetration ?? 88f;
+                    return basePen * (ammo == AmmoType.HE ? 0.42f : 1.08f);
+                default:
+                    return 0f;
+            }
+        }
     }
 
     [Serializable]

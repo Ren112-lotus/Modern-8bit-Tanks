@@ -355,6 +355,13 @@ namespace Modern8bitTanks
             => ApplyArmorHit(contact, kind, penetration, out _, AmmoType.APFSDS);
 
         public TankHit ApplyArmorHit(ArmorContact contact, ProjectileKind kind, float penetration, out TankShotTrace trace, AmmoType ammo = AmmoType.APFSDS)
+            => ResolveArmorHit(contact, kind, penetration, ammo, out trace, applyDamage: true);
+
+        internal TankHit PreviewArmorHit(ArmorContact contact, ProjectileKind kind, float penetration, AmmoType ammo, out TankShotTrace trace)
+            => ResolveArmorHit(contact, kind, penetration, ammo, out trace, applyDamage: false);
+
+        private TankHit ResolveArmorHit(ArmorContact contact, ProjectileKind kind, float penetration, AmmoType ammo,
+            out TankShotTrace trace, bool applyDamage)
         {
             Vector2 half = CombatHalfSize;
             Vector2 entry = new Vector2(contact.LocalPoint.x / half.x, contact.LocalPoint.y / half.y);
@@ -375,6 +382,14 @@ namespace Modern8bitTanks
             // Chemical shaped charges (HEAT-FS / TOW / GL-ATGM) & HE ignore most oblique armor sloping!
             float angleFactor = (isChemical || isHe) ? Mathf.Lerp(0.78f, 1f, incidence) : incidence;
             float effectiveArmor = plate / Mathf.Max(0.25f, angleFactor);
+
+            TankHit Finish(ArmorHit armor, TankModule modules, TankCrew crew = TankCrew.None, bool ignite = false, bool cookoff = false)
+            {
+                if (applyDamage)
+                    return ApplyCombatDamage(armor, modules, crew, ignite, cookoff, penetration, effectiveArmor, impactAngleDeg, ammo);
+                return new TankHit(armor, struckModules: modules, penetrationValue: penetration,
+                    effectiveArmor: effectiveArmor, impactAngleDeg: impactAngleDeg, ammo: ammo);
+            }
 
             // Shaped charges & HE fuse on contact instead of bouncing except at extreme grazing angles
             float ricochetLimit = isHe ? 0.08f : (isChemical ? 0.18f : (front ? 0.48f : 0.32f));
@@ -398,8 +413,7 @@ namespace Modern8bitTanks
                     trace = new TankShotTrace(entry, direction, entry + direction * 0.55f);
                     TankModule heMods = modules | TankModule.Weapon | TankModule.Engine;
                     TankCrew heCrew = TankCrew.Driver | TankCrew.Gunner;
-                    return ApplyCombatDamage(ArmorHit.Penetrated, heMods, heCrew, ignite: true, cookoff: armorRating >= 0.84f,
-                        penetration, effectiveArmor, impactAngleDeg, ammo);
+                    return Finish(ArmorHit.Penetrated, heMods, heCrew, ignite: true, cookoff: armorRating >= 0.84f);
                 }
                 // Against heavy MBTs, HE blast strips tracks/gun barrel & can start engine fires without piercing!
                 if (bigHe)
@@ -413,12 +427,11 @@ namespace Modern8bitTanks
                     modules |= (entry.x < 0f ? TankModule.LeftRunningGear : TankModule.RightRunningGear);
                 }
                 if (residual <= 0f)
-                    return ApplyCombatDamage(ArmorHit.Blocked, modules, ignite: bigHe && (modules & TankModule.Engine) != 0,
-                        penetrationValue: penetration, effectiveArmor: effectiveArmor, impactAngleDeg: impactAngleDeg, ammo: ammo);
+                    return Finish(ArmorHit.Blocked, modules, ignite: bigHe && (modules & TankModule.Engine) != 0);
             }
 
             if (residual <= 0f)
-                return ApplyCombatDamage(ArmorHit.Blocked, modules, penetrationValue: penetration, effectiveArmor: effectiveArmor, impactAngleDeg: impactAngleDeg, ammo: ammo);
+                return Finish(ArmorHit.Blocked, modules);
 
             // Sweep a finite path through normalized gameplay compartments.
             float reach = isAphe
@@ -447,7 +460,7 @@ namespace Modern8bitTanks
             float igniteThresh = isChemical ? 12f : (isAphe ? 16f : 21f);
             bool cookoff = (modules & TankModule.Ammo) != 0 && (residual >= cookoffThresh || (current & TankModule.Ammo) != 0);
             bool ignite = (modules & TankModule.Engine) != 0 && residual >= igniteThresh;
-            return ApplyCombatDamage(ArmorHit.Penetrated, modules, crew, ignite, cookoff, penetration, effectiveArmor, impactAngleDeg, ammo);
+            return Finish(ArmorHit.Penetrated, modules, crew, ignite, cookoff);
         }
 
         public TankHit ApplyBlast(Vector2 origin, float squash, bool fuel, bool close)
