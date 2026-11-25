@@ -12,6 +12,10 @@ namespace Modern8bitTanks
         [SerializeField] private Text briefingLocation;
         [SerializeField] private Text briefingObjective;
         [SerializeField] private Text briefingReadyLabel;
+        [SerializeField] private Image briefingFriendlyMarker;
+        [SerializeField] private Text briefingFriendlyLabel;
+        [SerializeField] private Image briefingHostileMarker;
+        [SerializeField] private Text briefingHostileLabel;
         [SerializeField] private PixelMenuButton briefingReady;
         private Texture2D _briefingTexture;
         private string _briefingMapName;
@@ -25,6 +29,11 @@ namespace Modern8bitTanks
             _briefingReady = false;
             briefingSketch.Clear();
             briefingReady.GetComponent<Button>().interactable = true;
+            if (_multiplayer.IsInBattle)
+            {
+                briefingFriendlyMarker.color = briefingFriendlyLabel.color = OnlineTeamColors.Friendly;
+                briefingHostileMarker.color = briefingHostileLabel.color = OnlineTeamColors.Hostile;
+            }
             const int scale = BattleSceneController.BriefingMapScale;
             _briefingTexture ??= new Texture2D(BattlefieldLayout.Width / scale, BattlefieldLayout.Height / scale, TextureFormat.RGBA32, false)
             {

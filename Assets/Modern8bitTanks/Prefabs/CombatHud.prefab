@@ -1202,6 +1202,9 @@ MonoBehaviour:
   _allyActiveText: {fileID: 5204874110016722459}
   _enemyActiveText: {fileID: 3598636723445642672}
   _centerBadgeText: {fileID: 3220628006600439934}
+  _allyAccent: {fileID: 4387133477131819497}
+  _enemyAccent: {fileID: 5894235733218240066}
+  _onlineTankMarkers: {fileID: 8855405171788603003}
   _ammoSlotBgs:
   - {fileID: 5200641025510282587}
   - {fileID: 6516971065805005753}
@@ -1252,6 +1255,10 @@ MonoBehaviour:
   briefingLocation: {fileID: 7095725476263945016}
   briefingObjective: {fileID: 2928852619604373797}
   briefingReadyLabel: {fileID: 4874322230036609830}
+  briefingFriendlyMarker: {fileID: 5466900117197202499}
+  briefingFriendlyLabel: {fileID: 5452759120682926242}
+  briefingHostileMarker: {fileID: 3757142780599133118}
+  briefingHostileLabel: {fileID: 2000814485932968950}
   briefingReady: {fileID: 7041757442207968300}
 --- !u!1 &812867832678949566
 GameObject:
@@ -4727,6 +4734,7 @@ RectTransform:
   m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 8855405171788603001}
   - {fileID: 1727028619935489336}
   - {fileID: 8321421161994042111}
   - {fileID: 6256380142810143963}
@@ -22545,6 +22553,71 @@ MonoBehaviour:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!1 &8855405171788603000
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8855405171788603001}
+  - component: {fileID: 8855405171788603002}
+  - component: {fileID: 8855405171788603003}
+  m_Layer: 5
+  m_Name: OnlineTankMarkers
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!224 &8855405171788603001
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8855405171788603000}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4286818214781934167}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0, y: 0}
+--- !u!222 &8855405171788603002
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8855405171788603000}
+  m_CullTransparentMesh: 1
+--- !u!114 &8855405171788603003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8855405171788603000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d887048f54a9424aae6b27f6a44fa41c, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.OnlineTankMarkers
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:

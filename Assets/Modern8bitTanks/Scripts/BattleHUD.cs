@@ -53,6 +53,9 @@ namespace Modern8bitTanks
         [SerializeField] private Text _allyActiveText;
         [SerializeField] private Text _enemyActiveText;
         [SerializeField] private Text _centerBadgeText;
+        [SerializeField] private Image _allyAccent;
+        [SerializeField] private Image _enemyAccent;
+        [SerializeField] private OnlineTankMarkers _onlineTankMarkers;
 
         // Reload, ammunition and smoke controls
         [SerializeField] private Image[] _ammoSlotBgs;
@@ -160,6 +163,11 @@ namespace Modern8bitTanks
 
             InitializeLayout();
             _controlPointHud.SetVisible(_mgr.UsesControlPoints);
+            if (_multiplayer.IsInBattle)
+            {
+                _allyAccent.color = _allyNameText.color = _allyWinsText.color = OnlineTeamColors.Friendly;
+                _enemyAccent.color = _enemyNameText.color = _enemyWinsText.color = OnlineTeamColors.Hostile;
+            }
             UiText.Prepare(_pixelCanvas, () =>
             {
                 RefreshMenuLabels();
@@ -351,15 +359,19 @@ namespace Modern8bitTanks
                 _resultCanvasGroup.alpha = Mathf.SmoothStep(0f, 1f, _resultFadeAlpha);
             }
 
-            _allyWinsText.text = winsAlly.ToString();
-            _enemyWinsText.text = winsEnemy.ToString();
+            _allyWinsText.text = (_mgr.IsLocalAlpha ? winsAlly : winsEnemy).ToString();
+            _enemyWinsText.text = (_mgr.IsLocalAlpha ? winsEnemy : winsAlly).ToString();
             UpdateControlHud();
+            if (_onlineTankMarkers.gameObject.activeSelf != _mgr.ShowOnlineTankMarkers)
+                _onlineTankMarkers.gameObject.SetActive(_mgr.ShowOnlineTankMarkers);
+            if (_onlineTankMarkers.gameObject.activeSelf)
+                _onlineTankMarkers.Render(cam, tanks, _mgr);
 
             _centerBadgeText.text = mode switch
             {
                 BattleMode.FiringRange => "RNG",
                 BattleMode.SurvivalWave => $"W{currentWave}",
-                BattleMode.Battle5v5 => "5v5",
+                BattleMode.Battle5v5 => _multiplayer.IsInBattle ? "VS" : "5v5",
                 BattleMode.Squad2v2 => "2v2",
                 _ => "VS"
             };
@@ -370,7 +382,7 @@ namespace Modern8bitTanks
                 foreach (var t in tanks)
                 {
                     if (t == null || !t.alive) continue;
-                    if (t.factionTeam == "ally") allyAlive++;
+                    if ((t.factionTeam == "ally") == _mgr.IsLocalAlpha) allyAlive++;
                     else enemyAlive++;
                 }
             }
@@ -559,9 +571,11 @@ namespace Modern8bitTanks
         {
             bool visible = _mgr.UsesControlPoints;
             _controlPointHud.SetVisible(visible);
-            if (visible)
-                _controlPointHud.Render(_mgr.ControlPoint, _mgr.ControlScores,
-                    _mgr.ControlTeamColor(1), _mgr.ControlTeamColor(-1), _mgr.ControlPointColor());
+            if (!visible) return;
+            int localTeam = _mgr.IsLocalAlpha ? 1 : -1;
+            Vector2 scores = _mgr.ControlScores;
+            _controlPointHud.Render(_mgr.ControlPoint, localTeam == 1 ? scores : new Vector2(scores.y, scores.x),
+                _mgr.ControlTeamColor(localTeam), _mgr.ControlTeamColor(-localTeam), _mgr.ControlPointColor());
         }
 
         private void UpdateRadarTexture(TankEntity player, List<DestructibleProp> props, List<TankEntity> tanks,
@@ -671,8 +685,9 @@ namespace Modern8bitTanks
                 Vector2 contact = Vector2.Scale(t.Position2D, mapScale);
                 int tx = Mathf.Clamp(Mathf.RoundToInt(contact.x), 1, _radarWidth - 2);
                 int ty = Mathf.Clamp(Mathf.RoundToInt(contact.y), 1, _radarHeight - 2);
-                bool ally = player != null && _multiplayer.IsInBattle ? t.factionTeam == player.factionTeam : t.factionTeam == "ally";
-                Color32 tc = ally ? new Color32(82, 214, 255, 255) : new Color32(255, 92, 74, 255);
+                bool ally = (t.factionTeam == "ally") == _mgr.IsLocalAlpha;
+                Color32 tc = _multiplayer.IsInBattle ? OnlineTeamColors.ForRelation(ally)
+                    : ally ? new Color32(82, 214, 255, 255) : new Color32(255, 92, 74, 255);
                 PlotDot(tx, ty, 1, tc);
             }
 
@@ -723,6 +738,12 @@ namespace Modern8bitTanks
             var trackColor = new Color32(200, 149, 66, 255);
             var hullColor = new Color32(255, 216, 106, 255);
             var noseColor = new Color32(255, 249, 202, 255);
+            if (_multiplayer.IsInBattle)
+            {
+                hullColor = OnlineTeamColors.Friendly;
+                trackColor = Color32.Lerp(hullColor, Color.black, 0.25f);
+                noseColor = Color32.Lerp(hullColor, Color.white, 0.6f);
+            }
             for (int y = -4; y <= 4; y++)
             for (int x = -4; x <= 4; x++)
             {

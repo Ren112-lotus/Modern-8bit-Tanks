@@ -65,6 +65,9 @@ namespace Modern8bitTanks
         private bool _networkBattleStarted;
         private MultiplayerMatchTransport _subscribedTransport;
 
+        internal bool IsLocalAlpha => !_multiplayer.IsInBattle || MultiplayerSessionConnection.IsAlphaSlot(_multiplayer.LocalSlot);
+        internal bool ShowOnlineTankMarkers => _multiplayer.IsInBattle && _phase == GamePhase.Playing;
+
         private bool MultiplayerBattleReady()
         {
             if (!_networkBattleStarted && _multiplayer.Transport != null && _multiplayer.Transport.AllExpectedReady)
@@ -488,6 +491,7 @@ namespace Modern8bitTanks
             var keyboard = Keyboard.current;
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) _hud?.HandleEscapeKey();
             if (keyboard != null && keyboard.hKey.wasPressedThisFrame) _hud?.CycleHudDensity();
+            HandleBriefingInput(keyboard);
             var menuOpen = _hud != null && _hud.IsMenuOpen;
             _audio?.UpdateBgm(active: true, bgmEnabled, bgmVolume, duckForMenu: menuOpen);
 

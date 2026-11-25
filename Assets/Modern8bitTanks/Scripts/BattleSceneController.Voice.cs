@@ -78,11 +78,7 @@ namespace Modern8bitTanks
         private float _activeVoiceEndTime;
         private sbyte _lastVoiceCpOwner;
 
-        private string LocalVoiceFaction =>
-            _multiplayer.IsInBattle && !MultiplayerSessionConnection.IsAlphaSlot(_multiplayer.LocalSlot) ? "enemy" : "ally";
-
-        private int LocalVoiceTeamSign =>
-            _multiplayer.IsInBattle && !MultiplayerSessionConnection.IsAlphaSlot(_multiplayer.LocalSlot) ? -1 : 1;
+        private string LocalVoiceFaction => IsLocalAlpha ? "ally" : "enemy";
 
         private async UniTask LoadVoiceResourcesAsync(CancellationToken cancellationToken)
         {
@@ -129,7 +125,7 @@ namespace Modern8bitTanks
             _lastVoiceCpOwner = owner;
 
             if (owner == 0) return;
-            int localSign = LocalVoiceTeamSign;
+            int localSign = IsLocalAlpha ? 1 : -1;
             PlayBattleVoice(owner == localSign ? BattleVoiceEvent.CpCaptured : BattleVoiceEvent.CpLost);
         }
 

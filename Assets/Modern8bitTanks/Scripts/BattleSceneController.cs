@@ -288,7 +288,7 @@ namespace Modern8bitTanks
                     selectedEnemyVehicleId = id;
                     break;
                 }
-                battleMode = BattleMode.Duel1v1;
+                battleMode = BattleMode.Battle5v5;
                 battleMap = BattleMap.Desert;
                 aiEnabled = false;
             }
@@ -1142,7 +1142,7 @@ namespace Modern8bitTanks
                     _resultBannerShown = true;
                     if (_hud != null && !string.IsNullOrEmpty(_pendingWinner))
                         _hud.ShowResult(_multiplayer.IsInBattle
-                            ? (_pendingWinner == "ally") == MultiplayerSessionConnection.IsAlphaSlot(_multiplayer.LocalSlot)
+                            ? (_pendingWinner == "ally") == IsLocalAlpha
                             : _pendingWinner == "ally", _pendingSubtitle);
                 }
             }

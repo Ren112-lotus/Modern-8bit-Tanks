@@ -47,8 +47,7 @@ namespace Modern8bitTanks
 
         private async UniTask ShowBattleBriefingAsync(BattleLoadBudget budget)
         {
-            bool west = !_multiplayer.IsInBattle || MultiplayerSessionConnection.IsAlphaSlot(_multiplayer.LocalSlot);
-            _hud.ShowBriefing(GetMapDisplayName(battleMap), await BuildBriefingMapAsync(west, budget));
+            _hud.ShowBriefing(GetMapDisplayName(battleMap), await BuildBriefingMapAsync(IsLocalAlpha, budget));
         }
 
         private async UniTask<Color32[]> BuildBriefingMapAsync(bool west, BattleLoadBudget budget)
@@ -63,8 +62,8 @@ namespace Modern8bitTanks
             var wall = new Color32(220, 214, 186, 255);
             var structure = new Color32(183, 178, 154, 255);
             var block = new Color32(145, 139, 115, 255);
-            var own = new Color32(111, 208, 239, 255);
-            var opposing = new Color32(240, 119, 100, 255);
+            var own = _multiplayer.IsInBattle ? OnlineTeamColors.Friendly : new Color32(111, 208, 239, 255);
+            var opposing = _multiplayer.IsInBattle ? OnlineTeamColors.Hostile : new Color32(240, 119, 100, 255);
             var objective = new Color32(250, 213, 117, 255);
 
             // Rasterize each prop only around its footprint. Earlier props still take priority.

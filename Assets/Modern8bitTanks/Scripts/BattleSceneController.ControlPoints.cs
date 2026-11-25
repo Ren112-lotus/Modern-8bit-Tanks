@@ -24,8 +24,9 @@ namespace Modern8bitTanks
 
         internal Color ControlTeamColor(int team)
         {
-            int localTeam = _multiplayer.IsInBattle && !MultiplayerSessionConnection.IsAlphaSlot(_multiplayer.LocalSlot) ? -1 : 1;
-            return team == localTeam ? new Color(0.32f, 0.87f, 1f) : new Color(1f, 0.36f, 0.29f);
+            bool friendly = (team > 0) == IsLocalAlpha;
+            if (_multiplayer.IsInBattle) return OnlineTeamColors.ForRelation(friendly);
+            return friendly ? new Color(0.32f, 0.87f, 1f) : new Color(1f, 0.36f, 0.29f);
         }
 
         private void ResetControlPoint()
