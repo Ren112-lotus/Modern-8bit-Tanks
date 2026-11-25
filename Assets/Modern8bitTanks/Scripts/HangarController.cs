@@ -271,7 +271,13 @@ namespace Modern8bitTanks
             {
                 _armorPreviewLabelsDirty = true;
                 RefreshSettingsLabels();
+                _onlineModalUi?.RefreshLocalizedLabels();
                 RefreshAllUI();
+                if (_onlineOpen)
+                {
+                    _nextOnlineRefresh = 0f;
+                    RefreshOnlineRoom();
+                }
             });
         }
 
@@ -474,8 +480,7 @@ namespace Modern8bitTanks
             if (_onlineOpen)
             {
                 _armorPreviewPress = null;
-                if (kb != null && kb.escapeKey.wasPressedThisFrame && !_onlineName.isFocused && _onlineNameCancelFrame != Time.frameCount)
-                    CloseOnlineRoom();
+                HandleOnlineKeyboard(kb);
                 RefreshOnlineRoom();
                 if (_titleOpen) UpdateTitleStage(dt);
                 return;

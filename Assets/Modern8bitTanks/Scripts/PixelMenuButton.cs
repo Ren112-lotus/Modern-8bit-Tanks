@@ -16,6 +16,8 @@ namespace Modern8bitTanks
         [SerializeField] private bool preserveSelection;
         [SerializeField] private Color selectedColor;
 
+        private Button _button;
+
         public void SetAppearance(Image image, Color resting, Color hovering, bool preserve = false, Color selected = default)
         {
             background = image;
@@ -27,12 +29,23 @@ namespace Modern8bitTanks
 
         public void Bind(Action action)
         {
-            GetComponent<Button>().OnClickAsObservable().Subscribe(_ => action());
+            _button ??= GetComponent<Button>();
+            _button.OnClickAsObservable().Subscribe(_ => action());
         }
 
-        public void OnPointerEnter(PointerEventData eventData) => SetHighlight(hoverColor);
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            _button ??= GetComponent<Button>();
+            if (_button != null && !_button.interactable) return;
+            SetHighlight(hoverColor);
+        }
 
-        public void OnPointerExit(PointerEventData eventData) => SetHighlight(restingColor);
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            _button ??= GetComponent<Button>();
+            if (_button != null && !_button.interactable) return;
+            SetHighlight(restingColor);
+        }
 
         private void SetHighlight(Color color)
         {
