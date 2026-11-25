@@ -129,6 +129,22 @@ namespace Modern8bitTanks
             }
         }
 
+        public bool IsHostSlot(int slot) =>
+            TryGetMemberAtSlot(slot, out var member) && NetworkManager != null && member.ClientId == NetworkManager.ServerClientId;
+
+        public bool CanSwitchTeam
+        {
+            get
+            {
+                int slot = LocalSlot;
+                if (ExpectedMask != 0 || slot < 0 || IsLocalChoosingVehicle) return false;
+                bool targetAlpha = !MultiplayerSessionConnection.IsAlphaSlot(slot);
+                return CountTeam(targetAlpha) < MultiplayerSessionConnection.PlayersPerTeam;
+            }
+        }
+
+        internal void SwitchTeam() => SwitchTeamRpc(Round);
+
         internal void SetVehicleSelection(string vehicleId, bool choosing) =>
             SelectVehicleRpc(Round, new FixedString64Bytes(vehicleId), choosing);
 
@@ -147,6 +163,31 @@ namespace Modern8bitTanks
                 if (member.DisplayName.Equals(displayName)) return;
                 member.DisplayName = displayName;
                 _members[i] = member;
+                return;
+            }
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+        private void SwitchTeamRpc(ushort round, RpcParams rpcParams = default)
+        {
+            if (round != Round || ExpectedMask != 0) return;
+            for (int i = 0; i < _members.Count; i++)
+            {
+                var member = _members[i];
+                if (member.ClientId != rpcParams.Receive.SenderClientId) continue;
+                if (member.ChoosingVehicle || !member.InLobby) return;
+
+                const int teamSize = MultiplayerSessionConnection.PlayersPerTeam;
+                bool targetAlpha = !MultiplayerSessionConnection.IsAlphaSlot(member.Slot);
+                int firstSlot = targetAlpha ? 0 : teamSize;
+                ushort occupied = OccupiedMask();
+                for (int slot = firstSlot; slot < firstSlot + teamSize; slot++)
+                {
+                    if ((occupied & (1 << slot)) != 0) continue;
+                    member.Slot = (byte)slot;
+                    _members[i] = member;
+                    return;
+                }
                 return;
             }
         }
