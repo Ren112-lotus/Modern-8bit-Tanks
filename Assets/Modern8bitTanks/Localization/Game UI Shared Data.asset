@@ -839,6 +839,42 @@ MonoBehaviour:
     m_Key: "XRAY ARMOR RESULT"
     m_Metadata:
       m_Items: []
+  - m_Id: 15410685534233
+    m_Key: "XRAY SHOT CONTROLS"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534234
+    m_Key: "XRAY CREW COUNT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534235
+    m_Key: "XRAY NO DAMAGE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534236
+    m_Key: "XRAY LEFT DRIVE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534237
+    m_Key: "XRAY RIGHT DRIVE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534238
+    m_Key: "XRAY ENGINE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534239
+    m_Key: "XRAY TRAVERSE"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534240
+    m_Key: "XRAY WEAPON"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534241
+    m_Key: "XRAY AMMO"
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

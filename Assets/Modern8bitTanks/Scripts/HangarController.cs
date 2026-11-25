@@ -378,6 +378,7 @@ namespace Modern8bitTanks
                 return;
 
             showcaseTank.SetAssemblyDrop(1f);
+            ClearArmorPreviewHistory();
             // A larger vehicle must fit as soon as it replaces the previous model.
             _currentShowcaseZoom = Mathf.Min(_currentShowcaseZoom, GetAdaptiveShowcaseZoom(def));
             RefreshAllUI();
@@ -461,6 +462,7 @@ namespace Modern8bitTanks
             float dt = Mathf.Min(0.04f, Time.deltaTime);
             var kb = Keyboard.current;
             var mouse = Mouse.current;
+            bool fireArmorPreview = false;
 
             if (_windowbox != null)
                 _windowbox.integerScale = _sessionState.IntegerWindowbox;
@@ -470,6 +472,7 @@ namespace Modern8bitTanks
 
             if (_onlineOpen)
             {
+                _armorPreviewPress = null;
                 if (kb != null && kb.escapeKey.wasPressedThisFrame) CloseOnlineRoom();
                 RefreshOnlineRoom();
                 if (_titleOpen) UpdateTitleStage(dt);
@@ -523,6 +526,7 @@ namespace Modern8bitTanks
             {
                 _draggingTank = false;
                 _draggingTree = false;
+                _armorPreviewPress = null;
                 UpdateTitleStage(dt);
                 return;
             }
@@ -532,6 +536,7 @@ namespace Modern8bitTanks
             {
                 _draggingTank = false;
                 _draggingTree = false;
+                _armorPreviewPress = null;
             }
             else if (_treeOpen)
             {
@@ -583,12 +588,17 @@ namespace Modern8bitTanks
                 if (Mathf.Abs(_treeScrollX - _targetScrollX) < 0.3f) _treeScrollX = _targetScrollX;
                 ApplyTreeScrollVisuals();
                 _draggingTank = false;
+                _armorPreviewPress = null;
             }
             else if (mouse != null)
             {
                 // Garage view: drag mouse to inspect your tank from any angle
                 bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-                if (!overUI && mouse.leftButton.wasPressedThisFrame)
+                if (_xrayMode)
+                {
+                    fireArmorPreview = ReadArmorPreviewClick(mouse, overUI);
+                }
+                else if (!overUI && mouse.leftButton.wasPressedThisFrame)
                 {
                     _lastDragX = mouse.position.ReadValue().x;
                     _draggingTank = float.IsFinite(_lastDragX);
@@ -639,7 +649,7 @@ namespace Modern8bitTanks
                 if (inspect)
                 {
                     _hangarXrayGraphic.ShowHangarInspect(showcaseTank, _cam, _windowbox.HudCamera);
-                    UpdateArmorPreview(kb, mouse);
+                    UpdateArmorPreview(kb, mouse, fireArmorPreview, dt);
                 }
             }
         }
@@ -698,6 +708,7 @@ namespace Modern8bitTanks
         // ============================================================
         private void SetXRayMode(bool on)
         {
+            if (!on) ResetArmorPreviewDamage();
             _xrayMode = on;
             if (_hangarXrayWrap != null) _hangarXrayWrap.SetActive(on && !_treeOpen);
             if (_btnXrayBg != null) _btnXrayBg.color = on ? new Color(0.22f, 0.54f, 0.62f, 1f) : BtnBg;
@@ -750,6 +761,7 @@ namespace Modern8bitTanks
         {
             if (open && _settingsOpen) SetSettingsOpen(false);
             if (open && _deployOpen) SetDeployModalOpen(false);
+            if (open) ResetArmorPreviewDamage();
             _treeOpen = open;
             if (_treeVisualGroup != null) _treeVisualGroup.SetActive(open && !_titleOpen);
             if (_garageVisualGroup != null) _garageVisualGroup.SetActive(!open && !_titleOpen);

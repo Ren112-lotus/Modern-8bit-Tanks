@@ -147,7 +147,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 716169247
-    m_Localized: "FCS X-RAY  \u2022  DRAG 360"
+    m_Localized: "X-RAY  /  LMB DRAG TO ROTATE"
     m_Metadata:
       m_Items: []
   - m_Id: 716169248
@@ -823,7 +823,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534228
-    m_Localized: "AIM AT HULL  /  RMB: MOVE SOURCE"
+    m_Localized: "AIM AT HULL"
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534229
@@ -839,7 +839,43 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534232
-    m_Localized: "{0}  PEN {1} / ARMOR {2}  {3}\u00b0"
+    m_Localized: "{0}  PEN {1} / ARM {2} {3}\u00b0"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534233
+    m_Localized: "RMB AIM / LMB FIRE / R RESET"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534234
+    m_Localized: "CREW {0}/{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534235
+    m_Localized: "MODULES INTACT"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534236
+    m_Localized: "L.GEAR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534237
+    m_Localized: "R.GEAR"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534238
+    m_Localized: "ENG"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534239
+    m_Localized: "TRAV"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534240
+    m_Localized: "GUN"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534241
+    m_Localized: "AMMO"
     m_Metadata:
       m_Items: []
   references:

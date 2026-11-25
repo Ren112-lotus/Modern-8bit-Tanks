@@ -43,9 +43,13 @@ namespace Modern8bitTanks
         [SerializeField] private UnityEngine.UI.Text hangarAttackerLabel;
         [SerializeField] private UnityEngine.UI.Text hangarAmmoLabel;
         [SerializeField] private UnityEngine.UI.Text hangarArmorResultLabel;
+        [SerializeField] private UnityEngine.UI.Text hangarDamageStatusLabel;
+        [SerializeField] private UnityEngine.UI.Text hangarDisabledModulesLabel;
         private Rect _hangarViewport;
         private Vector2 _hangarShotOrigin = new(0.5f, 0f);
         private (Vector2 End, TankHit? Hit, TankShotTrace Trace)? _hangarShot;
+        private (Vector2 Entry, float Until)? _hangarImpact;
+        private const float HangarImpactDuration = 0.35f;
 
         private Rect StatusBodyRect
         {
@@ -271,10 +275,6 @@ namespace Modern8bitTanks
             _mode = Mode.Hangar;
             _replayTarget = null;
             ReadVehicle(tank);
-            _active = true;
-            _onFire = false;
-            _disabled = TankModule.None;
-            _crew = TankCrew.Driver | TankCrew.Gunner | TankCrew.Commander | (tank.CrewCapacity == 4 ? TankCrew.Loader : TankCrew.None);
 
             // The world and HUD render to separate textures but share the same viewport.
             Rect backdrop = _bgImage.GetPixelAdjustedRect();
@@ -308,9 +308,25 @@ namespace Modern8bitTanks
             hangarArmorResultLabel.color = ArmorPreviewColor(outcome);
         }
 
+        internal void SetArmorPreviewDamage(string status, string disabled, bool hasCondition, bool hasFailedModules)
+        {
+            hangarDamageStatusLabel.text = status;
+            hangarDamageStatusLabel.color = hasCondition ? ArmorPreviewColor(ArmorHit.Blocked) : WtIntactCrew;
+            hangarDisabledModulesLabel.text = disabled;
+            hangarDisabledModulesLabel.color = hasFailedModules ? ArmorPreviewColor(ArmorHit.Blocked) : WtIntactModule;
+        }
+
+        internal bool ContainsHangarAim(Vector2 viewport) => _hangarViewport.Contains(viewport);
+
+        internal void ClearHangarShot()
+        {
+            _hangarShot = null;
+            _hangarImpact = null;
+        }
+
         internal void MoveHangarShotOrigin(Vector2 viewport)
         {
-            if (!_hangarViewport.Contains(viewport)) return;
+            if (!ContainsHangarAim(viewport)) return;
             var center = new Vector2(0.5f, 0.5f);
             Vector2 delta = Rect.PointToNormalized(_hangarViewport, viewport) - center;
             float extent = Mathf.Max(Mathf.Abs(delta.x), Mathf.Abs(delta.y));
@@ -319,11 +335,11 @@ namespace Modern8bitTanks
         }
 
         internal bool PreviewHangarShot(TankEntity tank, Camera worldCamera, Vector2? aim,
-            ProjectileKind kind, AmmoType ammo, float penetration, out TankHit? hit)
+            ProjectileKind kind, AmmoType ammo, float penetration, bool fire, out TankHit? hit)
         {
             _hangarShot = null;
             hit = null;
-            if (!aim.HasValue || !_hangarViewport.Contains(aim.Value)) return false;
+            if (!tank.alive || !aim.HasValue || !ContainsHangarAim(aim.Value)) return false;
 
             Vector2 direction = Rect.PointToNormalized(_hangarViewport, aim.Value) - _hangarShotOrigin;
             if (direction.sqrMagnitude < 0.000001f) return false;
@@ -335,7 +351,16 @@ namespace Modern8bitTanks
             Vector2 to = worldCamera.ViewportToWorldPoint(Rect.NormalizedToPoint(_hangarViewport, end));
             TankShotTrace trace = default;
             if (tank.TryGetArmorContact(from, to, tank.hullStack.squash, out ArmorContact contact))
-                hit = tank.PreviewArmorHit(contact, kind, penetration, ammo, out trace);
+            {
+                hit = fire
+                    ? tank.ApplyArmorHit(contact, kind, penetration, out trace, ammo)
+                    : tank.PreviewArmorHit(contact, kind, penetration, ammo, out trace);
+                if (fire)
+                {
+                    _hangarImpact = (trace.Entry, Time.unscaledTime + HangarImpactDuration);
+                    ReadVehicle(tank);
+                }
+            }
             _hangarShot = (end, hit, trace);
             return true;
         }
@@ -453,7 +478,15 @@ namespace Modern8bitTanks
             if (_mode == Mode.Replay)
                 DrawReplayBallistics(mesh, Proj, hullMidZ + 1.2f, ammoLocal, ox, oy, rect.width, rect.height);
             else if (_mode == Mode.Hangar)
+            {
                 DrawHangarShot(mesh, Proj, rect);
+                if (_hangarImpact is { } impact)
+                {
+                    float flash = (impact.Until - Time.unscaledTime) / HangarImpactDuration;
+                    if (flash > 0f)
+                        Diamond(mesh, Proj(impact.Entry, 0f), Mathf.Lerp(6f, 3f, flash), FadeAlpha(Flash, flash));
+                }
+            }
         }
 
         private void DrawHangarShot(VertexHelper mesh, System.Func<Vector2, float, Vector2> project, Rect rect)

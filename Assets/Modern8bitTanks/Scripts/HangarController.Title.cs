@@ -85,6 +85,7 @@ namespace Modern8bitTanks
 
             if (open)
             {
+                ResetArmorPreviewDamage();
                 _treeOpen = false;
                 _deployOpen = false;
                 _settingsOpen = false;
