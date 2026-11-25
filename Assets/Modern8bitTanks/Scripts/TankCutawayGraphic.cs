@@ -9,7 +9,9 @@ namespace Modern8bitTanks
     {
         private enum Mode { Status, Replay, Hangar }
         private const float HangarFlightDuration = 0.70f;
-        private const float HangarImpactDuration = 0.35f;
+        private const float HangarImpactHoldDuration = 0.35f;
+        private const float ReplayImpactTime = 0.21f;
+        private const float ReplayShotDuration = 1.50f;
 
         private struct HangarFlight
         {
@@ -40,6 +42,11 @@ namespace Modern8bitTanks
         private static readonly Color SpallHot = new Color32(255, 108, 42, 220);
         private static readonly Color RicochetCol = new Color32(142, 236, 255, 255);
         private static readonly Color Flash = new Color32(255, 250, 224, 255);
+        private static readonly float[] ChemicalSpallAngles = { -26f, -16f, -8f, 0f, 8f, 16f, 26f };
+        private static readonly float[] KineticSpallAngles = { -38f, -25f, -12f, 0f, 12f, 25f, 38f };
+        private static readonly float[] ChemicalSpallLengths = { 0.52f, 0.78f, 1.02f, 1.18f, 0.98f, 0.76f, 0.50f };
+        private static readonly float[] KineticSpallLengths = { 0.46f, 0.68f, 0.88f, 0.98f, 0.85f, 0.66f, 0.44f };
+        private static readonly float[] SpallStagger = { 0.045f, 0.022f, 0.008f, 0f, 0.012f, 0.028f, 0.050f };
 
         private static readonly Color CookoffSmoke = new Color32(178, 44, 24, 185);
         private static readonly Color CookoffMid = new Color32(255, 106, 32, 220);
@@ -62,7 +69,7 @@ namespace Modern8bitTanks
         private Vector2 _hangarShotOrigin = new(0.5f, 0f);
         private (Vector2 End, TankHit? Hit, TankShotTrace Trace)? _hangarShot;
         private HangarFlight? _hangarFlight;
-        private (TankShotTrace Trace, ArmorHit Outcome)? _hangarImpact;
+        private ReplayShot? _hangarImpact;
         private float _hangarResultUntil;
         internal bool HangarShotInFlight => _hangarFlight.HasValue;
         internal bool HangarShotBusy => HangarShotInFlight || Time.unscaledTime < _hangarResultUntil;
@@ -370,7 +377,6 @@ namespace Modern8bitTanks
             bool intersects = tank.TryGetArmorContact(from, to, tank.hullStack.squash, out ArmorContact contact);
             if (fire)
             {
-                _hangarImpact = null;
                 _hangarFlight = new HangarFlight
                 {
                     Origin = _hangarShotOrigin,
@@ -403,13 +409,15 @@ namespace Modern8bitTanks
             }
 
             _hangarFlight = null;
-            _hangarResultUntil = Time.unscaledTime + HangarImpactDuration;
+            _hangarResultUntil = Time.unscaledTime + HangarImpactHoldDuration;
             TankShotTrace trace = default;
             if (tank.alive && flight.Contact is ArmorContact contact)
             {
                 TankHit actual = tank.ApplyArmorHit(contact, flight.Kind, flight.Penetration, out trace, flight.Ammo);
                 hit = actual;
-                _hangarImpact = (trace, actual.Armor);
+                if (actual.Armor == ArmorHit.Penetrated)
+                    trace = new TankShotTrace(trace.Entry, trace.Approach, FindHangarTraceEnd(trace));
+                _hangarImpact = new ReplayShot { Trace = trace, Hit = actual, StartTime = Time.unscaledTime };
                 ReadVehicle(tank);
             }
             _hangarShot = (flight.Destination, hit, trace);
@@ -531,21 +539,21 @@ namespace Modern8bitTanks
             else if (_mode == Mode.Hangar)
             {
                 DrawHangarShot(mesh, Proj, rect);
-                if (_hangarImpact is { } impact)
-                {
-                    float flash = (_hangarResultUntil - Time.unscaledTime) / HangarImpactDuration;
-                    if (flash > 0f)
-                    {
-                        Vector2 entry = Proj(impact.Trace.Entry, 0f);
-                        Diamond(mesh, entry, Mathf.Lerp(6f, 3f, flash), FadeAlpha(Flash, flash));
-                        if (impact.Outcome == ArmorHit.Penetrated)
-                        {
-                            Vector2 end = Proj(FindHangarTraceEnd(impact.Trace), 0f);
-                            DrawHangarProjectile(mesh, entry, end, 1f - flash);
-                        }
-                    }
-                }
+                DrawHangarImpact(mesh, Proj);
             }
+        }
+
+        private void DrawHangarImpact(VertexHelper mesh, System.Func<Vector2, float, Vector2> project)
+        {
+            if (!_hangarImpact.HasValue) return;
+            ReplayShot impact = _hangarImpact.Value;
+            float t = Time.unscaledTime - impact.StartTime + ReplayImpactTime;
+            if (t > ReplayShotDuration) return;
+
+            TankShotTrace trace = impact.Trace;
+            Vector2 start = project(trace.Entry - trace.Approach * 0.95f, 0f);
+            Vector2 hit = project(trace.Entry, 0f);
+            DrawImpactBallistics(mesh, project, 0f, trace, impact.Hit, t, start, hit);
         }
 
         private void DrawHangarShot(VertexHelper mesh, System.Func<Vector2, float, Vector2> project, Rect rect)
@@ -555,15 +563,6 @@ namespace Modern8bitTanks
                 Mathf.Clamp(origin.y, rect.yMin + 3f, rect.yMax - 3f));
             Diamond(mesh, marker, 2.5f, Tracer);
             if (!_hangarShot.HasValue && !_hangarFlight.HasValue) return;
-            Vector2 bottomLeft = project(new Vector2(-1f, -1f), 0f);
-            Vector2 bottomRight = project(new Vector2(1f, -1f), 0f);
-            Vector2 topLeft = project(new Vector2(-1f, 1f), 0f);
-            Vector2 topRight = project(new Vector2(1f, 1f), 0f);
-            Color outline = FadeAlpha(RicochetCol, 0.42f);
-            Line(mesh, bottomLeft, bottomRight, 1f, outline);
-            Line(mesh, bottomRight, topRight, 1f, outline);
-            Line(mesh, topRight, topLeft, 1f, outline);
-            Line(mesh, topLeft, bottomLeft, 1f, outline);
 
             if (_hangarFlight is HangarFlight flight)
             {
@@ -809,13 +808,12 @@ namespace Modern8bitTanks
             {
                 ReplayShot shot = _shots[sIdx];
                 float t = _elapsed - shot.StartTime;
-                if (t < 0f || t > 1.50f) continue;
+                if (t < 0f || t > ReplayShotDuration) continue;
 
                 TankShotTrace tr = shot.Trace;
                 TankHit h = shot.Hit;
                 Vector2 start = proj(tr.Entry - tr.Approach * 0.95f, z + 1.4f);
                 Vector2 hit = proj(tr.Entry, z);
-                Vector2 end = proj(tr.End, z - 0.5f);
 
                 // 1. Incoming shell streak: head flies in (0..0.22s), tail chases into impact (0.14..0.44s) and vanishes!
                 float inHead = Mathf.Clamp01(t / 0.22f);
@@ -830,148 +828,8 @@ namespace Modern8bitTanks
                         Diamond(mesh, pHead, 2.0f, Flash);
                 }
 
-                if (t < 0.21f) continue;
-
-                // 2. Armor impact flash ring (0.21..0.58s) — pops and fades cleanly!
-                float burstT = Mathf.Clamp01((t - 0.21f) / 0.37f);
-                if (burstT < 0.99f)
-                {
-                    float burstFade = 1f - burstT;
-                    float ring = Mathf.Lerp(5.4f, 1.6f, burstT);
-                    Color burstCol = h.Armor == ArmorHit.Ricochet ? RicochetCol : Tracer;
-                    Diamond(mesh, hit, ring, FadeAlpha(burstCol, burstFade));
-                    Diamond(mesh, hit, 1.7f * burstFade, FadeAlpha(Flash, burstFade));
-                }
-
-                // 3. Post-impact rays: expand crisply, linger clearly so spall paths are readable,
-                //    then tail sweeps smoothly forward into the tip and disappears (~1.35s)!
-                if (h.Armor == ArmorHit.Penetrated)
-                {
-                    bool isChem = AmmoInfo.IsChemical(h.Ammo);
-                    bool isAphe = h.Ammo == AmmoType.APHE;
-                    bool isHe = AmmoInfo.IsExplosiveSplash(h.Ammo);
-
-                    float outHead = Mathf.Clamp01((t - 0.22f) / 0.20f);
-                    float outTailRaw = Mathf.Clamp01((t - 0.58f) / 0.70f);
-                    float outTail = outTailRaw * outTailRaw;
-                    if (outTail < 0.99f && outHead > outTail + 0.01f)
-                    {
-                        float penFade = Mathf.Clamp01((1f - outTailRaw) * 1.45f);
-                        Vector2 p0 = Vector2.Lerp(hit, end, outTail);
-                        Vector2 p1 = Vector2.Lerp(hit, end, outHead);
-                        Color jetCol = isChem ? RicochetCol : (isHe ? CookoffMid : Tracer);
-                        Line(mesh, p0, p1, Mathf.Lerp(isChem ? 2.2f : 1.9f, 0.95f, outTail), FadeAlpha(jetCol, penFade));
-                        Diamond(mesh, p1, Mathf.Lerp(2.1f, 0.85f, outTail), FadeAlpha(Flash, penFade));
-                    }
-
-                    // APHE: 360-degree internal War Thunder explosive shrapnel burst inside the fighting compartment!
-                    if (isAphe && t >= 0.34f)
-                    {
-                        float bHead = Mathf.Clamp01((t - 0.34f) / 0.20f);
-                        float bTailRaw = Mathf.Clamp01((t - 0.68f) / 0.68f);
-                        float bTail = bTailRaw * bTailRaw;
-                        if (bTail < 0.99f && bHead > bTail + 0.01f)
-                        {
-                            float bf = Mathf.Clamp01((1f - bTailRaw) * 1.4f);
-                            Octagon(mesh, end, Mathf.Lerp(2f, 8.5f, bHead) * (1f - bTailRaw * 0.55f), FadeAlpha(CookoffMid, 0.68f * bf));
-                            Octagon(mesh, end, Mathf.Lerp(1.2f, 4.2f, bHead) * (1f - bTailRaw * 0.65f), FadeAlpha(CookoffCore, 0.85f * bf));
-                            for (int k = 0; k < 10; k++)
-                            {
-                                float ang = (k / 10f) * Mathf.PI * 2f + 0.2f;
-                                Vector2 rDir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * (k % 2 == 0 ? 0.58f : 0.42f);
-                                Vector2 rp0 = proj(tr.End + rDir * bTail, z - 0.4f);
-                                Vector2 rp1 = proj(tr.End + rDir * bHead, z - 0.4f);
-                                Line(mesh, rp0, rp1, Mathf.Lerp(1.2f, 0.55f, bTail), FadeAlpha(k % 2 == 0 ? SpallBright : SpallHot, bf));
-                            }
-                        }
-                    }
-
-                    // Directional Spall / Shaped-Charge Jet Cone
-                    Vector2 dir = tr.End - tr.Entry;
-                    if (dir.sqrMagnitude < 0.01f) dir = tr.Approach * 0.60f;
-                    float[] fanAngles = isChem
-                        ? new[] { -26f, -16f, -8f, 0f, 8f, 16f, 26f }
-                        : new[] { -38f, -25f, -12f, 0f, 12f, 25f, 38f };
-                    float[] fanLengths = isChem
-                        ? new[] { 0.52f, 0.78f, 1.02f, 1.18f, 0.98f, 0.76f, 0.50f }
-                        : new[] { 0.46f, 0.68f, 0.88f, 0.98f, 0.85f, 0.66f, 0.44f };
-                    float[] fanStagger = { 0.045f, 0.022f, 0.008f, 0f, 0.012f, 0.028f, 0.050f };
-                    for (int i = 0; i < fanAngles.Length; i++)
-                    {
-                        float st = fanStagger[i];
-                        float spHead = Mathf.Clamp01((t - (0.23f + st)) / 0.20f);
-                        float spTailRaw = Mathf.Clamp01((t - (0.62f + st)) / 0.74f);
-                        float spTail = spTailRaw * spTailRaw;
-                        if (spTail >= 0.99f || spHead <= spTail + 0.01f) continue;
-
-                        float rad = fanAngles[i] * Mathf.Deg2Rad;
-                        float c = Mathf.Cos(rad), s = Mathf.Sin(rad);
-                        Vector2 spDir = new Vector2(dir.x * c - dir.y * s, dir.x * s + dir.y * c) * fanLengths[i];
-                        Vector2 p0 = proj(tr.Entry + spDir * spTail, z - 0.4f);
-                        Vector2 p1 = proj(tr.Entry + spDir * spHead, z - 0.4f);
-
-                        float spFade = Mathf.Clamp01((1f - spTailRaw) * 1.45f);
-                        Color spCol = isChem ? (i == 3 ? Flash : SpallBright) : ((i % 2 == 0) ? SpallHot : SpallBright);
-                        float w = (i == 3 ? 1.45f : 1.0f) * Mathf.Lerp(1f, 0.55f, spTail);
-                        Line(mesh, p0, p1, w, FadeAlpha(spCol, spFade));
-                        Diamond(mesh, p1, Mathf.Lerp(1.25f, 0.5f, spTail), FadeAlpha(Flash, spFade));
-                    }
-                }
-                else if (h.Armor == ArmorHit.Ricochet)
-                {
-                    float bHead = Mathf.Clamp01((t - 0.22f) / 0.20f);
-                    float bTailRaw = Mathf.Clamp01((t - 0.55f) / 0.67f);
-                    float bTail = bTailRaw * bTailRaw;
-                    if (bTail < 0.99f && bHead > bTail + 0.01f)
-                    {
-                        float bFade = Mathf.Clamp01((1f - bTailRaw) * 1.45f);
-                        Vector2 p0 = Vector2.Lerp(hit, end, bTail);
-                        Vector2 p1 = Vector2.Lerp(hit, end, bHead);
-                        Line(mesh, p0, p1, Mathf.Lerp(1.7f, 0.9f, bTail), FadeAlpha(RicochetCol, bFade));
-                        Diamond(mesh, p1, Mathf.Lerp(2.0f, 0.8f, bTail), FadeAlpha(Flash, bFade));
-                    }
-
-                    float skHead = Mathf.Clamp01((t - 0.22f) / 0.16f);
-                    float skTail = Mathf.Clamp01((t - 0.42f) / 0.50f);
-                    if (skTail < 0.99f && skHead > skTail + 0.01f)
-                    {
-                        float skFade = 1f - skTail;
-                        Vector2 perp = (end - hit).sqrMagnitude > 0.1f
-                            ? new Vector2(-(end - hit).y, (end - hit).x).normalized : Vector2.up;
-                        Line(mesh, hit + perp * (5.5f * skTail), hit + perp * (5.5f * skHead), 1.0f, FadeAlpha(Flash, skFade));
-                        Line(mesh, hit - perp * (4.5f * skTail), hit - perp * (4.5f * skHead), 0.9f, FadeAlpha(Tracer, skFade));
-                    }
-                }
-                else
-                {
-                    bool isHeSplash = AmmoInfo.IsExplosiveSplash(h.Ammo);
-                    if (isHeSplash)
-                    {
-                        float heT = Mathf.Clamp01((t - 0.22f) / 0.65f);
-                        if (heT < 0.99f)
-                        {
-                            float heFade = 1f - heT;
-                            Octagon(mesh, hit, Mathf.Lerp(3.5f, 13.5f, heT), FadeAlpha(CookoffMid, 0.62f * heFade));
-                            Octagon(mesh, hit, Mathf.Lerp(2.0f, 7.5f, heT), FadeAlpha(CookoffInner, 0.80f * heFade));
-                        }
-                    }
-
-                    float shHead = Mathf.Clamp01((t - 0.22f) / 0.16f);
-                    float shTail = Mathf.Clamp01((t - 0.46f) / 0.52f);
-                    if (shTail < 0.99f && shHead > shTail + 0.01f)
-                    {
-                        float shFade = 1f - shTail;
-                        Vector2 backDir = (start - hit).normalized;
-                        float len = isHeSplash ? 11.0f : 6.5f;
-                        for (int i = -2; i <= 2; i++)
-                        {
-                            float rad = i * 26f * Mathf.Deg2Rad;
-                            float c = Mathf.Cos(rad), s = Mathf.Sin(rad);
-                            Vector2 sd = new Vector2(backDir.x * c - backDir.y * s, backDir.x * s + backDir.y * c);
-                            Line(mesh, hit + sd * (len * shTail), hit + sd * (len * shHead), isHeSplash ? 1.3f : 1.0f, FadeAlpha(isHeSplash ? CookoffMid : Tracer, shFade));
-                        }
-                    }
-                }
+                if (t >= ReplayImpactTime)
+                    DrawImpactBallistics(mesh, proj, z, tr, h, t, start, hit);
             }
 
             // =========================================================================
@@ -1046,6 +904,147 @@ namespace Modern8bitTanks
                 {
                     float flashA = (1f - dtBoom / 0.14f) * 0.34f;
                     Box(mesh, new Vector2(ox, oy), rw, rh, FadeAlpha(CookoffCore, flashA));
+                }
+            }
+        }
+
+        private static void DrawImpactBallistics(VertexHelper mesh, System.Func<Vector2, float, Vector2> proj,
+            float z, TankShotTrace tr, TankHit h, float t, Vector2 start, Vector2 hit)
+        {
+            Vector2 end = proj(tr.End, z - 0.5f);
+            // 2. Armor impact flash ring (0.21..0.58s) — pops and fades cleanly!
+            float burstT = Mathf.Clamp01((t - 0.21f) / 0.37f);
+            if (burstT < 0.99f)
+            {
+                float burstFade = 1f - burstT;
+                float ring = Mathf.Lerp(5.4f, 1.6f, burstT);
+                Color burstCol = h.Armor == ArmorHit.Ricochet ? RicochetCol : Tracer;
+                Diamond(mesh, hit, ring, FadeAlpha(burstCol, burstFade));
+                Diamond(mesh, hit, 1.7f * burstFade, FadeAlpha(Flash, burstFade));
+            }
+
+            // 3. Post-impact rays: expand crisply, linger clearly so spall paths are readable,
+            //    then tail sweeps smoothly forward into the tip and disappears (~1.35s)!
+            if (h.Armor == ArmorHit.Penetrated)
+            {
+                bool isChem = AmmoInfo.IsChemical(h.Ammo);
+                bool isAphe = h.Ammo == AmmoType.APHE;
+                bool isHe = AmmoInfo.IsExplosiveSplash(h.Ammo);
+
+                float outHead = Mathf.Clamp01((t - 0.22f) / 0.20f);
+                float outTailRaw = Mathf.Clamp01((t - 0.58f) / 0.70f);
+                float outTail = outTailRaw * outTailRaw;
+                if (outTail < 0.99f && outHead > outTail + 0.01f)
+                {
+                    float penFade = Mathf.Clamp01((1f - outTailRaw) * 1.45f);
+                    Vector2 p0 = Vector2.Lerp(hit, end, outTail);
+                    Vector2 p1 = Vector2.Lerp(hit, end, outHead);
+                    Color jetCol = isChem ? RicochetCol : (isHe ? CookoffMid : Tracer);
+                    Line(mesh, p0, p1, Mathf.Lerp(isChem ? 2.2f : 1.9f, 0.95f, outTail), FadeAlpha(jetCol, penFade));
+                    Diamond(mesh, p1, Mathf.Lerp(2.1f, 0.85f, outTail), FadeAlpha(Flash, penFade));
+                }
+
+                // APHE: 360-degree internal War Thunder explosive shrapnel burst inside the fighting compartment!
+                if (isAphe && t >= 0.34f)
+                {
+                    float bHead = Mathf.Clamp01((t - 0.34f) / 0.20f);
+                    float bTailRaw = Mathf.Clamp01((t - 0.68f) / 0.68f);
+                    float bTail = bTailRaw * bTailRaw;
+                    if (bTail < 0.99f && bHead > bTail + 0.01f)
+                    {
+                        float bf = Mathf.Clamp01((1f - bTailRaw) * 1.4f);
+                        Octagon(mesh, end, Mathf.Lerp(2f, 8.5f, bHead) * (1f - bTailRaw * 0.55f), FadeAlpha(CookoffMid, 0.68f * bf));
+                        Octagon(mesh, end, Mathf.Lerp(1.2f, 4.2f, bHead) * (1f - bTailRaw * 0.65f), FadeAlpha(CookoffCore, 0.85f * bf));
+                        for (int k = 0; k < 10; k++)
+                        {
+                            float ang = (k / 10f) * Mathf.PI * 2f + 0.2f;
+                            Vector2 rDir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * (k % 2 == 0 ? 0.58f : 0.42f);
+                            Vector2 rp0 = proj(tr.End + rDir * bTail, z - 0.4f);
+                            Vector2 rp1 = proj(tr.End + rDir * bHead, z - 0.4f);
+                            Line(mesh, rp0, rp1, Mathf.Lerp(1.2f, 0.55f, bTail), FadeAlpha(k % 2 == 0 ? SpallBright : SpallHot, bf));
+                        }
+                    }
+                }
+
+                // Directional Spall / Shaped-Charge Jet Cone
+                Vector2 dir = tr.End - tr.Entry;
+                if (dir.sqrMagnitude < 0.01f) dir = tr.Approach * 0.60f;
+                float[] fanAngles = isChem ? ChemicalSpallAngles : KineticSpallAngles;
+                float[] fanLengths = isChem ? ChemicalSpallLengths : KineticSpallLengths;
+                for (int i = 0; i < fanAngles.Length; i++)
+                {
+                    float st = SpallStagger[i];
+                    float spHead = Mathf.Clamp01((t - (0.23f + st)) / 0.20f);
+                    float spTailRaw = Mathf.Clamp01((t - (0.62f + st)) / 0.74f);
+                    float spTail = spTailRaw * spTailRaw;
+                    if (spTail >= 0.99f || spHead <= spTail + 0.01f) continue;
+
+                    float rad = fanAngles[i] * Mathf.Deg2Rad;
+                    float c = Mathf.Cos(rad), s = Mathf.Sin(rad);
+                    Vector2 spDir = new Vector2(dir.x * c - dir.y * s, dir.x * s + dir.y * c) * fanLengths[i];
+                    Vector2 p0 = proj(tr.Entry + spDir * spTail, z - 0.4f);
+                    Vector2 p1 = proj(tr.Entry + spDir * spHead, z - 0.4f);
+
+                    float spFade = Mathf.Clamp01((1f - spTailRaw) * 1.45f);
+                    Color spCol = isChem ? (i == 3 ? Flash : SpallBright) : ((i % 2 == 0) ? SpallHot : SpallBright);
+                    float w = (i == 3 ? 1.45f : 1.0f) * Mathf.Lerp(1f, 0.55f, spTail);
+                    Line(mesh, p0, p1, w, FadeAlpha(spCol, spFade));
+                    Diamond(mesh, p1, Mathf.Lerp(1.25f, 0.5f, spTail), FadeAlpha(Flash, spFade));
+                }
+            }
+            else if (h.Armor == ArmorHit.Ricochet)
+            {
+                float bHead = Mathf.Clamp01((t - 0.22f) / 0.20f);
+                float bTailRaw = Mathf.Clamp01((t - 0.55f) / 0.67f);
+                float bTail = bTailRaw * bTailRaw;
+                if (bTail < 0.99f && bHead > bTail + 0.01f)
+                {
+                    float bFade = Mathf.Clamp01((1f - bTailRaw) * 1.45f);
+                    Vector2 p0 = Vector2.Lerp(hit, end, bTail);
+                    Vector2 p1 = Vector2.Lerp(hit, end, bHead);
+                    Line(mesh, p0, p1, Mathf.Lerp(1.7f, 0.9f, bTail), FadeAlpha(RicochetCol, bFade));
+                    Diamond(mesh, p1, Mathf.Lerp(2.0f, 0.8f, bTail), FadeAlpha(Flash, bFade));
+                }
+
+                float skHead = Mathf.Clamp01((t - 0.22f) / 0.16f);
+                float skTail = Mathf.Clamp01((t - 0.42f) / 0.50f);
+                if (skTail < 0.99f && skHead > skTail + 0.01f)
+                {
+                    float skFade = 1f - skTail;
+                    Vector2 perp = (end - hit).sqrMagnitude > 0.1f
+                        ? new Vector2(-(end - hit).y, (end - hit).x).normalized : Vector2.up;
+                    Line(mesh, hit + perp * (5.5f * skTail), hit + perp * (5.5f * skHead), 1.0f, FadeAlpha(Flash, skFade));
+                    Line(mesh, hit - perp * (4.5f * skTail), hit - perp * (4.5f * skHead), 0.9f, FadeAlpha(Tracer, skFade));
+                }
+            }
+            else
+            {
+                bool isHeSplash = AmmoInfo.IsExplosiveSplash(h.Ammo);
+                if (isHeSplash)
+                {
+                    float heT = Mathf.Clamp01((t - 0.22f) / 0.65f);
+                    if (heT < 0.99f)
+                    {
+                        float heFade = 1f - heT;
+                        Octagon(mesh, hit, Mathf.Lerp(3.5f, 13.5f, heT), FadeAlpha(CookoffMid, 0.62f * heFade));
+                        Octagon(mesh, hit, Mathf.Lerp(2.0f, 7.5f, heT), FadeAlpha(CookoffInner, 0.80f * heFade));
+                    }
+                }
+
+                float shHead = Mathf.Clamp01((t - 0.22f) / 0.16f);
+                float shTail = Mathf.Clamp01((t - 0.46f) / 0.52f);
+                if (shTail < 0.99f && shHead > shTail + 0.01f)
+                {
+                    float shFade = 1f - shTail;
+                    Vector2 backDir = (start - hit).normalized;
+                    float len = isHeSplash ? 11.0f : 6.5f;
+                    for (int i = -2; i <= 2; i++)
+                    {
+                        float rad = i * 26f * Mathf.Deg2Rad;
+                        float c = Mathf.Cos(rad), s = Mathf.Sin(rad);
+                        Vector2 sd = new Vector2(backDir.x * c - backDir.y * s, backDir.x * s + backDir.y * c);
+                        Line(mesh, hit + sd * (len * shTail), hit + sd * (len * shHead), isHeSplash ? 1.3f : 1.0f, FadeAlpha(isHeSplash ? CookoffMid : Tracer, shFade));
+                    }
                 }
             }
         }
