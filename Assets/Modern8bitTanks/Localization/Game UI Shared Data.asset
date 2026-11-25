@@ -804,11 +804,11 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534224
-    m_Key: 'LOADING ARMOR {0}'
+    m_Key: LOADING ARMOR {0}
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534225
-    m_Key: 'LOADING PEN {0} / {1}'
+    m_Key: LOADING PEN {0} / {1}
     m_Metadata:
       m_Items: []
   - m_Id: 15410685534226
