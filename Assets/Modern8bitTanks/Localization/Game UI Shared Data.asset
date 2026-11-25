@@ -899,6 +899,58 @@ MonoBehaviour:
     m_Key: "PLAYER {0}"
     m_Metadata:
       m_Items: []
+  - m_Id: 15410685534248
+    m_Key: COPY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534249
+    m_Key: COPIED!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534250
+    m_Key: PASTE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534251
+    m_Key: SWITCH TEAM
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534252
+    m_Key: ENTER DISPLAY NAME
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534253
+    m_Key: JOIN BY CODE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534254
+    m_Key: PLAYERS {0}/{1}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534255
+    m_Key: UP TO {0} PLAYERS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534256
+    m_Key: NEED OPPONENT
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534257
+    m_Key: SELECTING...
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534258
+    m_Key: ONLINE TANK SELECT BANNER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534259
+    m_Key: CLIPBOARD EMPTY.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534260
+    m_Key: JOIN CODE LABEL
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

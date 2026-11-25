@@ -902,6 +902,58 @@ MonoBehaviour:
     m_Localized: "プレイヤー {0}"
     m_Metadata:
       m_Items: []
+  - m_Id: 15410685534248
+    m_Localized: "コピー"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534249
+    m_Localized: "コピー完了"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534250
+    m_Localized: "貼付"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534251
+    m_Localized: "チーム移動"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534252
+    m_Localized: "名前を入力"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534253
+    m_Localized: "参加コードで入室"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534254
+    m_Localized: "参加者 {0}/{1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534255
+    m_Localized: "最大 {0} 人"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534256
+    m_Localized: "敵チームに1人以上必要"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534257
+    m_Localized: "選択中"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534258
+    m_Localized: "オンライン車両選択中 - 確定 [Enter]"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534259
+    m_Localized: "クリップボードにコードがありません"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 15410685534260
+    m_Localized: "ルームコード"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []
