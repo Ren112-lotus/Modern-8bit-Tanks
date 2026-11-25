@@ -875,6 +875,10 @@ MonoBehaviour:
     m_Key: "XRAY AMMO"
     m_Metadata:
       m_Items: []
+  - m_Id: 15410685534242
+    m_Key: "XRAY SHOT IN FLIGHT"
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

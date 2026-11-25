@@ -13,7 +13,7 @@ namespace Modern8bitTanks
         private AmmoType[] _armorPreviewLoadout;
         private int _armorPreviewAmmoIndex;
         private bool _armorPreviewLabelsDirty = true;
-        private (bool aiming, ArmorHit? outcome, int penetration, int armor, int angle)? _armorPreviewReadout;
+        private (bool aiming, bool inFlight, ArmorHit? outcome, int penetration, int armor, int angle)? _armorPreviewReadout;
         private Vector2? _armorPreviewPress;
         private bool _armorPreviewHasFired;
         private TankHit? _armorPreviewLastHit;
@@ -76,8 +76,9 @@ namespace Modern8bitTanks
         {
             if (showcaseTank.vehicleDef == null) return;
             bool interactive = !_settingsOpen && !_deployOpen && !_onlineOpen;
-            bool pickAttacker = interactive && keyboard != null && keyboard.pKey.wasPressedThisFrame;
-            int requestedSlot = interactive && keyboard != null ? ReadArmorPreviewAmmoKey(keyboard) : -1;
+            bool canAim = interactive && !_hangarXrayGraphic.HangarShotBusy;
+            bool pickAttacker = canAim && keyboard != null && keyboard.pKey.wasPressedThisFrame;
+            int requestedSlot = canAim && keyboard != null ? ReadArmorPreviewAmmoKey(keyboard) : -1;
             if (interactive)
             {
                 UpdateArmorPreviewIdleReset(mouse, fire || pickAttacker || requestedSlot >= 0);
@@ -127,7 +128,7 @@ namespace Modern8bitTanks
             }
 
             Vector2? aim = null;
-            if (interactive && !_draggingTank && mouse != null &&
+            if (canAim && !_draggingTank && mouse != null &&
                 _windowbox.TryScreenToViewport(mouse.position.ReadValue(), out Vector2 viewport))
             {
                 if (mouse.rightButton.isPressed)
@@ -144,20 +145,39 @@ namespace Modern8bitTanks
                 _ => attacker.weapon == "ATGM" ? ProjectileKind.ATGM : ProjectileKind.Shell
             };
             float penetration = AmmoInfo.Penetration(kind, ammo, attacker, secondaryAtgm);
-            bool aiming = _hangarXrayGraphic.PreviewHangarShot(showcaseTank, _cam, aim, kind, ammo, penetration, fire, out TankHit? hit);
-            if (fire && aiming)
+            TankHit? hit = null;
+            bool aiming;
+            if (interactive && _hangarXrayGraphic.AdvanceHangarShot(showcaseTank, Time.unscaledDeltaTime, out hit))
             {
+                aiming = true;
                 _armorPreviewHasFired = true;
-                _armorPreviewLastHit = hit;
+                if (hit.HasValue || showcaseTank.alive) _armorPreviewLastHit = hit;
+                _armorPreviewLastInteraction = Time.unscaledTimeAsDouble;
             }
+            else if (_hangarXrayGraphic.HangarShotBusy)
+            {
+                aiming = true;
+                hit = _armorPreviewLastHit;
+            }
+            else
+            {
+                aiming = _hangarXrayGraphic.PreviewHangarShot(showcaseTank, _cam, aim, kind, ammo, penetration, fire, out hit);
+            }
+            bool inFlight = _hangarXrayGraphic.HangarShotInFlight;
             if (!showcaseTank.alive)
                 hit = _armorPreviewLastHit;
             UpdateArmorPreviewDamageReadout();
 
-            var readout = (aiming, outcome: hit?.Armor, penetration: Mathf.RoundToInt(hit?.PenetrationValue ?? penetration),
+            var readout = (aiming, inFlight, outcome: hit?.Armor, penetration: Mathf.RoundToInt(hit?.PenetrationValue ?? penetration),
                 armor: Mathf.RoundToInt(hit?.EffectiveArmor ?? 0f), angle: Mathf.RoundToInt(hit?.ImpactAngleDeg ?? 0f));
             if (_armorPreviewReadout == readout) return;
             _armorPreviewReadout = readout;
+
+            if (inFlight)
+            {
+                _hangarXrayGraphic.SetArmorPreviewResult(UiText.Get("XRAY SHOT IN FLIGHT"), null);
+                return;
+            }
 
             string result = hit?.Armor switch
             {
@@ -186,7 +206,8 @@ namespace Modern8bitTanks
             double now = Time.unscaledTimeAsDouble;
             if (interacted)
                 _armorPreviewLastInteraction = now;
-            if (_armorPreviewHasFired && now - _armorPreviewLastInteraction >= ArmorPreviewIdleResetSeconds)
+            if (_armorPreviewHasFired && !_hangarXrayGraphic.HangarShotInFlight &&
+                now - _armorPreviewLastInteraction >= ArmorPreviewIdleResetSeconds)
                 ResetArmorPreviewDamage();
         }
 

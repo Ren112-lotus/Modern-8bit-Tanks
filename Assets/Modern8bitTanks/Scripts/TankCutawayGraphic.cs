@@ -8,6 +8,19 @@ namespace Modern8bitTanks
     public sealed class TankCutawayGraphic : MaskableGraphic
     {
         private enum Mode { Status, Replay, Hangar }
+        private const float HangarFlightDuration = 0.70f;
+        private const float HangarImpactDuration = 0.35f;
+
+        private struct HangarFlight
+        {
+            public Vector2 Origin;
+            public Vector2 Destination;
+            public ArmorContact? Contact;
+            public ProjectileKind Kind;
+            public AmmoType Ammo;
+            public float Penetration;
+            public float Elapsed;
+        }
 
         // War Thunder Authentic X-Ray Color Palette
         private static readonly Color Grid = new Color32(42, 52, 58, 145);
@@ -48,8 +61,11 @@ namespace Modern8bitTanks
         private Rect _hangarViewport;
         private Vector2 _hangarShotOrigin = new(0.5f, 0f);
         private (Vector2 End, TankHit? Hit, TankShotTrace Trace)? _hangarShot;
-        private (Vector2 Entry, float Until)? _hangarImpact;
-        private const float HangarImpactDuration = 0.35f;
+        private HangarFlight? _hangarFlight;
+        private (TankShotTrace Trace, ArmorHit Outcome)? _hangarImpact;
+        private float _hangarResultUntil;
+        internal bool HangarShotInFlight => _hangarFlight.HasValue;
+        internal bool HangarShotBusy => HangarShotInFlight || Time.unscaledTime < _hangarResultUntil;
 
         private Rect StatusBodyRect
         {
@@ -321,7 +337,9 @@ namespace Modern8bitTanks
         internal void ClearHangarShot()
         {
             _hangarShot = null;
+            _hangarFlight = null;
             _hangarImpact = null;
+            _hangarResultUntil = 0f;
         }
 
         internal void MoveHangarShotOrigin(Vector2 viewport)
@@ -349,19 +367,52 @@ namespace Modern8bitTanks
             Vector2 end = _hangarShotOrigin + direction * edge;
             Vector2 from = worldCamera.ViewportToWorldPoint(Rect.NormalizedToPoint(_hangarViewport, _hangarShotOrigin));
             Vector2 to = worldCamera.ViewportToWorldPoint(Rect.NormalizedToPoint(_hangarViewport, end));
-            TankShotTrace trace = default;
-            if (tank.TryGetArmorContact(from, to, tank.hullStack.squash, out ArmorContact contact))
+            bool intersects = tank.TryGetArmorContact(from, to, tank.hullStack.squash, out ArmorContact contact);
+            if (fire)
             {
-                hit = fire
-                    ? tank.ApplyArmorHit(contact, kind, penetration, out trace, ammo)
-                    : tank.PreviewArmorHit(contact, kind, penetration, ammo, out trace);
-                if (fire)
+                _hangarImpact = null;
+                _hangarFlight = new HangarFlight
                 {
-                    _hangarImpact = (trace.Entry, Time.unscaledTime + HangarImpactDuration);
-                    ReadVehicle(tank);
-                }
+                    Origin = _hangarShotOrigin,
+                    Destination = intersects ? Vector2.Lerp(_hangarShotOrigin, end, contact.Fraction) : end,
+                    Contact = intersects ? contact : null,
+                    Kind = kind,
+                    Ammo = ammo,
+                    Penetration = penetration
+                };
+                return true;
             }
+
+            TankShotTrace trace = default;
+            if (intersects)
+                hit = tank.PreviewArmorHit(contact, kind, penetration, ammo, out trace);
             _hangarShot = (end, hit, trace);
+            return true;
+        }
+
+        internal bool AdvanceHangarShot(TankEntity tank, float unscaledDeltaTime, out TankHit? hit)
+        {
+            hit = null;
+            if (!_hangarFlight.HasValue) return false;
+            var flight = _hangarFlight.Value;
+            flight.Elapsed += Mathf.Min(unscaledDeltaTime, 0.05f);
+            if (flight.Elapsed < HangarFlightDuration)
+            {
+                _hangarFlight = flight;
+                return false;
+            }
+
+            _hangarFlight = null;
+            _hangarResultUntil = Time.unscaledTime + HangarImpactDuration;
+            TankShotTrace trace = default;
+            if (tank.alive && flight.Contact is ArmorContact contact)
+            {
+                TankHit actual = tank.ApplyArmorHit(contact, flight.Kind, flight.Penetration, out trace, flight.Ammo);
+                hit = actual;
+                _hangarImpact = (trace, actual.Armor);
+                ReadVehicle(tank);
+            }
+            _hangarShot = (flight.Destination, hit, trace);
             return true;
         }
 
@@ -482,9 +533,17 @@ namespace Modern8bitTanks
                 DrawHangarShot(mesh, Proj, rect);
                 if (_hangarImpact is { } impact)
                 {
-                    float flash = (impact.Until - Time.unscaledTime) / HangarImpactDuration;
+                    float flash = (_hangarResultUntil - Time.unscaledTime) / HangarImpactDuration;
                     if (flash > 0f)
-                        Diamond(mesh, Proj(impact.Entry, 0f), Mathf.Lerp(6f, 3f, flash), FadeAlpha(Flash, flash));
+                    {
+                        Vector2 entry = Proj(impact.Trace.Entry, 0f);
+                        Diamond(mesh, entry, Mathf.Lerp(6f, 3f, flash), FadeAlpha(Flash, flash));
+                        if (impact.Outcome == ArmorHit.Penetrated)
+                        {
+                            Vector2 end = Proj(FindHangarTraceEnd(impact.Trace), 0f);
+                            DrawHangarProjectile(mesh, entry, end, 1f - flash);
+                        }
+                    }
                 }
             }
         }
@@ -495,8 +554,7 @@ namespace Modern8bitTanks
             Vector2 marker = new(Mathf.Clamp(origin.x, rect.xMin + 3f, rect.xMax - 3f),
                 Mathf.Clamp(origin.y, rect.yMin + 3f, rect.yMax - 3f));
             Diamond(mesh, marker, 2.5f, Tracer);
-            if (!_hangarShot.HasValue) return;
-            var (end, hit, trace) = _hangarShot.Value;
+            if (!_hangarShot.HasValue && !_hangarFlight.HasValue) return;
             Vector2 bottomLeft = project(new Vector2(-1f, -1f), 0f);
             Vector2 bottomRight = project(new Vector2(1f, -1f), 0f);
             Vector2 topLeft = project(new Vector2(-1f, 1f), 0f);
@@ -507,6 +565,16 @@ namespace Modern8bitTanks
             Line(mesh, topRight, topLeft, 1f, outline);
             Line(mesh, topLeft, bottomLeft, 1f, outline);
 
+            if (_hangarFlight is HangarFlight flight)
+            {
+                Vector2 start = Rect.NormalizedToPoint(rect, flight.Origin);
+                Vector2 destination = Rect.NormalizedToPoint(rect, flight.Destination);
+                Line(mesh, start, destination, 1f, FadeAlpha(TracerDim, 0.52f));
+                DrawHangarProjectile(mesh, start, destination, flight.Elapsed / HangarFlightDuration);
+                return;
+            }
+
+            var (end, hit, trace) = _hangarShot.Value;
             Color tint = ArmorPreviewColor(hit?.Armor);
             if (!hit.HasValue)
             {
@@ -522,13 +590,25 @@ namespace Modern8bitTanks
             Line(mesh, arrow - wing, impact, 1f, tint);
             Line(mesh, arrow + wing, impact, 1f, tint);
             if (hit.Value.Armor == ArmorHit.Penetrated)
-            {
-                Vector2 delta = trace.End - trace.Entry;
-                float reach = Mathf.Clamp01(Mathf.Min(ExitFraction(trace.Entry.x, delta.x, -1f, 1f),
-                    ExitFraction(trace.Entry.y, delta.y, -1f, 1f)));
-                Line(mesh, impact, project(trace.Entry + delta * reach, 0f), 2f, tint);
-            }
+                Line(mesh, impact, project(FindHangarTraceEnd(trace), 0f), 2f, tint);
             Diamond(mesh, impact, 2.5f, tint);
+        }
+
+        private static void DrawHangarProjectile(VertexHelper mesh, Vector2 start, Vector2 end, float progress)
+        {
+            Vector2 span = end - start;
+            Vector2 head = Vector2.Lerp(start, end, progress);
+            Vector2 tail = head - span.normalized * Mathf.Min(10f, span.magnitude * progress);
+            Line(mesh, tail, head, 2f, Tracer);
+            Diamond(mesh, head, 2.2f, Flash);
+        }
+
+        private static Vector2 FindHangarTraceEnd(TankShotTrace trace)
+        {
+            Vector2 delta = trace.End - trace.Entry;
+            float reach = Mathf.Clamp01(Mathf.Min(ExitFraction(trace.Entry.x, delta.x, -1f, 1f),
+                ExitFraction(trace.Entry.y, delta.y, -1f, 1f)));
+            return trace.Entry + delta * reach;
         }
 
         private static float ExitFraction(float start, float delta, float min, float max) =>

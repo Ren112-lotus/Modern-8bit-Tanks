@@ -596,7 +596,15 @@ namespace Modern8bitTanks
                 bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
                 if (_xrayMode)
                 {
-                    fireArmorPreview = ReadArmorPreviewClick(mouse, overUI);
+                    if (_hangarXrayGraphic.HangarShotBusy)
+                    {
+                        _armorPreviewPress = null;
+                        _draggingTank = false;
+                    }
+                    else
+                    {
+                        fireArmorPreview = ReadArmorPreviewClick(mouse, overUI);
+                    }
                 }
                 else if (!overUI && mouse.leftButton.wasPressedThisFrame)
                 {
@@ -640,8 +648,9 @@ namespace Modern8bitTanks
                 if (!_draggingTank && !inspect)
                     _manualAngleOffset = Mathf.Repeat(_manualAngleOffset + 24f * dt, 360f);
                 showcaseTank.hullAngleDeg = Mathf.Repeat(35f + _manualAngleOffset, 360f);
-                showcaseTank.turretAngleDeg = showcaseTank.hullAngleDeg + Mathf.Sin(Time.time * 0.95f) *
-                    Mathf.Min(28f, showcaseTank.vehicleDef?.fixedGunTraverse is > 0 ? showcaseTank.vehicleDef.fixedGunTraverse : 28f);
+                if (!inspect || !_hangarXrayGraphic.HangarShotBusy)
+                    showcaseTank.turretAngleDeg = showcaseTank.hullAngleDeg + Mathf.Sin(Time.time * 0.95f) *
+                        Mathf.Min(28f, showcaseTank.vehicleDef?.fixedGunTraverse is > 0 ? showcaseTank.vehicleDef.fixedGunTraverse : 28f);
 
                 if (showcaseTank.gameObject.activeSelf == inspect)
                     showcaseTank.gameObject.SetActive(!inspect);
