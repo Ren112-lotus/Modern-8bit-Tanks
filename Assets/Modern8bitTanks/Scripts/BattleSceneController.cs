@@ -279,9 +279,9 @@ namespace Modern8bitTanks
                 var room = _multiplayer.Connection.Room;
                 int localSlot = _multiplayer.LocalSlot;
                 selectedPlayerVehicleId = room.GetVehicleId(localSlot);
-                int firstOpponentSlot = localSlot < MultiplayerSessionConnection.MaxPlayers / 2
-                    ? MultiplayerSessionConnection.MaxPlayers / 2 : 0;
-                for (int slot = firstOpponentSlot; slot < firstOpponentSlot + MultiplayerSessionConnection.MaxPlayers / 2; slot++)
+                const int teamSize = MultiplayerSessionConnection.PlayersPerTeam;
+                int firstOpponentSlot = MultiplayerSessionConnection.IsAlphaSlot(localSlot) ? teamSize : 0;
+                for (int slot = firstOpponentSlot; slot < firstOpponentSlot + teamSize; slot++)
                 {
                     var id = room.GetVehicleId(slot);
                     if (id == null) continue;
@@ -1142,7 +1142,7 @@ namespace Modern8bitTanks
                     _resultBannerShown = true;
                     if (_hud != null && !string.IsNullOrEmpty(_pendingWinner))
                         _hud.ShowResult(_multiplayer.IsInBattle
-                            ? (_pendingWinner == "ally") == (_multiplayer.LocalSlot < 4)
+                            ? (_pendingWinner == "ally") == MultiplayerSessionConnection.IsAlphaSlot(_multiplayer.LocalSlot)
                             : _pendingWinner == "ally", _pendingSubtitle);
                 }
             }

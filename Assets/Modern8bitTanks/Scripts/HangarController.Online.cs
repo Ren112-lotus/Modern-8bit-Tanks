@@ -68,8 +68,9 @@ namespace Modern8bitTanks
             _onlineSelectHits.SetActive(canSelect);
             _onlineBack.text = UiText.Get(inRoom ? "LEAVE ROOM" : "BACK");
             _onlineCodeLabel.text = inRoom && !string.IsNullOrEmpty(connection.JoinCode) ? UiText.Format("CODE {0}", connection.JoinCode) : "";
+            const int teamSize = MultiplayerSessionConnection.PlayersPerTeam;
             _onlineRoster.text = inRoom
-                ? $"ALPHA {room.CountTeam(true)}/4    BRAVO {room.CountTeam(false)}/4\nYOUR TEAM: {(room.LocalSlot < MultiplayerSessionConnection.MaxPlayers / 2 ? "ALPHA" : "BRAVO")}" 
+                ? $"ALPHA {room.CountTeam(true)}/{teamSize}    BRAVO {room.CountTeam(false)}/{teamSize}\nYOUR TEAM: {(MultiplayerSessionConnection.IsAlphaSlot(room.LocalSlot) ? "ALPHA" : "BRAVO")}"
                 : "";
             _onlineVehicle.text = inRoom && GetSelectedVehicle() is { } vehicle
                 ? UiText.Format("YOUR TANK: {0}", vehicle.name.ToUpperInvariant()) : "";

@@ -70,7 +70,7 @@ namespace Modern8bitTanks
             if (!_networkBattleStarted && _multiplayer.Transport != null && _multiplayer.Transport.AllExpectedReady)
             {
                 var connection = _multiplayer.Connection;
-                if (connection.Room.CountTeam(false) == 0)
+                if (connection.Room.CountTeam(true) == 0 || connection.Room.CountTeam(false) == 0)
                 {
                     _ = connection.ReturnToRoomAsync();
                     return false;
@@ -99,8 +99,8 @@ namespace Modern8bitTanks
             {
                 var vehicleId = room.GetVehicleId(slot);
                 if (vehicleId == null) continue;
-                var alpha = slot < 4;
-                var row = slot % 4;
+                var alpha = MultiplayerSessionConnection.IsAlphaSlot(slot);
+                var row = slot % MultiplayerSessionConnection.PlayersPerTeam;
                 var spawn = BattlefieldSpawn(alpha, row);
                 _networkSpawns[slot] = spawn;
                 var tank = SpawnTankFromPrefab(GetVehicleDef(vehicleId),
@@ -137,7 +137,7 @@ namespace Modern8bitTanks
                 if (transport.IsOccupied(i))
                 {
                     tank.gameObject.SetActive(true);
-                    tank.CaptureSpawnAndReset(_networkSpawns[i], i < 4 ? 90f : -90f);
+                    tank.CaptureSpawnAndReset(_networkSpawns[i], MultiplayerSessionConnection.IsAlphaSlot(i) ? 90f : -90f);
                 }
                 else
                 {
@@ -215,7 +215,7 @@ namespace Modern8bitTanks
         }
 
         private void ApplyMultiplayerState(MultiplayerMatchTransport.TankState[] states, MultiplayerMatchTransport.ShotState[] shots,
-            int shotCount, byte result, float hostTime, byte[] spots, Vector2 focus,
+            int shotCount, byte result, float hostTime, ushort[] spots, Vector2 focus,
             ControlPointState controlPoint, Vector2 controlScores, bool wonByControl)
         {
             if (_networkTanks == null || states.Length != _networkTanks.Length) return;

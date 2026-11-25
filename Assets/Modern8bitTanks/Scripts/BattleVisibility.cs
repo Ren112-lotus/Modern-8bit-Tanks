@@ -44,7 +44,7 @@ namespace Modern8bitTanks
 
         public BattleVisibility(MultiplayerSessionState multiplayer) => _multiplayer = multiplayer;
 
-        internal byte[] NetworkContacts { get; } = new byte[MultiplayerSessionConnection.MaxPlayers];
+        internal ushort[] NetworkContacts { get; } = new ushort[MultiplayerSessionConnection.MaxPlayers];
 
         internal bool IsVisible(TankEntity tank) => _visibleTanks.Contains(tank);
 
@@ -113,7 +113,7 @@ namespace Modern8bitTanks
                     var target = tanks[slot];
                     if (target == null || !target.gameObject.activeInHierarchy || target.factionTeam == observer.factionTeam) continue;
                     if (CanObserve(observer, target, viewport, hasLineOfSight))
-                        NetworkContacts[observerSlot] |= (byte)(1 << slot);
+                        NetworkContacts[observerSlot] |= (ushort)(1 << slot);
                 }
             }
         }

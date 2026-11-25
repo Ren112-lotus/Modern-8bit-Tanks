@@ -79,10 +79,10 @@ namespace Modern8bitTanks
         private sbyte _lastVoiceCpOwner;
 
         private string LocalVoiceFaction =>
-            _multiplayer.IsInBattle && _multiplayer.LocalSlot >= 4 ? "enemy" : "ally";
+            _multiplayer.IsInBattle && !MultiplayerSessionConnection.IsAlphaSlot(_multiplayer.LocalSlot) ? "enemy" : "ally";
 
         private int LocalVoiceTeamSign =>
-            _multiplayer.IsInBattle && _multiplayer.LocalSlot >= 4 ? -1 : 1;
+            _multiplayer.IsInBattle && !MultiplayerSessionConnection.IsAlphaSlot(_multiplayer.LocalSlot) ? -1 : 1;
 
         private async UniTask LoadVoiceResourcesAsync(CancellationToken cancellationToken)
         {

@@ -11,7 +11,9 @@ namespace Modern8bitTanks
 {
     public sealed class MultiplayerSessionConnection : MonoBehaviour
     {
-        public const int MaxPlayers = 8;
+        public const int PlayersPerTeam = 5;
+        public const int MaxPlayers = 2 * PlayersPerTeam;
+        private const ushort ProtocolVersion = 16;
         private const float RoomSyncTimeout = 15f;
 
         [SerializeField] private NetworkManager _network;
@@ -43,6 +45,8 @@ namespace Modern8bitTanks
         public bool IsReturningToLobby => !_loadingBattle && _returnToHangar && !_leaving;
         public string JoinCode => _session?.Code;
 
+        internal static bool IsAlphaSlot(int slot) => slot < PlayersPerTeam;
+
         internal async UniTask ConnectAsync(BattleSessionState sessionState, MultiplayerSessionState multiplayer, GameSceneLoader sceneLoader, string code)
         {
             if (multiplayer.Connection != null || NetworkManager.Singleton != null)
@@ -58,7 +62,7 @@ namespace Modern8bitTanks
             try
             {
                 var network = connection._network;
-                network.NetworkConfig.ProtocolVersion = 15;
+                network.NetworkConfig.ProtocolVersion = ProtocolVersion;
                 network.AddNetworkPrefab(connection._roomPrefab.gameObject);
                 network.ConnectionApprovalCallback = connection.ApproveConnection;
                 network.OnClientDisconnectCallback += connection.OnDisconnected;

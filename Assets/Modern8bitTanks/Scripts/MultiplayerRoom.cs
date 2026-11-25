@@ -9,8 +9,6 @@ namespace Modern8bitTanks
     [RequireComponent(typeof(NetworkObject))]
     public sealed class MultiplayerRoom : NetworkBehaviour
     {
-        private const int TeamSize = MultiplayerSessionConnection.MaxPlayers / 2;
-
         public struct Member : INetworkSerializable, IEquatable<Member>
         {
             public ulong ClientId;
@@ -34,11 +32,11 @@ namespace Modern8bitTanks
 
         private NetworkList<Member> _members;
         private readonly NetworkVariable<int> _battlefieldSeed = new();
-        private readonly NetworkVariable<byte> _expectedMask = new();
+        private readonly NetworkVariable<ushort> _expectedMask = new();
         private readonly NetworkVariable<ushort> _round = new();
         private HashSet<FixedString64Bytes> _vehicleIds;
 
-        public int ExpectedMask => _expectedMask.Value;
+        public ushort ExpectedMask => _expectedMask.Value;
         internal int BattlefieldSeed => _battlefieldSeed.Value;
         public ushort Round => _round.Value;
         public int PlayerCount => _members.Count;
@@ -58,7 +56,7 @@ namespace Modern8bitTanks
         {
             var count = 0;
             foreach (var member in _members)
-                if ((member.Slot < TeamSize) == alpha) count++;
+                if (MultiplayerSessionConnection.IsAlphaSlot(member.Slot) == alpha) count++;
             return count;
         }
 
@@ -144,9 +142,10 @@ namespace Modern8bitTanks
             if (GetSlot(clientId) >= 0) return;
             if (ExpectedMask == 0 && PlayerCount < MultiplayerSessionConnection.MaxPlayers)
             {
-                var firstSlot = CountTeam(true) <= CountTeam(false) ? 0 : TeamSize;
+                const int teamSize = MultiplayerSessionConnection.PlayersPerTeam;
+                var firstSlot = CountTeam(true) <= CountTeam(false) ? 0 : teamSize;
                 var occupied = OccupiedMask();
-                for (var slot = firstSlot; slot < firstSlot + TeamSize; slot++)
+                for (var slot = firstSlot; slot < firstSlot + teamSize; slot++)
                 {
                     if ((occupied & (1 << slot)) != 0) continue;
                     _members.Add(new Member { ClientId = clientId, Slot = (byte)slot });
@@ -166,11 +165,11 @@ namespace Modern8bitTanks
             }
         }
 
-        private byte OccupiedMask()
+        private ushort OccupiedMask()
         {
-            byte mask = 0;
+            ushort mask = 0;
             foreach (var member in _members)
-                mask |= (byte)(1 << member.Slot);
+                mask |= (ushort)(1 << member.Slot);
             return mask;
         }
 

@@ -42,13 +42,17 @@ namespace Modern8bitTanks
         private const float ControlHeartbeat = 0.15f;
         private const byte ActionMask = 0xC0;
         private const int TankStateBytes = 48;
+        private const int ShotStateBytes = 16;
         private const int ControlBytes = 2 * sizeof(byte) + 5 * sizeof(float);
-        private const int ControlStateBytes = 3 * sizeof(float) + sizeof(sbyte) + 2 * sizeof(bool);
         private const int RoundBytes = sizeof(ushort);
+        private const int SnapshotHeaderBytes = 6 * sizeof(float) + sizeof(byte) + sizeof(sbyte) +
+            2 * sizeof(bool) + (MultiplayerSessionConnection.MaxPlayers + 1) * sizeof(ushort);
+        private const int MaxSnapshotBytes = SnapshotHeaderBytes + sizeof(byte) +
+            MultiplayerSessionConnection.MaxPlayers * TankStateBytes + MaxProjectiles * ShotStateBytes;
 
         private const string ControlMessage = "m8t.control.v4";
         private const string ActionMessage = "m8t.actions.v2";
-        private const string StateMessage = "m8t.state.v4";
+        private const string StateMessage = "m8t.state.v5";
         private const string PropMessage = "m8t.prop.v1";
         private const string SmokeMessage = "m8t.smoke.v1";
         private const string WeaponMessage = "m8t.weapon.v1";
@@ -60,7 +64,7 @@ namespace Modern8bitTanks
         private readonly Control[] _pendingActions = new Control[MultiplayerSessionConnection.MaxPlayers];
         private readonly TankState[] _receivedTanks = new TankState[MultiplayerSessionConnection.MaxPlayers];
         private readonly ShotState[] _receivedProjectiles = new ShotState[MaxProjectiles];
-        private readonly byte[] _receivedSpots = new byte[MultiplayerSessionConnection.MaxPlayers];
+        private readonly ushort[] _receivedSpots = new ushort[MultiplayerSessionConnection.MaxPlayers];
         private Control _lastSentControl;
         private Control _queuedActions = new() { Ammo = -1 };
         private float _nextControlTime;
@@ -84,7 +88,7 @@ namespace Modern8bitTanks
                 return true;
             }
         }
-        internal event Action<TankState[], ShotState[], int, byte, float, byte[], Vector2, ControlPointState, Vector2, bool> StateReceived;
+        internal event Action<TankState[], ShotState[], int, byte, float, ushort[], Vector2, ControlPointState, Vector2, bool> StateReceived;
         internal event Action<BattleEffect> EffectReceived;
         public event Action<int, Vector2, float, bool, int> PropImpactReceived;
         public event Action<int> SmokeReceived;
@@ -208,21 +212,20 @@ namespace Modern8bitTanks
         }
 
         internal void Broadcast(TankState[] tanks, ShotState[] projectiles, int projectileCount, byte result,
-            byte[] spots, Vector2 focus, ControlPointState controlPoint, Vector2 controlScores, bool wonByControl)
+            ushort[] spots, Vector2 focus, ControlPointState controlPoint, Vector2 controlScores, bool wonByControl)
         {
             if (!Ready || !IsHost) return;
-            byte presentMask = 0;
+            ushort presentMask = 0;
             for (int i = 0; i < tanks.Length; i++)
-                if (tanks[i].Present) presentMask |= (byte)(1 << i);
+                if (tanks[i].Present) presentMask |= (ushort)(1 << i);
 
-            using var writer = CreateRoundWriter(1024);
+            using var writer = CreateRoundWriter(MaxSnapshotBytes);
             writer.WriteValueSafe(Time.unscaledTime);
             writer.WriteValueSafe(result);
-            foreach (byte observerSpots in spots) writer.WriteValueSafe(observerSpots);
+            foreach (ushort observerSpots in spots) writer.WriteValueSafe(observerSpots);
             writer.WriteValueSafe(focus);
             writer.WriteValueSafe(controlScores);
             writer.WriteValueSafe(wonByControl);
-            // Keep the snapshot layout compatible with clients that still read capture progress.
             writer.WriteValueSafe((float)controlPoint.Owner);
             writer.WriteValueSafe(controlPoint.Owner);
             writer.WriteValueSafe(controlPoint.Contested);
@@ -289,7 +292,7 @@ namespace Modern8bitTanks
         private void OnState(ulong sender, FastBufferReader reader)
         {
             if (_network == null || _network.IsServer || sender != NetworkManager.ServerClientId
-                || !ReadRound(ref reader, 15 + _receivedSpots.Length + ControlStateBytes)) return;
+                || !ReadRound(ref reader, SnapshotHeaderBytes)) return;
             reader.ReadValueSafe(out float hostTime);
             reader.ReadValueSafe(out byte result);
             for (int observer = 0; observer < _receivedSpots.Length; observer++)
@@ -301,7 +304,7 @@ namespace Modern8bitTanks
             reader.ReadValueSafe(out sbyte owner);
             reader.ReadValueSafe(out bool contested);
             var controlPoint = new ControlPointState { Owner = owner, Contested = contested };
-            reader.ReadValueSafe(out byte presentMask);
+            reader.ReadValueSafe(out ushort presentMask);
             var tanks = _receivedTanks;
             for (int i = 0; i < tanks.Length; i++)
             {
@@ -320,7 +323,7 @@ namespace Modern8bitTanks
             }
             if (!reader.TryBeginRead(1)) return;
             reader.ReadValueSafe(out byte count);
-            if (count > MaxProjectiles || !reader.TryBeginRead(count * 16)) return;
+            if (count > MaxProjectiles || !reader.TryBeginRead(count * ShotStateBytes)) return;
             for (int i = 0; i < count; i++)
             {
                 reader.ReadValueSafe(out ushort id);

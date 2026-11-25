@@ -47,7 +47,7 @@ namespace Modern8bitTanks
 
         private async UniTask ShowBattleBriefingAsync(BattleLoadBudget budget)
         {
-            bool west = !_multiplayer.IsInBattle || _multiplayer.LocalSlot < MultiplayerSessionConnection.MaxPlayers / 2;
+            bool west = !_multiplayer.IsInBattle || MultiplayerSessionConnection.IsAlphaSlot(_multiplayer.LocalSlot);
             _hud.ShowBriefing(GetMapDisplayName(battleMap), await BuildBriefingMapAsync(west, budget));
         }
 
