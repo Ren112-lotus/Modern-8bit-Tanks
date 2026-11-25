@@ -13,36 +13,34 @@
   "build": {
     "target": "WebGL",
     "scenes": [
-      "Hangar",
-      "DesertBattle"
+      "Assets/Scenes/Hangar.unity",
+      "Assets/Scenes/Battle.unity"
     ],
     "errors": 0
   },
   "source": {
     "vcs": "git",
-    "revision": "02550d899f040cb1f37cb7193684aa034190b041",
-    "dirty": true
+    "revision": "8d12bbd1dfd1018b9a0e15fa72f51cf15855a292",
+    "dirty": false
   },
   "artifact": {
-    "name": "Modern8bitTanksTacticalRoom-WebGL.zip",
-    "sha256": "b5e326f0acc507dbdba49ca85150c3197adc5ce9ff731e420e8a3bd50014ddb7",
-    "preparedAt": "2026-11-22T20:27:04.760815+00:00",
+    "preparedAt": "2026-11-25T04:04:35.341062+00:00",
     "playerFiles": {
-      "Build/Modern8bitTanksTacticalRoom.loader.js": {
+      "Build/8d12bbd/WebGL.loader.js": {
         "bytes": 26982,
-        "sha256": "57f1482e9e95a5a4927dd5e40002caf14e3c144386a4d2300d937bbff00b99c7"
+        "sha256": "d29e17db6c37fd1903f961b49ef3cc4ba98e420a00789601e4a047ab3c121f8b"
       },
-      "Build/Modern8bitTanksTacticalRoom.data": {
-        "bytes": 28007637,
-        "sha256": "e36ce9d29cd81af2a19b7051c5bc3a9ac8f755aa3095bff292b86e843f65b9a6"
+      "Build/8d12bbd/WebGL.data": {
+        "bytes": 36344816,
+        "sha256": "b8ababd8d17735d7a5d2e77c934869a44a4d42282155c0a7a9ce5f84325c3207"
       },
-      "Build/Modern8bitTanksTacticalRoom.framework.js": {
-        "bytes": 522111,
-        "sha256": "b39f0fe33f66d6e4e759fda74002ecb38c1262fb27dbf535694de40b617cd165"
+      "Build/8d12bbd/WebGL.framework.js": {
+        "bytes": 528043,
+        "sha256": "c8a7b8b2a04fb4e79a29742471c7c34fb3e077c347e24a0ba6f9f0e061f95942"
       },
-      "Build/Modern8bitTanksTacticalRoom.wasm": {
-        "bytes": 65829544,
-        "sha256": "6fc8a427ceadf206d2bd0191a44c0ca4032c1e10a855d49c3322c62d1935ab37"
+      "Build/8d12bbd/WebGL.wasm": {
+        "bytes": 78301722,
+        "sha256": "e8c08e3779f08e434a730532be784e9157dbc20e536211add53a0f3beed05a39"
       }
     }
   }

@@ -9,7 +9,7 @@
   </head>
   <body>
     <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
+      <canvas id="unity-canvas" width=960 height=720 tabindex="-1"></canvas>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
@@ -51,14 +51,14 @@
         updateBannerVisibility();
       }
 
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/Modern8bitTanksTacticalRoom.loader.js";
+      var buildUrl = "Build/8d12bbd";
+      var loaderUrl = buildUrl + "/WebGL.loader.js";
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/Modern8bitTanksTacticalRoom.data",
-        frameworkUrl: buildUrl + "/Modern8bitTanksTacticalRoom.framework.js",
-        codeUrl: buildUrl + "/Modern8bitTanksTacticalRoom.wasm",
-        streamingAssetsUrl: "StreamingAssets",
+        dataUrl: buildUrl + "/WebGL.data",
+        frameworkUrl: buildUrl + "/WebGL.framework.js",
+        codeUrl: buildUrl + "/WebGL.wasm",
+        streamingAssetsUrl: "StreamingAssets/8d12bbd",
         companyName: "DefaultCompany",
         productName: "Modern-8bit-Tanks",
         productVersion: "0.1.0",
@@ -105,7 +105,7 @@
       } else {
         // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
         canvas.style.width = "960px";
-        canvas.style.height = "600px";
+        canvas.style.height = "720px";
       }
 
       document.querySelector("#unity-loading-bar").style.display = "block";
