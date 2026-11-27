@@ -12,7 +12,7 @@ namespace Modern8bitTanks
         internal static readonly Color32 BoundaryColor = new(226, 218, 178, 255);
         private const float PlanScale = 1.5f;
         private const float RidgeFootMargin = 36f;
-        private const float ControlClearRadius = 86f;
+        private const float ControlClearRadius = 88f;
         private const float BaseClearRadius = 112f;
         private static readonly Vector2 MapSize = new(Width, Height);
         private static readonly Vector2[] DeploymentOffsets =
@@ -40,7 +40,7 @@ namespace Modern8bitTanks
 
         private enum ZoneArchetype
         {
-            // Artificial installations (axis-locked, right-angle grids & functional assemblies)
+            // Artificial installations (axis-locked, right-angle grids & functional sets)
             AirDefenseBase,
             CommandTentCamp,
             RoadCheckpoint,
@@ -75,7 +75,12 @@ namespace Modern8bitTanks
         private readonly List<CoverPlacement> _cover = new();
         private readonly List<DistrictGround> _districtGround = new();
         private readonly List<DistrictGround> _parkGround = new();
+        private readonly List<DistrictGround> _groveGround = new();
+        private readonly List<DistrictGround> _farmGround = new();
         private readonly List<DistrictGround> _ridgeGround = new();
+        private readonly List<RoadSegment> _roads = new();
+        private readonly List<Vector2> _intersections = new();
+        private readonly List<RoadSegment> _waterStreams = new();
         private Color32[] _ground;
 
         internal BattlefieldLayout(BattleMap map, int seed, BattlefieldPlan plan, BattlefieldTheme theme, BattleSpawnAssets assets)
@@ -84,29 +89,30 @@ namespace Modern8bitTanks
             _seed = seed;
             var random = new System.Random(seed);
             _scenario = PickRegionalScenario(map, random);
-            _westBase = new Vector2(128, ControlPoint.y + random.Next(-17, 18));
+            _westBase = map == BattleMap.City
+                ? new Vector2(128, ControlPoint.y)
+                : new Vector2(128, ControlPoint.y + random.Next(-17, 18));
             float reflection = random.Next(2) == 0 ? 1f : -1f;
 
-            // Pass 1: Register connector lanes, ridges, and corner detours first so main zones respect them.
+            // Pass 0: Build a continuous, end-to-end connected road network (and forest woodland creek).
+            BuildRoadNetwork(map, reflection, random);
+            if (map == BattleMap.Forest)
+                BuildForestStreamNetwork(reflection, random);
+
+            // Pass 1: Register ridges and corner detours first so main districts respect them.
             var mainDistrictIndices = new List<int>();
             var ridgeAnchors = new List<(Vector2 Position, float Radius, float Angle)>();
 
             for (int i = 0; i < plan.Districts.Length; i++)
             {
                 var district = plan.Districts[i];
+                if (district.Cover.Length == 0)
+                    continue; // Replaced by continuous connected RoadSegment network!
+
                 Vector2 center = district.Center * PlanScale + new Vector2(random.Next(-10, 11), random.Next(-12, 13));
                 float rawAngle = district.Angle + random.Next(-6, 7);
                 if (map == BattleMap.City) rawAngle = Mathf.Round(district.Angle / 90f) * 90f;
                 center.y = ControlPoint.y + (center.y - ControlPoint.y) * reflection;
-
-                bool isConnector = district.Cover.Length == 0;
-                if (isConnector)
-                {
-                    Vector2 groundSize = district.GroundSize * PlanScale;
-                    if (groundSize.x > 0f && groundSize.y > 0f)
-                        _districtGround.Add(new DistrictGround(center, groundSize, Direction(rawAngle * reflection), true));
-                    continue;
-                }
 
                 if (IsRidgeDistrict(district))
                 {
@@ -124,8 +130,6 @@ namespace Modern8bitTanks
             }
 
             // Pass 2: Assign scenario-coherent artificial & natural archetypes to each main district.
-            // Large districts (0..3) become major facilities/biomes; rear (4) becomes support/staging;
-            // compact forward pocket (5) becomes a contested checkpoint, battle wreck, or natural outcrop.
             var archetypes = AssignDistrictArchetypes(_scenario, mainDistrictIndices.Count, random);
             for (int m = 0; m < mainDistrictIndices.Count; m++)
             {
@@ -138,7 +142,7 @@ namespace Modern8bitTanks
 
                 float baseAngle = district.Angle + (natural ? random.Next(-14, 15) : random.Next(-5, 6));
                 if (map == BattleMap.City)
-                    baseAngle = Mathf.Round(district.Angle / 90f) * 90f;
+                    baseAngle = 0f; // Lock all urban blocks cleanly to the orthogonal city street grid!
                 else if (!natural)
                     baseAngle = Mathf.Round(baseAngle / 15f) * 15f;
 
@@ -147,6 +151,13 @@ namespace Modern8bitTanks
                 {
                     if (archetype is ZoneArchetype.CityBotanicalPark or ZoneArchetype.CityMemorialPark)
                         _parkGround.Add(new DistrictGround(center, district.GroundSize, Direction(orientedAngle), false));
+                    else if (archetype == ZoneArchetype.RuralWindmillFarm)
+                    {
+                        _districtGround.Add(new DistrictGround(center, district.GroundSize * 0.85f, Direction(orientedAngle), false));
+                        _farmGround.Add(new DistrictGround(center + Direction(orientedAngle) * 24f, district.GroundSize * 0.92f, Direction(orientedAngle), false));
+                    }
+                    else if (natural && map == BattleMap.Forest)
+                        _groveGround.Add(new DistrictGround(center, district.GroundSize * 1.12f, Direction(orientedAngle), false));
                     else if (!natural)
                         _districtGround.Add(new DistrictGround(center, district.GroundSize, Direction(orientedAngle), false));
                 }
@@ -157,8 +168,193 @@ namespace Modern8bitTanks
                     PopulateArtificialDistrict(district, archetype, center, baseAngle, reflection, map, theme, assets, random);
             }
 
-            // Pass 3: Scatter scenario-matched natural scree, trees & undergrowth around large ridge bases.
+            // Pass 3: Scatter scenario-matched natural scree, trees & stream-bank flora.
             PopulateRidgeFoothills(_scenario, ridgeAnchors, assets, random);
+            if (map == BattleMap.Forest)
+                PopulateStreamBanks(_scenario, assets, random);
+        }
+
+        // =====================================================================
+        // CONNECTED ROAD NETWORKS & FOREST WOODLAND STREAM
+        // =====================================================================
+        private void BuildRoadNetwork(BattleMap map, float reflection, System.Random random)
+        {
+            float cx = ControlPoint.x;
+            float cy = ControlPoint.y;
+
+            if (map == BattleMap.City)
+            {
+                // True connected 90-degree orthogonal urban street grid extending seamlessly to map edges!
+                float ringOffset = 338f + random.Next(-22, 23);
+                float yNorth = cy + ringOffset;
+                float ySouth = cy - ringOffset;
+                float xOuter = 258f + random.Next(-20, 21);
+                float xInner = 588f + random.Next(-32, 33);
+
+                // 1. Central East-West Grand Boulevard (map edge -> West Base -> Central Plaza -> East Base -> map edge)
+                AddMirroredRoadPolyline(new[] { new Vector2(0f, cy), new Vector2(cx, cy) }, 31f, true);
+
+                // 2. North & South Ring Boulevards (running continuously from west map edge to east map edge)
+                AddMirroredRoadPolyline(new[] { new Vector2(0f, yNorth), new Vector2(cx, yNorth) }, 22f, false);
+                AddMirroredRoadPolyline(new[] { new Vector2(0f, ySouth), new Vector2(cx, ySouth) }, 22f, false);
+
+                // 3. Orthogonal North-South Cross Streets continuing smoothly to top & bottom city edges!
+                AddMirroredRoadPolyline(new[] { new Vector2(xOuter, 0f), new Vector2(xOuter, Height) }, 21f, false);
+                AddMirroredRoadPolyline(new[] { new Vector2(xInner, 0f), new Vector2(xInner, Height) }, 23f, false);
+                AddRoadSegment(new Vector2(cx, 0f), new Vector2(cx, Height), 24f, true);
+
+                // Register clean 4-way intersections (for rectangular zebra crosswalks & dash suppression)
+                float[] xs = { xOuter, xInner, cx, Width - xInner, Width - xOuter };
+                float[] ys = { ySouth, cy, yNorth };
+                foreach (float ix in xs)
+                    foreach (float iy in ys)
+                        _intersections.Add(new Vector2(ix, iy));
+            }
+            else if (map == BattleMap.Forest)
+            {
+                // Smoothly curving country dirt highway entering from map edge -> West Base -> Central Clearing -> East Base
+                float bendAmp = (66f + random.Next(0, 34)) * reflection;
+                var mainPts = new List<Vector2> { new Vector2(0f, _westBase.y) };
+                const int steps = 10;
+                for (int i = 0; i <= steps; i++)
+                {
+                    float t = i / (float)steps;
+                    float x = Mathf.Lerp(_westBase.x, cx, t);
+                    float curve = Mathf.Sin(t * Mathf.PI) * bendAmp + Mathf.Sin(t * Mathf.PI * 2f) * (24f * reflection);
+                    float y = Mathf.Lerp(_westBase.y, cy, t) + curve;
+                    mainPts.Add(new Vector2(x, y));
+                }
+                AddMirroredRoadPolyline(mainPts, 24f, true);
+
+                // Smoothly curving North & South woodland logging trails branching gently off the main road!
+                Vector2 forkWest = mainPts[3];
+                float northY = cy + (342f + random.Next(-22, 23)) * reflection;
+                float southY = cy - (338f + random.Next(-22, 23)) * reflection;
+
+                var northTrail = new List<Vector2>();
+                var southTrail = new List<Vector2>();
+                const int trailSteps = 8;
+                for (int i = 0; i <= trailSteps; i++)
+                {
+                    float t = i / (float)trailSteps;
+                    float ease = Mathf.Sin(t * Mathf.PI * 0.5f);
+                    float x = Mathf.Lerp(forkWest.x, cx, t);
+                    float ny = Mathf.Lerp(forkWest.y, northY, ease) + Mathf.Sin(t * Mathf.PI) * (26f * reflection);
+                    float sy = Mathf.Lerp(forkWest.y, southY, ease) - Mathf.Sin(t * Mathf.PI) * (24f * reflection);
+                    northTrail.Add(new Vector2(x, ny));
+                    southTrail.Add(new Vector2(x, sy));
+                }
+                AddMirroredRoadPolyline(northTrail, 17f, false);
+                AddMirroredRoadPolyline(southTrail, 17f, false);
+
+                // Smooth curving North-South forest spur linking north trail -> central clearing -> south trail
+                var crossTrail = new List<Vector2>();
+                for (int i = 0; i <= 5; i++)
+                {
+                    float t = i / 5f;
+                    float y = Mathf.Lerp(northY, cy, t);
+                    float x = cx - Mathf.Sin(t * Mathf.PI) * (28f * reflection);
+                    crossTrail.Add(new Vector2(x, y));
+                }
+                AddMirroredRoadPolyline(crossTrail, 16f, false);
+
+                _intersections.Add(forkWest);
+                _intersections.Add(Mirror(forkWest));
+                _intersections.Add(ControlPoint);
+            }
+            else
+            {
+                // Desert: Sweeping military convoy highway from map edge + smooth canyon supply tracks
+                float bendY = (54f + random.Next(-16, 24)) * reflection;
+                var mainHighway = new[]
+                {
+                    new Vector2(0f, _westBase.y),
+                    _westBase,
+                    new Vector2(330f, _westBase.y + bendY * 0.55f),
+                    new Vector2(610f, cy + bendY),
+                    new Vector2(810f, cy + bendY * 0.35f),
+                    new Vector2(cx, cy)
+                };
+                AddMirroredRoadPolyline(mainHighway, 26f, true);
+
+                Vector2 forkWest = mainHighway[2];
+                float northY = cy + (342f + random.Next(-20, 21)) * reflection;
+                float southY = cy - (336f + random.Next(-20, 21)) * reflection;
+
+                var northTrack = new List<Vector2>();
+                var southTrack = new List<Vector2>();
+                for (int i = 0; i <= 6; i++)
+                {
+                    float t = i / 6f;
+                    float ease = Mathf.Sin(t * Mathf.PI * 0.5f);
+                    float x = Mathf.Lerp(forkWest.x, cx, t);
+                    northTrack.Add(new Vector2(x, Mathf.Lerp(forkWest.y, northY, ease)));
+                    southTrack.Add(new Vector2(x, Mathf.Lerp(forkWest.y, southY, ease)));
+                }
+                AddMirroredRoadPolyline(northTrack, 18f, false);
+                AddMirroredRoadPolyline(southTrack, 18f, false);
+
+                AddMirroredRoadPolyline(new[]
+                {
+                    new Vector2(cx, northY),
+                    new Vector2(cx + 20f * reflection, cy + (northY - cy) * 0.48f),
+                    new Vector2(cx, cy)
+                }, 17f, false);
+
+                _intersections.Add(forkWest);
+                _intersections.Add(Mirror(forkWest));
+                _intersections.Add(ControlPoint);
+            }
+        }
+
+        private void BuildForestStreamNetwork(float reflection, System.Random random)
+        {
+            // Signature woodland shallow brook curving organically from north flank toward south-west,
+            // mirrored 180 degrees so both halves feature picturesque fordable crossings & stone banks!
+            float cx = ControlPoint.x;
+            float cy = ControlPoint.y;
+            float streamHalfW = _scenario == RegionalScenario.ForestWetlandGrove ? 23f : 17f;
+            float xStart = 695f + random.Next(-35, 36);
+            float xMid = 520f + random.Next(-30, 31);
+            float xEnd = 745f + random.Next(-35, 36);
+
+            var streamPts = new List<Vector2>();
+            const int segs = 10;
+            for (int i = 0; i <= segs; i++)
+            {
+                float t = i / (float)segs;
+                float y = Mathf.Lerp(Height - 10f, 10f, t);
+                // S-curve bending away from the central clearing so it frames the battlefield dramatically
+                float arch = Mathf.Sin(t * Mathf.PI);
+                float wiggle = Mathf.Sin(t * Mathf.PI * 3f + 0.4f) * 28f;
+                float x = Mathf.Lerp(xStart, xEnd, t) - arch * (xStart - xMid) + wiggle;
+                if (reflection < 0f) y = Height - y;
+                streamPts.Add(new Vector2(x, y));
+            }
+
+            // Keep stream strictly on the west-of-center side, then mirror onto the east valley!
+            for (int i = 0; i < streamPts.Count - 1; i++)
+            {
+                Vector2 a = streamPts[i];
+                Vector2 b = streamPts[i + 1];
+                _waterStreams.Add(new RoadSegment(a, b, streamHalfW, true));
+                _waterStreams.Add(new RoadSegment(Mirror(a), Mirror(b), streamHalfW, true));
+            }
+        }
+
+        private void AddMirroredRoadPolyline(IReadOnlyList<Vector2> points, float halfWidth, bool isPrimary)
+        {
+            for (int i = 0; i < points.Count - 1; i++)
+            {
+                AddRoadSegment(points[i], points[i + 1], halfWidth, isPrimary);
+                AddRoadSegment(Mirror(points[i]), Mirror(points[i + 1]), halfWidth, isPrimary);
+            }
+        }
+
+        private void AddRoadSegment(Vector2 a, Vector2 b, float halfWidth, bool isPrimary)
+        {
+            if ((b - a).sqrMagnitude < 1f) return;
+            _roads.Add(new RoadSegment(a, b, halfWidth, isPrimary));
         }
 
         private static RegionalScenario PickRegionalScenario(BattleMap map, System.Random random) => map switch
@@ -210,8 +406,6 @@ namespace Modern8bitTanks
 
         private static ZoneArchetype[] AssignDistrictArchetypes(RegionalScenario scenario, int count, System.Random random)
         {
-            // First 4 slots correspond to the 4 major strategic zones (shuffled in pairs for seeded replayability);
-            // Slot 4 is the rear staging flank; Slot 5 is the compact forward contested zone near the control point.
             ZoneArchetype[] major = scenario switch
             {
                 RegionalScenario.DesertAirbase => new[]
@@ -286,7 +480,6 @@ namespace Modern8bitTanks
                 }
             };
 
-            // Shuffle major zones deterministically so artificial & natural territories swap lanes across seeds.
             for (int i = major.Length - 1; i > 0; i--)
             {
                 int j = random.Next(i + 1);
@@ -298,8 +491,7 @@ namespace Modern8bitTanks
                 RegionalScenario.DesertAirbase or RegionalScenario.CityCommandCitadel or RegionalScenario.ForestAutumnHighland => ZoneArchetype.RoadCheckpoint,
                 RegionalScenario.DesertOasisRoute => ZoneArchetype.DesertOasisBasin,
                 RegionalScenario.DesertCanyonFront => ZoneArchetype.RockyOutcropField,
-                RegionalScenario.CityRailFreight => ZoneArchetype.RoadCheckpoint,
-                RegionalScenario.CityDowntownAvenue => ZoneArchetype.RoadCheckpoint,
+                RegionalScenario.CityRailFreight or RegionalScenario.CityDowntownAvenue => ZoneArchetype.RoadCheckpoint,
                 RegionalScenario.ForestRuralValley => ZoneArchetype.AncientWoodland,
                 RegionalScenario.ForestWetlandGrove => ZoneArchetype.WetlandMangroveGrove,
                 _ => ZoneArchetype.AlpineSnowWoods
@@ -337,11 +529,18 @@ namespace Modern8bitTanks
                 offset.y *= reflection;
                 Vector2 position = Vector2Int.RoundToInt(center + offset);
                 float rotation = (angle + piece.Angle) * reflection;
+                float approxRadius = Mathf.Max(prefab.meta.width, prefab.meta.length) * 0.5f;
+
+                // Keep ridges cleanly off the main road corridors & stream channel.
+                if (IsOnRoad(position, approxRadius * 0.65f, primaryOnly: false) || IsInWater(position, approxRadius * 0.45f))
+                {
+                    if (!TryNudgeOffRoads(ref position, approxRadius * 0.65f)) continue;
+                }
+
                 var size = new Vector2(prefab.meta.width + RidgeFootMargin * 2f,
                     prefab.meta.length + RidgeFootMargin * 2f);
                 _ridgeGround.Add(new DistrictGround(position, size, Direction(rotation), false));
                 AddMirrored(prefab, position, rotation);
-                float approxRadius = Mathf.Max(prefab.meta.width, prefab.meta.length) * 0.5f;
                 ridgeAnchors.Add((position, approxRadius, rotation));
             }
         }
@@ -351,31 +550,28 @@ namespace Modern8bitTanks
         {
             Vector2 right = Direction(angle);
             if (district.GroundSize.x > 0f && district.GroundSize.y > 0f)
-                _districtGround.Add(new DistrictGround(center, district.GroundSize, Direction(angle * reflection), false));
+                _districtGround.Add(new DistrictGround(center, district.GroundSize, Direction((map == BattleMap.City ? 0f : angle) * reflection), false));
 
             foreach (var piece in district.Cover)
             {
                 Vector2 offset = right * piece.Offset.x + Vector2.Perpendicular(right) * piece.Offset.y;
                 offset.y *= reflection;
                 Vector2 position = Vector2Int.RoundToInt(center + offset);
-                float rotation = (angle + piece.Angle) * reflection;
-                if (map == BattleMap.City && piece.Kind != BattlefieldCoverKind.Barricade)
-                    rotation = Mathf.Round(rotation / 90f) * 90f;
-
+                float rotation = map == BattleMap.City ? 0f : (angle + piece.Angle) * reflection;
                 var prefab = theme.GetCover(piece.Kind);
                 if (prefab == null) continue;
-                AddMirrored(prefab, position, rotation);
+                float r = Mathf.Max(prefab.meta.width, prefab.meta.length) * 0.5f;
+                if (IsOnRoad(position, r * 0.55f, primaryOnly: false))
+                    TryNudgeOffRoads(ref position, r * 0.55f);
+                TryPlaceMirrored(prefab, position, rotation, clearance: 6f, avoidRoads: true);
             }
 
-            // Corner detours receive a crisp thematic accent matching the current RegionalScenario.
             if (map == BattleMap.City)
             {
-                float alignedAngle = Mathf.Round(angle * reflection / 90f) * 90f;
-                Vector2 side = Direction(alignedAngle);
                 string propA = _scenario == RegionalScenario.CityDowntownAvenue ? "abandoned_car" : "guard_booth";
                 string propB = _scenario == RegionalScenario.CityRailFreight ? "oil_drum_stack" : "tank_trap";
-                TryPlaceMirrored(GetProp(assets, propA), center + side * 46f + Vector2.Perpendicular(side) * 28f, alignedAngle, 8f);
-                TryPlaceMirrored(GetProp(assets, propB), center - side * 48f - Vector2.Perpendicular(side) * 26f, alignedAngle, 8f);
+                TryPlaceMirrored(GetProp(assets, propA), center + new Vector2(46f, 28f), 0f, 8f);
+                TryPlaceMirrored(GetProp(assets, propB), center + new Vector2(-48f, -26f), 0f, 8f);
             }
             else
             {
@@ -404,7 +600,6 @@ namespace Modern8bitTanks
             Vector2 axisRight = Direction(axisAngle);
             Vector2 axisUp = Vector2.Perpendicular(axisRight);
 
-            // Compute threat-facing cardinal axis pointing toward the center control point.
             Vector2 toFront = (ControlPoint - center).normalized;
             Vector2 frontAxis = Mathf.Abs(Vector2.Dot(toFront, axisRight)) >= Mathf.Abs(Vector2.Dot(toFront, axisUp))
                 ? axisRight * Mathf.Sign(Vector2.Dot(toFront, axisRight))
@@ -429,7 +624,10 @@ namespace Modern8bitTanks
                         float wallRot = map == BattleMap.City
                             ? Mathf.Round(((baseAngle + piece.Angle) * reflection) / 90f) * 90f
                             : (baseAngle + piece.Angle) * reflection;
-                        AddMirrored(wallPrefab, position, wallRot);
+                        float wr = Mathf.Max(wallPrefab.meta.width, wallPrefab.meta.length) * 0.45f;
+                        // Never drop a permanent wall across an asphalt boulevard or main highway!
+                        if (!IsOnRoad(position, wr, primaryOnly: false) || TryNudgeOffRoads(ref position, wr))
+                            TryPlaceMirrored(wallPrefab, position, wallRot, clearance: 4f, avoidRoads: true);
                     }
                     continue;
                 }
@@ -444,11 +642,15 @@ namespace Modern8bitTanks
                 DestructibleProp prefab = ResolveArtificialSlot(archetype, piece.Kind, theme, assets, random);
                 if (prefab == null) continue;
 
-                // Orient directional weapon emplacements directly toward the battle center.
                 if (prefab.kind is "sam_launcher" or "field_artillery")
                     rotation = frontAimAngle;
 
-                if (TryPlaceMirrored(prefab, position, rotation, clearance: 6f, checkConnectors: false))
+                float radius = Mathf.Max(prefab.meta.width, prefab.meta.length) * 0.5f;
+                bool allowRoadshoulder = archetype is ZoneArchetype.RoadCheckpoint or ZoneArchetype.BattleWreckScar;
+                if (!allowRoadshoulder && IsOnRoad(position, radius * 0.55f, primaryOnly: false))
+                    TryNudgeOffRoads(ref position, radius * 0.55f);
+
+                if (TryPlaceMirrored(prefab, position, rotation, clearance: 6f, avoidRoads: !allowRoadshoulder))
                 {
                     if (primaryAnchor == null || piece.Kind == BattlefieldCoverKind.Landmark)
                         primaryAnchor = position;
@@ -457,11 +659,9 @@ namespace Modern8bitTanks
 
             Vector2 anchor = primaryAnchor ?? center;
 
-            // Assemble domain-specific artificial structures with orderly geometry.
             switch (archetype)
             {
                 case ZoneArchetype.AirDefenseBase:
-                    // SAM launcher oriented toward center + generator/power support + concrete/HESCO front screen
                     PlaceFiringEmplacement(GetProp(assets, "sam_launcher"), GetProp(assets, "ammo_depot"),
                         anchor + frontAxis * 42f - frontPerp * 26f, frontAxis, frontAimAngle);
                     PlaceUtilityRow(GetProp(assets, "generator_unit"), GetProp(assets, "radio_mast"),
@@ -471,7 +671,6 @@ namespace Modern8bitTanks
                     break;
 
                 case ZoneArchetype.CommandTentCamp:
-                    // Parallel field tents + ammo dump & radio mast + sandbag/tank-trap perimeter
                     PlaceParallelRow(GetProp(assets, "military_tent"), GetProp(assets, "military_tent"),
                         anchor + frontPerp * 46f, axisAngle, spacing: 34f);
                     PlaceUtilityRow(GetProp(assets, "ammo_depot"), GetProp(assets, "radio_mast"),
@@ -481,7 +680,6 @@ namespace Modern8bitTanks
                     break;
 
                 case ZoneArchetype.RoadCheckpoint:
-                    // Guard booth flanking a roadblock checkpoint gate + anti-tank obstacles
                     PlaceCheckpointAssembly(GetProp(assets, "checkpoint_gate"), GetProp(assets, "guard_booth"),
                         GetProp(assets, "concrete_wall"), center + frontAxis * 34f, frontPerp, frontLineAngle);
                     PlaceAlignedAccent(GetProp(assets, _map == BattleMap.City ? "city_barricade" : "hesco_barrier"),
@@ -489,7 +687,6 @@ namespace Modern8bitTanks
                     break;
 
                 case ZoneArchetype.SolarOutpost:
-                    // Parallel south-facing photovoltaic arrays + water tower + radar dish + HESCO guard line
                     PlaceParallelRow(GetProp(assets, "solar_array"), GetProp(assets, "solar_array"),
                         anchor + axisRight * 50f, axisAngle, spacing: 30f);
                     PlaceAlignedAccent(GetProp(assets, "water_tower"),
@@ -501,7 +698,6 @@ namespace Modern8bitTanks
                     break;
 
                 case ZoneArchetype.FreightRailYard:
-                    // Parallel freight rail boxcars + shipping containers + forklift on loading apron
                     PlaceParallelRow(GetProp(assets, "rail_boxcar"), GetProp(assets, "cargo_container"),
                         anchor + axisRight * 58f, axisAngle, spacing: 26f);
                     PlaceUtilityRow(GetProp(assets, "forklift_wreck"), GetProp(assets, "supply_crate"),
@@ -511,7 +707,6 @@ namespace Modern8bitTanks
                     break;
 
                 case ZoneArchetype.SupplyDepotYard:
-                    // Parallel container bays + hazardous fuel/oil drum yard + forklift/crates
                     PlaceParallelRow(GetProp(assets, "cargo_container"), GetProp(assets, "cargo_container"),
                         anchor + frontPerp * 50f, axisAngle, spacing: 26f);
                     PlaceUtilityRow(GetProp(assets, "oil_drum_stack"), GetProp(assets, "fuel_tank"),
@@ -523,7 +718,6 @@ namespace Modern8bitTanks
                     break;
 
                 case ZoneArchetype.PowerUtilityWorks:
-                    // High-voltage transformer bank + diesel generator + water tower / oil drums behind concrete walls
                     PlaceUtilityRow(GetProp(assets, "transformer_substation"), GetProp(assets, "generator_unit"),
                         anchor + frontPerp * 48f, axisAngle, spacing: 36f);
                     PlaceAlignedAccent(GetProp(assets, _map == BattleMap.City ? "water_tower" : "radar_station"),
@@ -535,7 +729,6 @@ namespace Modern8bitTanks
                     break;
 
                 case ZoneArchetype.ArtilleryBattery:
-                    // Towed field howitzer facing battle center + ammo depot behind + watch tower + sandbags
                     PlaceFiringEmplacement(GetProp(assets, "field_artillery"), GetProp(assets, "ammo_depot"),
                         anchor + frontAxis * 34f, frontAxis, frontAimAngle);
                     PlaceAlignedAccent(GetProp(assets, "watch_tower"),
@@ -545,7 +738,6 @@ namespace Modern8bitTanks
                     break;
 
                 case ZoneArchetype.UrbanFuelAvenue:
-                    // Roadside fuel pump island + bus stop / kiosk + parked civilian car aligned along the avenue
                     PlaceRoadsideStrip(
                         GetProp(assets, "fuel_pump_island"),
                         GetProp(assets, _map == BattleMap.City ? "bus_stop" : "abandoned_car"),
@@ -556,7 +748,6 @@ namespace Modern8bitTanks
                     break;
 
                 case ZoneArchetype.UrbanResidentialBlock:
-                    // European apartment/blockhouse yard framed by brick courtyard walls, kiosk & street barricades
                     PlaceDefensiveLine(GetProp(assets, "brick_wall"), GetProp(assets, "city_barricade"),
                         center + frontAxis * 62f, frontPerp, frontLineAngle, count: 2, step: 46f);
                     PlaceAlignedAccent(GetProp(assets, random.Next(2) == 0 ? "street_kiosk" : "bus_stop"),
@@ -566,7 +757,6 @@ namespace Modern8bitTanks
                     break;
 
                 case ZoneArchetype.RuralWindmillFarm:
-                    // Windmill / cabin farmstead with wooden shed, stone well, brick wall & neat rolled hay bales
                     PlaceUtilityRow(GetProp(assets, "wooden_shed"), GetProp(assets, "hay_bale"),
                         anchor + axisRight * 50f, axisAngle, spacing: 34f);
                     PlaceAlignedAccent(GetProp(assets, "stone_well"),
@@ -576,7 +766,6 @@ namespace Modern8bitTanks
                     break;
 
                 case ZoneArchetype.TimberLoggingCamp:
-                    // Sawmill clearing: cabin + shed + parallel timber stacks + watch tower / forklift
                     PlaceParallelRow(GetProp(assets, "timber_stack"), GetProp(assets, "timber_stack"),
                         anchor + axisRight * 54f, axisAngle, spacing: 24f);
                     PlaceUtilityRow(GetProp(assets, "wooden_shed"), GetProp(assets, _scenario == RegionalScenario.ForestRuralValley ? "forklift_wreck" : "fuel_tank"),
@@ -586,7 +775,6 @@ namespace Modern8bitTanks
                     break;
 
                 case ZoneArchetype.BattleWreckScar:
-                    // Contested war-torn set-piece: downed helicopter or burned tank flanked by shell crater & hasty cover
                     PlaceWreckSetpiece(anchor, frontAxis, frontPerp, frontLineAngle, assets, random);
                     break;
             }
@@ -811,7 +999,9 @@ namespace Modern8bitTanks
                         float wallRot = _map == BattleMap.City
                             ? Mathf.Round(((baseAngle + piece.Angle) * reflection) / 90f) * 90f
                             : (baseAngle + piece.Angle) * reflection;
-                        AddMirrored(wallPrefab, position, wallRot);
+                        float wr = Mathf.Max(wallPrefab.meta.width, wallPrefab.meta.length) * 0.45f;
+                        if (!IsOnRoad(position, wr, primaryOnly: false) || TryNudgeOffRoads(ref position, wr))
+                            TryPlaceMirrored(wallPrefab, position, wallRot, clearance: 4f, avoidRoads: true);
                     }
                     anchorPoints.Add(position);
                     continue;
@@ -819,14 +1009,17 @@ namespace Modern8bitTanks
 
                 DestructibleProp prefab = ResolveNaturalSlot(archetype, piece.Kind, assets, random);
                 if (prefab == null) continue;
+                float r = Mathf.Max(prefab.meta.width, prefab.meta.length) * 0.5f;
+                if (IsOnRoad(position, r * 0.55f, primaryOnly: false))
+                    TryNudgeOffRoads(ref position, r * 0.55f);
+
                 float freeAngle = random.Next(0, 360);
-                if (TryPlaceMirrored(prefab, position, freeAngle, clearance: 7f, checkConnectors: false))
+                if (TryPlaceMirrored(prefab, position, freeAngle, clearance: 7f, avoidRoads: true))
                     anchorPoints.Add(position);
             }
 
             if (anchorPoints.Count == 0) anchorPoints.Add(center);
 
-            // Grow organic ecological layers (canopy grove, geological talus, or water-edge basin).
             switch (archetype)
             {
                 case ZoneArchetype.DesertBadlands:
@@ -963,9 +1156,6 @@ namespace Modern8bitTanks
             };
         }
 
-        /// <summary>
-        /// Organic woodland placement: curved drift of canopy trees surrounded by low undergrowth, logs & stumps.
-        /// </summary>
         private void PlaceOrganicGrove(Vector2 center, string[] canopyPool, string[] underbrushPool,
             BattleSpawnAssets assets, System.Random random)
         {
@@ -973,9 +1163,6 @@ namespace Modern8bitTanks
             ScatterOrganicDrift(center, 46f, 94f, 3, underbrushPool, assets, random);
         }
 
-        /// <summary>
-        /// Geological outcrop placement: rugged formations anchored near parents with downslope talus & scrub.
-        /// </summary>
         private void PlaceGeologicalOutcrop(List<Vector2> anchors, string[] formationPool, string[] screePool,
             BattleSpawnAssets assets, System.Random random)
         {
@@ -987,9 +1174,6 @@ namespace Modern8bitTanks
             }
         }
 
-        /// <summary>
-        /// Water/basin cluster: focal pond or marsh in the hollow, moisture-loving trees hugging the rim, outer stones.
-        /// </summary>
         private void PlaceBasinCluster(Vector2 center, string focalKind, string[] bankTrees, string[] outerVerge,
             BattleSpawnAssets assets, System.Random random)
         {
@@ -1017,8 +1201,30 @@ namespace Modern8bitTanks
             if (pool.Length == 0) return;
 
             foreach (var ridge in ridgeAnchors)
-            {
                 ScatterOrganicDrift(ridge.Position, ridge.Radius + 18f, ridge.Radius + 60f, 3, pool, assets, random);
+        }
+
+        private void PopulateStreamBanks(RegionalScenario scenario, BattleSpawnAssets assets, System.Random random)
+        {
+            if (_waterStreams.Count == 0) return;
+            string[] bankPool = scenario switch
+            {
+                RegionalScenario.ForestRuralValley => new[] { "weeping_willow", "birch_clump", "reed_marsh", "moss_rocks" },
+                RegionalScenario.ForestAutumnHighland => new[] { "autumn_tree", "basalt_rocks", "dead_tree", "moss_rocks" },
+                RegionalScenario.ForestWetlandGrove => new[] { "mangrove_roots", "weeping_willow", "reed_marsh", "bamboo_grove" },
+                _ => new[] { "snow_pine", "basalt_rocks", "moss_rocks", "dead_tree" }
+            };
+
+            // Step along the west stream half (even indices are west, odd are mirrored east twins).
+            for (int i = 2; i < _waterStreams.Count; i += 4)
+            {
+                var seg = _waterStreams[i];
+                Vector2 mid = (seg.A + seg.B) * 0.5f;
+                Vector2 perp = Vector2.Perpendicular(seg.Dir);
+                float side = (i % 8 == 2) ? 1f : -1f;
+                Vector2 bankPos = mid + perp * (side * (seg.HalfWidth + 24f + random.Next(0, 14)));
+                var prefab = GetProp(assets, bankPool[(i / 4) % bankPool.Length]);
+                TryPlaceMirrored(prefab, bankPos, random.Next(0, 360), clearance: 9f, avoidRoads: true);
             }
         }
 
@@ -1026,7 +1232,6 @@ namespace Modern8bitTanks
             string[] kindPool, BattleSpawnAssets assets, System.Random random)
         {
             if (kindPool == null || kindPool.Length == 0) return;
-            // Curved arc (natural tree line or windbreak) with organic wobble & free rotation.
             float startDeg = (float)(random.NextDouble() * 360.0);
             float sweepDir = random.Next(2) == 0 ? 1f : -1f;
             for (int i = 0; i < count; i++)
@@ -1040,7 +1245,7 @@ namespace Modern8bitTanks
                     float theta = (startDeg + sweepDir * (i * 58f + random.Next(-18, 19)) + attempt * 39f) * Mathf.Deg2Rad;
                     float radius = Mathf.Lerp(minRadius, maxRadius, (float)random.NextDouble());
                     Vector2 pos = Vector2Int.RoundToInt(center + new Vector2(Mathf.Cos(theta), Mathf.Sin(theta)) * radius);
-                    if (TryPlaceMirrored(prefab, pos, random.Next(0, 360), clearance: 9f, checkConnectors: true))
+                    if (TryPlaceMirrored(prefab, pos, random.Next(0, 360), clearance: 9f, avoidRoads: true))
                         break;
                 }
             }
@@ -1050,7 +1255,6 @@ namespace Modern8bitTanks
             string[] kindPool, BattleSpawnAssets assets, System.Random random)
         {
             if (kindPool == null || kindPool.Length == 0) return;
-            // Golden-angle stepping + organic wobble distributes natural props in lifelike irregular clumps.
             float baseAngle = (float)(random.NextDouble() * 360.0);
             for (int i = 0; i < count; i++)
             {
@@ -1064,7 +1268,7 @@ namespace Modern8bitTanks
                     float radius = Mathf.Lerp(minRadius, maxRadius, (float)random.NextDouble());
                     Vector2 pos = Vector2Int.RoundToInt(anchor + new Vector2(Mathf.Cos(theta), Mathf.Sin(theta)) * radius);
                     float rot = random.Next(0, 360);
-                    if (TryPlaceMirrored(prefab, pos, rot, clearance: 9f, checkConnectors: true))
+                    if (TryPlaceMirrored(prefab, pos, rot, clearance: 9f, avoidRoads: true))
                         break;
                 }
             }
@@ -1084,7 +1288,7 @@ namespace Modern8bitTanks
         }
 
         private bool TryPlaceMirrored(DestructibleProp prefab, Vector2 position, float rotation,
-            float clearance = 8f, bool checkConnectors = true)
+            float clearance = 8f, bool avoidRoads = true)
         {
             if (prefab == null || prefab.meta == null) return false;
             Vector2 pos = Vector2Int.RoundToInt(position);
@@ -1106,11 +1310,18 @@ namespace Modern8bitTanks
             if (Vector2.Distance(pos, mirrored) < radius * 2f + clearance)
                 return false;
 
-            // 4. Optional road/connector lane preservation for secondary props
-            if (checkConnectors && IsInsideConnectorLane(pos, radius * 0.55f))
+            // 4. Keep roads clear & drivable (strong road identity + guaranteed pathing!)
+            if (avoidRoads && IsOnRoad(pos, radius * 0.62f, primaryOnly: false))
+                return false;
+            if (!avoidRoads && IsOnRoad(pos, radius * 0.30f, primaryOnly: true))
                 return false;
 
-            // 5. Strict non-overlap against every already-placed cover piece
+            // 5. Keep stream water channel open except for natural wetland flora
+            bool isWetlandProp = prefab.kind is "reed_marsh" or "mangrove_roots" or "moss_rocks" or "oasis_spring";
+            if (!isWetlandProp && IsInWater(pos, radius * 0.45f))
+                return false;
+
+            // 6. Strict non-overlap against every already-placed cover piece
             foreach (var existing in _cover)
             {
                 if (existing.Contains(pos, radius + clearance) || existing.Contains(mirrored, radius + clearance))
@@ -1121,13 +1332,50 @@ namespace Modern8bitTanks
             return true;
         }
 
-        private bool IsInsideConnectorLane(Vector2 point, float margin)
+        private bool TryNudgeOffRoads(ref Vector2 pos, float margin)
         {
-            foreach (var d in _districtGround)
+            Vector2[] offsets =
             {
-                if (!d.IsConnector) continue;
-                Vector2 local = d.ToLocal(point);
-                if (Mathf.Abs(local.x) < d.HalfSize.x - 4f && Mathf.Abs(local.y) < d.HalfSize.y * 0.65f + margin)
+                new(0, 48), new(0, -48), new(48, 0), new(-48, 0),
+                new(0, 78), new(0, -78), new(78, 0), new(-78, 0),
+                new(52, 52), new(-52, 52), new(52, -52), new(-52, -52)
+            };
+            foreach (var off in offsets)
+            {
+                Vector2 candidate = pos + off;
+                if (!IsOnRoad(candidate, margin, primaryOnly: false) && !IsInWater(candidate, margin * 0.7f))
+                {
+                    pos = candidate;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool IsOnRoad(Vector2 point, float margin, bool primaryOnly)
+        {
+            for (int i = 0; i < _roads.Count; i++)
+            {
+                var seg = _roads[i];
+                if (primaryOnly && !seg.IsPrimary) continue;
+                float pad = seg.HalfWidth + margin;
+                if (point.x < seg.MinX - pad || point.x > seg.MaxX + pad ||
+                    point.y < seg.MinY - pad || point.y > seg.MaxY + pad) continue;
+                if (seg.DistanceTo(point, out _, out _) < pad)
+                    return true;
+            }
+            return false;
+        }
+
+        private bool IsInWater(Vector2 point, float margin)
+        {
+            for (int i = 0; i < _waterStreams.Count; i++)
+            {
+                var seg = _waterStreams[i];
+                float pad = seg.HalfWidth + margin;
+                if (point.x < seg.MinX - pad || point.x > seg.MaxX + pad ||
+                    point.y < seg.MinY - pad || point.y > seg.MaxY + pad) continue;
+                if (seg.DistanceTo(point, out _, out _) < pad)
                     return true;
             }
             return false;
@@ -1206,6 +1454,43 @@ namespace Modern8bitTanks
             }
         }
 
+        private readonly struct RoadSegment
+        {
+            internal readonly Vector2 A;
+            internal readonly Vector2 B;
+            internal readonly Vector2 Dir;
+            internal readonly float Length;
+            internal readonly float HalfWidth;
+            internal readonly bool IsPrimary;
+            internal readonly float MinX, MaxX, MinY, MaxY;
+
+            internal RoadSegment(Vector2 a, Vector2 b, float halfWidth, bool isPrimary)
+            {
+                A = a;
+                B = b;
+                Vector2 delta = b - a;
+                Length = delta.magnitude;
+                Dir = Length > 0.001f ? delta / Length : Vector2.right;
+                HalfWidth = halfWidth;
+                IsPrimary = isPrimary;
+                MinX = Mathf.Min(a.x, b.x);
+                MaxX = Mathf.Max(a.x, b.x);
+                MinY = Mathf.Min(a.y, b.y);
+                MaxY = Mathf.Max(a.y, b.y);
+            }
+
+            internal float DistanceTo(Vector2 p, out float along, out float signedPerp)
+            {
+                Vector2 ap = p - A;
+                float proj = Vector2.Dot(ap, Dir);
+                along = Mathf.Clamp(proj, 0f, Length);
+                Vector2 closest = A + Dir * along;
+                Vector2 diff = p - closest;
+                signedPerp = Vector2.Dot(diff, Vector2.Perpendicular(Dir));
+                return diff.magnitude;
+            }
+        }
+
         internal bool IsWallAt(Vector2 position)
         {
             foreach (var cover in _cover)
@@ -1214,6 +1499,13 @@ namespace Modern8bitTanks
             return false;
         }
 
+        internal bool IsRoadAt(Vector2 position) => IsOnRoad(position, 0f, primaryOnly: false);
+
+        internal bool IsWaterAt(Vector2 position) => IsInWater(position, 0f);
+
+        // =====================================================================
+        // GROUND PIXEL ART RENDERER (CONNECTED ROADS, FOREST CHARACTER, STREAMS)
+        // =====================================================================
         internal async UniTask<Color32[]> GroundPixelsAsync(BattleLoadBudget budget, System.Action<float> progress)
         {
             if (_ground != null) return _ground;
@@ -1227,10 +1519,26 @@ namespace Modern8bitTanks
                     Color32 color = SampleTerrain(x, y, earth, dark, verge, out float patch, out float grain);
 
                     Vector2 point = new(x + 0.5f, y + 0.5f);
-                    color = _map == BattleMap.City
-                        ? PaintCityParks(point, PaintCityDistricts(point, color, concrete, dark, verge, patch, grain), dark, patch, grain)
-                        : PaintRidgeFeet(point, PaintNaturalDistricts(point, color, earth, verge, patch),
-                            earth, dark, verge, patch, grain);
+                    if (_map == BattleMap.City)
+                    {
+                        color = PaintCityBlocks(point, color, concrete, dark, verge, patch, grain);
+                        color = PaintCityParks(point, color, dark, patch, grain);
+                        color = PaintCityRoadNetwork(point, color, dark, verge, patch, grain);
+                    }
+                    else if (_map == BattleMap.Forest)
+                    {
+                        color = PaintForestFloorDetails(point, color, earth, dark, verge, patch, grain);
+                        color = PaintRidgeFeet(point, color, earth, dark, verge, patch, grain);
+                        color = PaintForestStream(point, color, dark, patch, grain, out bool inWater);
+                        color = PaintForestRoadNetwork(point, color, dark, verge, patch, grain, inWater);
+                    }
+                    else
+                    {
+                        color = PaintNaturalDistricts(point, color, earth, verge, patch);
+                        color = PaintRidgeFeet(point, color, earth, dark, verge, patch, grain);
+                        color = PaintDesertRoadNetwork(point, color, earth, dark, verge, patch, grain);
+                    }
+
                     color = PaintDeploymentAndPlaza(point, color, concrete, dark, verge, patch, grain);
 
                     int edgeX = Mathf.Min(x, Width - 1 - x);
@@ -1289,36 +1597,39 @@ namespace Modern8bitTanks
         {
             patch = Mathf.PerlinNoise(x * 0.011f + (_seed & 255) * 0.17f, y * 0.014f);
             grain = Grain(x, y);
-            Color32 color = Color32.Lerp(dark, earth, Mathf.Clamp01(patch * 0.88f + grain * 0.18f + 0.08f));
+            Color32 color = Color32.Lerp(dark, earth, Mathf.Clamp01(patch * 0.85f + grain * 0.14f + 0.12f));
             return PaintTerrain(x, y, color, dark, verge, patch, grain);
         }
 
         private (Color32 Earth, Color32 Dark, Color32 Verge, Color32 Concrete) TerrainPalette() =>
             _scenario switch
             {
+                RegionalScenario.ForestRuralValley => (
+                    new Color32(104, 134, 68, 255),
+                    new Color32(62, 86, 46, 255),
+                    new Color32(146, 152, 86, 255),
+                    new Color32(138, 126, 98, 255)),
                 RegionalScenario.ForestAutumnHighland => (
-                    (Color32)new Color(0.42f, 0.42f, 0.25f),
-                    (Color32)new Color(0.20f, 0.21f, 0.14f),
-                    (Color32)new Color(0.60f, 0.43f, 0.25f),
-                    (Color32)new Color(0.49f, 0.48f, 0.40f)),
+                    new Color32(118, 114, 62, 255),
+                    new Color32(68, 66, 40, 255),
+                    new Color32(168, 114, 58, 255),
+                    new Color32(134, 124, 98, 255)),
                 RegionalScenario.ForestWetlandGrove => (
-                    (Color32)new Color(0.31f, 0.44f, 0.28f),
-                    (Color32)new Color(0.13f, 0.22f, 0.17f),
-                    (Color32)new Color(0.44f, 0.45f, 0.29f),
-                    (Color32)new Color(0.45f, 0.47f, 0.40f)),
+                    new Color32(82, 116, 68, 255),
+                    new Color32(46, 74, 52, 255),
+                    new Color32(116, 132, 74, 255),
+                    new Color32(122, 122, 98, 255)),
                 RegionalScenario.ForestAlpineRidge => (
-                    (Color32)new Color(0.44f, 0.50f, 0.46f),
-                    (Color32)new Color(0.21f, 0.27f, 0.26f),
-                    (Color32)new Color(0.70f, 0.74f, 0.75f),
-                    (Color32)new Color(0.52f, 0.54f, 0.53f)),
+                    new Color32(98, 118, 96, 255),
+                    new Color32(58, 76, 70, 255),
+                    new Color32(198, 208, 212, 255),
+                    new Color32(134, 138, 134, 255)),
                 _ => _map switch
                 {
-                    BattleMap.City => ((Color32)new Color(0.44f, 0.43f, 0.39f), (Color32)new Color(0.31f, 0.33f, 0.33f),
-                        (Color32)new Color(0.68f, 0.64f, 0.54f), (Color32)new Color(0.51f, 0.54f, 0.53f)),
-                    BattleMap.Forest => ((Color32)new Color(0.36f, 0.47f, 0.27f), (Color32)new Color(0.15f, 0.23f, 0.15f),
-                        (Color32)new Color(0.51f, 0.46f, 0.29f), (Color32)new Color(0.48f, 0.49f, 0.40f)),
-                    _ => ((Color32)new Color(0.69f, 0.51f, 0.31f), (Color32)new Color(0.44f, 0.30f, 0.19f),
-                        (Color32)new Color(0.73f, 0.61f, 0.40f), (Color32)new Color(0.59f, 0.55f, 0.46f))
+                    BattleMap.City => ((Color32)new Color(0.47f, 0.46f, 0.43f), (Color32)new Color(0.34f, 0.35f, 0.36f),
+                        (Color32)new Color(0.70f, 0.66f, 0.56f), (Color32)new Color(0.55f, 0.56f, 0.54f)),
+                    _ => ((Color32)new Color(0.71f, 0.54f, 0.34f), (Color32)new Color(0.47f, 0.34f, 0.22f),
+                        (Color32)new Color(0.78f, 0.66f, 0.44f), (Color32)new Color(0.61f, 0.57f, 0.48f))
                 }
             };
 
@@ -1327,16 +1638,474 @@ namespace Modern8bitTanks
         {
             float west = PadDistance(point - _westBase, 92f, 90f);
             float east = PadDistance(point - Mirror(_westBase), 92f, 90f);
-            float plaza = Vector2.Distance(point, ControlPoint) / 70f;
+            float plaza = Vector2.Distance(point, ControlPoint) / 72f;
             float edge = Mathf.Min(Mathf.Min(west, east), plaza);
             if (edge >= 1f) return terrain;
 
             bool city = _map == BattleMap.City;
+            bool forest = _map == BattleMap.Forest;
             bool joint = city && (Mathf.Repeat(point.x + 13f, 27f) < 1f || Mathf.Repeat(point.y + 7f, 27f) < 1f);
-            Color32 surface = Color32.Lerp(concrete, dark, 0.12f * grain + 0.17f * patch + (joint ? 0.14f : 0f));
-            if (city && edge is > 0.91f and < 0.96f) surface = Color32.Lerp(surface, trim, 0.45f);
-            float blend = Mathf.SmoothStep(0f, 1f, (1f - edge) * (city ? 21f : 4f)) * (city ? 0.9f : 0.54f);
+            Color32 padBase = forest ? new Color32(142, 120, 86, 255) : concrete;
+            Color32 surface = Color32.Lerp(padBase, dark, 0.10f * grain + 0.14f * patch + (joint ? 0.14f : 0f));
+            if (city && edge is > 0.90f and < 0.96f) surface = Color32.Lerp(surface, trim, 0.52f);
+            if (city && plaza is > 0.58f and < 0.64f) surface = Color32.Lerp(surface, trim, 0.42f); // Roundabout ring
+            float blend = Mathf.SmoothStep(0f, 1f, (1f - edge) * (city ? 20f : 5f)) * (city ? 0.92f : 0.66f);
             return Color32.Lerp(terrain, surface, blend);
+        }
+
+        // =====================================================================
+        // CITY GROUND: BLOCKS, PARKS & CONNECTED ASPHALT STREETS WITH CROSSWALKS
+        // =====================================================================
+        private Color32 PaintCityBlocks(Vector2 point, Color32 terrain, Color32 concrete, Color32 dark,
+            Color32 trim, float patch, float grain)
+        {
+            float yard = 0f;
+            float curb = 0f;
+            foreach (var district in _districtGround)
+            {
+                if ((point - district.Center).sqrMagnitude > district.RadiusSquared) continue;
+                Vector2 local = district.ToLocal(point);
+                float inset = Mathf.Min(district.HalfSize.x - Mathf.Abs(local.x), district.HalfSize.y - Mathf.Abs(local.y));
+                if (inset <= 0f) continue;
+
+                yard = Mathf.Max(yard, Mathf.SmoothStep(0f, 1f, inset / 6f));
+                float strip = Mathf.Clamp01(1f - Mathf.Abs(inset - 4.5f) / 2.5f);
+                curb = Mathf.Max(curb, strip);
+            }
+            if (yard <= 0f) return terrain;
+
+            bool joint = Mathf.Repeat(point.x + 12f, 32f) < 1.2f || Mathf.Repeat(point.y + 8f, 32f) < 1.2f;
+            Color32 paving = Color32.Lerp(concrete, dark, 0.05f * grain + 0.15f * patch + (joint ? 0.12f : 0f));
+            Color32 color = Color32.Lerp(terrain, paving, yard * 0.85f);
+            return Color32.Lerp(color, trim, curb * 0.52f);
+        }
+
+        private Color32 PaintCityRoadNetwork(Vector2 point, Color32 terrain, Color32 dark,
+            Color32 trim, float patch, float grain)
+        {
+            float bestAsphalt = 0f;
+            float bestSidewalk = 0f;
+            float bestCurb = 0f;
+            float bestDash = 0f;
+            float bestCrosswalk = 0f;
+
+            // Check Chebyshev (box) distance to nearest intersection so zebra crosswalks are razor-straight rectangles!
+            float minInterBox = 999f;
+            for (int k = 0; k < _intersections.Count; k++)
+            {
+                Vector2 d = point - _intersections[k];
+                float box = Mathf.Max(Mathf.Abs(d.x), Mathf.Abs(d.y));
+                if (box < minInterBox) minInterBox = box;
+            }
+
+            for (int i = 0; i < _roads.Count; i++)
+            {
+                var seg = _roads[i];
+                float outer = seg.HalfWidth + 14f;
+                if (point.x < seg.MinX - outer || point.x > seg.MaxX + outer ||
+                    point.y < seg.MinY - outer || point.y > seg.MaxY + outer) continue;
+
+                float dist = seg.DistanceTo(point, out float along, out float signedPerp);
+                if (dist >= outer) continue;
+
+                float hw = seg.HalfWidth;
+                if (dist <= hw)
+                {
+                    float w = Mathf.SmoothStep(0f, 1f, (hw - dist) * 0.55f);
+                    bestAsphalt = Mathf.Max(bestAsphalt, w);
+
+                    // Clean yellow/ivory dashed center line outside intersections & central plaza
+                    if (minInterBox > 44f && Vector2.Distance(point, ControlPoint) > 78f)
+                    {
+                        if (Mathf.Abs(signedPerp) < (seg.IsPrimary ? 1.45f : 1.15f) && Mathf.Repeat(along + 8f, 34f) < 17f)
+                            bestDash = Mathf.Max(bestDash, w);
+                    }
+
+                    // Razor-straight white zebra crosswalk stripes right outside every 4-way intersection!
+                    if (minInterBox >= 34f && minInterBox <= 43f && Mathf.Abs(signedPerp) < hw - 3.5f)
+                    {
+                        if (Mathf.Repeat(Mathf.Abs(signedPerp) + 2f, 7f) < 3.5f)
+                            bestCrosswalk = Mathf.Max(bestCrosswalk, w);
+                    }
+                }
+                else
+                {
+                    float swInset = outer - dist;
+                    float sw = Mathf.SmoothStep(0f, 1f, swInset * 0.35f);
+                    bestSidewalk = Mathf.Max(bestSidewalk, sw);
+                    if (dist <= hw + 3.2f)
+                        bestCurb = Mathf.Max(bestCurb, 1f - (dist - hw) / 3.2f);
+                }
+            }
+
+            if (bestAsphalt <= 0f && bestSidewalk <= 0f) return terrain;
+
+            Color32 color = terrain;
+            if (bestSidewalk > 0f)
+            {
+                bool tileJoint = Mathf.Repeat(point.x, 16f) < 1.1f || Mathf.Repeat(point.y, 16f) < 1.1f;
+                var sidewalkCol = new Color32(158, 154, 145, 255);
+                var curbCol = new Color32(106, 104, 98, 255);
+                Color32 sw = tileJoint ? Color32.Lerp(sidewalkCol, curbCol, 0.32f) : sidewalkCol;
+                sw = Color32.Lerp(sw, dark, 0.08f * grain + 0.08f * patch);
+                color = Color32.Lerp(color, sw, bestSidewalk * 0.90f);
+                if (bestCurb > 0f)
+                    color = Color32.Lerp(color, curbCol, bestCurb * 0.78f);
+            }
+
+            if (bestAsphalt > 0f)
+            {
+                var asphaltBase = new Color32(68, 72, 78, 255);
+                var asphaltDark = new Color32(54, 58, 64, 255);
+                Color32 road = Color32.Lerp(asphaltBase, asphaltDark, 0.25f * grain + 0.22f * patch);
+                color = Color32.Lerp(color, road, bestAsphalt * 0.96f);
+                if (bestDash > 0f)
+                    color = Color32.Lerp(color, new Color32(214, 196, 126, 255), bestDash * 0.85f);
+                if (bestCrosswalk > 0f)
+                    color = Color32.Lerp(color, new Color32(204, 202, 192, 255), bestCrosswalk * 0.68f);
+            }
+
+            return color;
+        }
+
+        // =====================================================================
+        // FOREST GROUND: RICH MEADOWS, LEAFY GROVES, FARMS, BROOK & DIRT ROADS
+        // =====================================================================
+        private Color32 PaintForestFloorDetails(Vector2 point, Color32 terrain, Color32 earth, Color32 dark,
+            Color32 verge, float patch, float grain)
+        {
+            Color32 color = terrain;
+
+            // 1. Sunlit open glades / meadow light dappled across the forest floor
+            float glade = Mathf.PerlinNoise(point.x * 0.0055f + (_seed & 127) * 0.31f, point.y * 0.0065f + 7.3f);
+            if (glade > 0.56f)
+            {
+                float w = Mathf.SmoothStep(0.56f, 0.78f, glade);
+                Color32 sunlit = _scenario switch
+                {
+                    RegionalScenario.ForestAutumnHighland => new Color32(152, 134, 72, 255),
+                    RegionalScenario.ForestWetlandGrove => new Color32(104, 138, 76, 255),
+                    RegionalScenario.ForestAlpineRidge => new Color32(126, 142, 118, 255),
+                    _ => new Color32(126, 156, 78, 255)
+                };
+                color = Color32.Lerp(color, sunlit, w * 0.45f);
+            }
+
+            // 2. Deep organic canopy floor under natural forest groves (leaf litter, ferns, snow drifts!)
+            float groveWeight = 0f;
+            foreach (var grove in _groveGround)
+            {
+                if ((point - grove.Center).sqrMagnitude > grove.RadiusSquared) continue;
+                Vector2 local = grove.ToLocal(point);
+                var norm = new Vector2(local.x / grove.HalfSize.x, local.y / grove.HalfSize.y);
+                float d = norm.magnitude + (patch - 0.5f) * 0.24f;
+                groveWeight = Mathf.Max(groveWeight, Mathf.SmoothStep(0f, 1f, (1f - d) * 2.2f));
+            }
+            if (groveWeight > 0f)
+            {
+                Color32 canopyFloor = _scenario switch
+                {
+                    RegionalScenario.ForestAutumnHighland => Color32.Lerp(new Color32(138, 82, 42, 255), new Color32(174, 114, 48, 255), grain),
+                    RegionalScenario.ForestWetlandGrove => new Color32(46, 78, 50, 255),
+                    RegionalScenario.ForestAlpineRidge => Color32.Lerp(new Color32(196, 208, 214, 255), new Color32(226, 234, 238, 255), patch),
+                    _ => new Color32(56, 84, 44, 255)
+                };
+                float strength = _scenario == RegionalScenario.ForestAlpineRidge ? 0.74f : 0.58f;
+                color = Color32.Lerp(color, canopyFloor, groveWeight * strength);
+            }
+
+            // 3. Cleared compacted earth/woodchip pads under artificial forest camps & cabins
+            float campCoverage = 0f;
+            foreach (var district in _districtGround)
+            {
+                if ((point - district.Center).sqrMagnitude > district.RadiusSquared) continue;
+                Vector2 local = district.ToLocal(point);
+                var norm = new Vector2(local.x / district.HalfSize.x, local.y / district.HalfSize.y);
+                float d = norm.magnitude + (patch - 0.5f) * 0.16f;
+                campCoverage = Mathf.Max(campCoverage, Mathf.SmoothStep(0f, 1f, (1f - d) * 2.4f));
+            }
+            if (campCoverage > 0f)
+            {
+                var campDirt = new Color32(132, 112, 80, 255);
+                color = Color32.Lerp(color, Color32.Lerp(campDirt, dark, grain * 0.16f), campCoverage * 0.56f);
+            }
+
+            // 4. Plowed golden-tan agricultural furrow strips around the Rural Windmill Farm!
+            if (_farmGround.Count > 0)
+            {
+                foreach (var farm in _farmGround)
+                {
+                    if ((point - farm.Center).sqrMagnitude > farm.RadiusSquared) continue;
+                    Vector2 local = farm.ToLocal(point);
+                    float inset = Mathf.Min(farm.HalfSize.x - Mathf.Abs(local.x), farm.HalfSize.y - Mathf.Abs(local.y));
+                    if (inset <= 0f) continue;
+                    float w = Mathf.SmoothStep(0f, 1f, inset / 10f);
+                    bool ridge = Mathf.Repeat(local.y + 400f, 10f) < 5f;
+                    Color32 fieldCol = ridge ? new Color32(158, 134, 78, 255) : new Color32(124, 100, 62, 255);
+                    color = Color32.Lerp(color, fieldCol, w * 0.62f);
+                }
+            }
+
+            // 5. Crisp alpine snow-drift patches on cool shaded ridges
+            if (_scenario == RegionalScenario.ForestAlpineRidge)
+            {
+                float drift = Mathf.PerlinNoise(point.x * 0.016f + 4.1f, point.y * 0.016f + 9.7f);
+                if (drift > 0.62f)
+                {
+                    float sw = Mathf.SmoothStep(0.62f, 0.76f, drift);
+                    color = Color32.Lerp(color, new Color32(218, 226, 232, 255), sw * 0.72f);
+                }
+            }
+
+            // 6. Subtle wildflowers / fallen leaves / clover pixel accents (tasteful, never noisy!)
+            float micro = Grain((int)point.x / 3, (int)point.y / 3);
+            if (micro > 0.965f && groveWeight < 0.35f && campCoverage < 0.2f)
+            {
+                Color32 accent = _scenario switch
+                {
+                    RegionalScenario.ForestAutumnHighland => new Color32(198, 122, 48, 255),
+                    RegionalScenario.ForestAlpineRidge => new Color32(226, 234, 238, 255),
+                    RegionalScenario.ForestWetlandGrove => new Color32(142, 168, 84, 255),
+                    _ => ((int)point.x + (int)point.y) % 2 == 0
+                        ? new Color32(214, 198, 112, 255)
+                        : new Color32(196, 178, 186, 255)
+                };
+                color = Color32.Lerp(color, accent, 0.75f);
+            }
+
+            return color;
+        }
+
+        private Color32 PaintForestStream(Vector2 point, Color32 terrain, Color32 dark,
+            float patch, float grain, out bool inWater)
+        {
+            inWater = false;
+            if (_waterStreams.Count == 0) return terrain;
+
+            float bestWater = 0f;
+            float bestBank = 0f;
+            float bestCenter = 0f;
+
+            for (int i = 0; i < _waterStreams.Count; i++)
+            {
+                var seg = _waterStreams[i];
+                float bankOuter = seg.HalfWidth + 11f;
+                if (point.x < seg.MinX - bankOuter || point.x > seg.MaxX + bankOuter ||
+                    point.y < seg.MinY - bankOuter || point.y > seg.MaxY + bankOuter) continue;
+
+                float dist = seg.DistanceTo(point, out _, out _);
+                float wobble = (patch - 0.5f) * 6.5f;
+                float adjDist = dist + wobble;
+                if (adjDist >= bankOuter) continue;
+
+                if (adjDist < seg.HalfWidth)
+                {
+                    float w = Mathf.SmoothStep(0f, 1f, (seg.HalfWidth - adjDist) * 0.45f);
+                    bestWater = Mathf.Max(bestWater, w);
+                    bestCenter = Mathf.Max(bestCenter, Mathf.Clamp01(1f - adjDist / seg.HalfWidth));
+                }
+                else
+                {
+                    float b = Mathf.SmoothStep(0f, 1f, (bankOuter - adjDist) / 11f);
+                    bestBank = Mathf.Max(bestBank, b);
+                }
+            }
+
+            if (bestWater <= 0f && bestBank <= 0f) return terrain;
+
+            Color32 color = terrain;
+            if (bestBank > 0f)
+            {
+                Color32 wetBank = _scenario == RegionalScenario.ForestAlpineRidge
+                    ? new Color32(126, 134, 136, 255)
+                    : new Color32(94, 88, 66, 255);
+                var pebble = new Color32(138, 134, 122, 255);
+                Color32 bankCol = grain > 0.76f ? pebble : wetBank;
+                color = Color32.Lerp(color, bankCol, bestBank * 0.74f);
+            }
+
+            if (bestWater > 0.05f)
+            {
+                inWater = true;
+                Color32 shallow = _scenario == RegionalScenario.ForestWetlandGrove
+                    ? new Color32(58, 96, 86, 255)
+                    : (_scenario == RegionalScenario.ForestAlpineRidge
+                        ? new Color32(74, 124, 146, 255)
+                        : new Color32(62, 114, 122, 255));
+                Color32 deep = _scenario == RegionalScenario.ForestWetlandGrove
+                    ? new Color32(36, 66, 62, 255)
+                    : new Color32(38, 78, 98, 255);
+                Color32 water = Color32.Lerp(shallow, deep, bestCenter * 0.72f);
+                // Crisp 8-bit water shimmer ripples
+                float ripple = Mathf.Sin(point.x * 0.14f + point.y * 0.22f + patch * 6f);
+                if (ripple > 0.86f && bestCenter > 0.25f)
+                    water = Color32.Lerp(water, new Color32(174, 212, 222, 255), 0.55f);
+                color = Color32.Lerp(color, water, bestWater * 0.92f);
+            }
+
+            return color;
+        }
+
+        private Color32 PaintForestRoadNetwork(Vector2 point, Color32 terrain, Color32 dark,
+            Color32 verge, float patch, float grain, bool inWater)
+        {
+            float bestRoad = 0f;
+            float bestShoulder = 0f;
+            float bestRut = 0f;
+            float bestPlank = 0f;
+            float bestBridgeRail = 0f;
+
+            for (int i = 0; i < _roads.Count; i++)
+            {
+                var seg = _roads[i];
+                float outer = seg.HalfWidth + 10f;
+                if (point.x < seg.MinX - outer || point.x > seg.MaxX + outer ||
+                    point.y < seg.MinY - outer || point.y > seg.MaxY + outer) continue;
+
+                float dist = seg.DistanceTo(point, out float along, out float signedPerp);
+                float edgeWobble = inWater ? 0f : (patch - 0.5f) * 4.5f;
+                float adj = dist + edgeWobble;
+                float effectiveW = inWater ? seg.HalfWidth + 2.5f : seg.HalfWidth;
+                if (adj >= outer) continue;
+
+                if (adj < effectiveW)
+                {
+                    float w = Mathf.SmoothStep(0f, 1f, (effectiveW - adj) * 0.42f);
+                    bestRoad = Mathf.Max(bestRoad, w);
+                    float rutTarget = seg.HalfWidth * 0.42f;
+                    float rutDist = Mathf.Abs(Mathf.Abs(signedPerp) - rutTarget);
+                    if (rutDist < 3.0f)
+                        bestRut = Mathf.Max(bestRut, (1f - rutDist / 3.0f) * w);
+                    if (inWater)
+                    {
+                        if (Mathf.Abs(signedPerp) > effectiveW - 3.2f)
+                            bestBridgeRail = Mathf.Max(bestBridgeRail, w);
+                        else if (Mathf.Repeat(along, 6f) < 4.5f)
+                            bestPlank = Mathf.Max(bestPlank, w);
+                    }
+                }
+                else
+                {
+                    bestShoulder = Mathf.Max(bestShoulder, Mathf.SmoothStep(0f, 1f, (outer - adj) / 10f));
+                }
+            }
+
+            if (bestRoad <= 0f && bestShoulder <= 0f) return terrain;
+
+            Color32 roadBase = _scenario switch
+            {
+                RegionalScenario.ForestAutumnHighland => new Color32(146, 118, 84, 255),
+                RegionalScenario.ForestWetlandGrove => new Color32(128, 108, 76, 255),
+                RegionalScenario.ForestAlpineRidge => new Color32(138, 134, 124, 255),
+                _ => new Color32(154, 126, 86, 255)
+            };
+            Color32 rutCol = Color32.Lerp(roadBase, dark, 0.42f);
+            Color32 shoulderCol = Color32.Lerp(roadBase, dark, 0.28f);
+
+            Color32 color = terrain;
+            if (bestShoulder > 0f && !inWater)
+                color = Color32.Lerp(color, shoulderCol, bestShoulder * 0.48f);
+
+            if (bestRoad > 0f)
+            {
+                if (inWater)
+                {
+                    // Sturdy wooden timber bridge with dark guardrails spanning the woodland creek!
+                    var rail = new Color32(66, 48, 32, 255);
+                    var timber = new Color32(146, 108, 68, 255);
+                    var timberGap = new Color32(82, 60, 38, 255);
+                    Color32 bridge = bestBridgeRail > 0.35f ? rail
+                        : (bestPlank > 0f ? Color32.Lerp(timber, timberGap, grain * 0.22f) : timberGap);
+                    color = Color32.Lerp(color, bridge, bestRoad * 0.94f);
+                }
+                else
+                {
+                    Color32 dirt = Color32.Lerp(roadBase, verge, (grain - 0.5f) * 0.14f);
+                    color = Color32.Lerp(color, dirt, bestRoad * 0.88f);
+                    if (bestRut > 0f)
+                        color = Color32.Lerp(color, rutCol, bestRut * 0.52f);
+                }
+            }
+
+            return color;
+        }
+
+        // =====================================================================
+        // DESERT GROUND: CONNECTED CONVOY HIGHWAY + CANYON TRACKS
+        // =====================================================================
+        private Color32 PaintDesertRoadNetwork(Vector2 point, Color32 terrain, Color32 earth, Color32 dark,
+            Color32 verge, float patch, float grain)
+        {
+            float bestPrimary = 0f;
+            float bestTrack = 0f;
+            float bestShoulder = 0f;
+            float bestRut = 0f;
+            float bestDash = 0f;
+
+            for (int i = 0; i < _roads.Count; i++)
+            {
+                var seg = _roads[i];
+                float outer = seg.HalfWidth + 10f;
+                if (point.x < seg.MinX - outer || point.x > seg.MaxX + outer ||
+                    point.y < seg.MinY - outer || point.y > seg.MaxY + outer) continue;
+
+                float dist = seg.DistanceTo(point, out float along, out float signedPerp);
+                float drift = (patch - 0.5f) * (seg.IsPrimary ? 3.5f : 5.0f);
+                float adj = dist + drift;
+                if (adj >= outer) continue;
+
+                if (adj < seg.HalfWidth)
+                {
+                    float w = Mathf.SmoothStep(0f, 1f, (seg.HalfWidth - adj) * 0.42f);
+                    if (seg.IsPrimary)
+                    {
+                        bestPrimary = Mathf.Max(bestPrimary, w);
+                        if (Mathf.Abs(signedPerp) < 1.2f && Mathf.Repeat(along + 6f, 40f) < 16f && Vector2.Distance(point, ControlPoint) > 78f)
+                            bestDash = Mathf.Max(bestDash, w);
+                    }
+                    else
+                    {
+                        bestTrack = Mathf.Max(bestTrack, w);
+                    }
+
+                    float rutTarget = seg.HalfWidth * 0.44f;
+                    float rutDist = Mathf.Abs(Mathf.Abs(signedPerp) - rutTarget);
+                    if (rutDist < 2.8f)
+                        bestRut = Mathf.Max(bestRut, (1f - rutDist / 2.8f) * w);
+                }
+                else
+                {
+                    bestShoulder = Mathf.Max(bestShoulder, Mathf.SmoothStep(0f, 1f, (outer - adj) / 10f));
+                }
+            }
+
+            if (bestPrimary <= 0f && bestTrack <= 0f && bestShoulder <= 0f) return terrain;
+
+            Color32 color = terrain;
+            if (bestShoulder > 0f)
+                color = Color32.Lerp(color, new Color32(158, 128, 86, 255), bestShoulder * 0.46f);
+
+            if (bestTrack > 0f)
+            {
+                Color32 trackCol = Color32.Lerp(new Color32(134, 104, 68, 255), dark, 0.16f * grain);
+                color = Color32.Lerp(color, trackCol, bestTrack * 0.84f);
+            }
+
+            if (bestPrimary > 0f)
+            {
+                // Sun-baked sand-dusted military tarmac/gravel supply highway
+                var tarmac = new Color32(114, 104, 88, 255);
+                var sandDust = new Color32(162, 136, 98, 255);
+                Color32 road = Color32.Lerp(tarmac, sandDust, Mathf.Clamp01(patch * 0.42f + grain * 0.15f));
+                color = Color32.Lerp(color, road, bestPrimary * 0.90f);
+                if (bestDash > 0f)
+                    color = Color32.Lerp(color, new Color32(220, 200, 140, 255), bestDash * 0.60f);
+            }
+
+            if (bestRut > 0f)
+                color = Color32.Lerp(color, dark, bestRut * 0.38f);
+
+            return color;
         }
 
         private Color32 PaintNaturalDistricts(Vector2 point, Color32 terrain, Color32 earth, Color32 verge, float patch)
@@ -1349,10 +2118,10 @@ namespace Modern8bitTanks
                 var normalized = new Vector2(local.x / district.HalfSize.x, local.y / district.HalfSize.y);
                 float distance = normalized.magnitude + (patch - 0.5f) * 0.18f;
                 float weight = Mathf.SmoothStep(0f, 1f, (1f - distance) * 2.3f);
-                coverage = Mathf.Max(coverage, weight * (district.IsConnector ? 0.19f : 0.34f));
+                coverage = Mathf.Max(coverage, weight * 0.42f);
             }
 
-            Color32 soil = Color32.Lerp(earth, verge, 0.14f + patch * 0.17f);
+            Color32 soil = Color32.Lerp(earth, verge, 0.16f + patch * 0.18f);
             return Color32.Lerp(terrain, soil, coverage);
         }
 
@@ -1375,49 +2144,12 @@ namespace Modern8bitTanks
 
             float chips = Grain((int)point.x / 3, (int)point.y / 3);
             Color32 soil = Color32.Lerp(earth, verge, 0.14f + patch * 0.26f);
-            Color32 result = Color32.Lerp(terrain, soil, deposit * 0.64f);
+            Color32 result = Color32.Lerp(terrain, soil, deposit * 0.60f);
             if (chips > 0.72f && grain > 0.32f)
-                return Color32.Lerp(result, verge, deposit * (chips - 0.72f) * 1.5f);
+                return Color32.Lerp(result, verge, deposit * (chips - 0.72f) * 1.4f);
             if (chips < 0.11f)
-                return Color32.Lerp(result, dark, deposit * (0.11f - chips) * 3.2f);
+                return Color32.Lerp(result, dark, deposit * (0.11f - chips) * 2.4f);
             return result;
-        }
-
-        private Color32 PaintCityDistricts(Vector2 point, Color32 terrain, Color32 concrete, Color32 dark,
-            Color32 trim, float patch, float grain)
-        {
-            float street = 0f;
-            float yard = 0f;
-            float curb = 0f;
-            float streetMark = 0f;
-            foreach (var district in _districtGround)
-            {
-                if ((point - district.Center).sqrMagnitude > district.RadiusSquared) continue;
-                Vector2 local = district.ToLocal(point);
-                float inset = Mathf.Min(district.HalfSize.x - Mathf.Abs(local.x), district.HalfSize.y - Mathf.Abs(local.y));
-                if (inset <= 0f) continue;
-
-                float weight = Mathf.SmoothStep(0f, 1f, inset / 6f);
-                if (district.IsConnector)
-                {
-                    street = Mathf.Max(street, weight);
-                    if (Mathf.Abs(local.y) < 1.2f && Mathf.Repeat(local.x + 11f, 43f) < 21f)
-                        streetMark = Mathf.Max(streetMark, weight);
-                }
-                else
-                {
-                    yard = Mathf.Max(yard, weight);
-                    float strip = Mathf.Clamp01(1f - Mathf.Abs(inset - 4.5f) / 2.5f);
-                    curb = Mathf.Max(curb, strip);
-                }
-            }
-
-            Color32 asphalt = Color32.Lerp(terrain, dark, street * 0.49f);
-            asphalt = Color32.Lerp(asphalt, trim, streetMark * 0.46f * (1f - yard));
-            bool joint = Mathf.Repeat(point.x + 12f, 34f) < 1.2f || Mathf.Repeat(point.y + 8f, 30f) < 1.2f;
-            Color32 paving = Color32.Lerp(concrete, dark, 0.06f * grain + 0.17f * patch + (joint ? 0.13f : 0f));
-            Color32 color = Color32.Lerp(asphalt, paving, yard * 0.87f);
-            return Color32.Lerp(color, trim, curb * (1f - street) * 0.60f);
         }
 
         private Color32 PaintCityParks(Vector2 point, Color32 terrain, Color32 dark, float patch, float grain)
@@ -1435,10 +2167,10 @@ namespace Modern8bitTanks
                 border = Mathf.Max(border, Mathf.Clamp01(1f - Mathf.Abs(inset - 3.5f) / 2.5f));
             }
             if (lawn <= 0f) return terrain;
-            var parkGrass = new Color32(84, 114, 68, 255);
-            var parkRim = new Color32(154, 150, 138, 255);
-            Color32 turf = Color32.Lerp(parkGrass, dark, 0.16f * grain + 0.14f * (1f - patch));
-            Color32 blended = Color32.Lerp(terrain, turf, lawn * 0.86f);
+            var parkGrass = new Color32(88, 122, 70, 255);
+            var parkRim = new Color32(158, 154, 142, 255);
+            Color32 turf = Color32.Lerp(parkGrass, dark, 0.14f * grain + 0.12f * (1f - patch));
+            Color32 blended = Color32.Lerp(terrain, turf, lawn * 0.88f);
             return Color32.Lerp(blended, parkRim, border * 0.62f);
         }
 
@@ -1448,20 +2180,21 @@ namespace Modern8bitTanks
             switch (_map)
             {
                 case BattleMap.City:
-                    return Color32.Lerp(surface, high, 0.027f * patch + 0.026f * cluster);
+                    return Color32.Lerp(surface, high, 0.025f * patch + 0.022f * cluster);
                 case BattleMap.Forest:
-                    if (cluster > 0.71f && grain > 0.37f)
-                        return Color32.Lerp(surface, high, (cluster - 0.70f) * 0.93f * patch);
-                    if (cluster < 0.14f)
-                        return Color32.Lerp(surface, low, (0.18f - cluster) * 1.3f);
-                    break;
+                    // Soft organic grass blade texture instead of harsh dark blotches
+                    if (cluster > 0.76f && grain > 0.42f)
+                        return Color32.Lerp(surface, high, (cluster - 0.76f) * 0.55f * patch);
+                    if (cluster < 0.16f)
+                        return Color32.Lerp(surface, low, (0.16f - cluster) * 0.48f);
+                    return surface;
                 default:
                     float ripple = Mathf.Sin(x * 0.039f + y * 0.30f + patch * 12f);
                     if (ripple > 0.65f && patch > 0.43f)
                         return Color32.Lerp(surface, high, (ripple - 0.65f) * patch * 0.64f);
                     break;
             }
-            return grain > 0.96f && cluster < 0.18f ? Color32.Lerp(surface, low, 0.42f) : surface;
+            return grain > 0.96f && cluster < 0.18f ? Color32.Lerp(surface, low, 0.35f) : surface;
         }
 
         private static float PadDistance(Vector2 point, float halfWidth, float halfHeight)

@@ -96,6 +96,8 @@ namespace Modern8bitTanks
         private int _radarWidth;
         private int _radarHeight;
         private bool[] _wallRadarMask;
+        private bool[] _roadRadarMask;
+        private bool[] _waterRadarMask;
         private BattlefieldLayout _wallRadarLayout;
 
         // Result Overlay (smooth fade-in after kill aftermath)
@@ -603,15 +605,31 @@ namespace Modern8bitTanks
             };
             var layout = _mgr.CurrentLayout;
             Color32 bldgCol = new Color32(138, 134, 128, 255);
+            Color32 roadCol = curMap switch
+            {
+                BattleMap.City => new Color32(58, 62, 70, 255),
+                BattleMap.Forest => new Color32(72, 62, 44, 255),
+                _ => new Color32(74, 64, 48, 255)
+            };
+            Color32 waterCol = new Color32(34, 68, 80, 255);
             if (layout != null && _wallRadarLayout != layout)
             {
                 _wallRadarLayout = layout;
-                _wallRadarMask ??= new bool[_radarWidth * _radarHeight];
+                int total = _radarWidth * _radarHeight;
+                if (_wallRadarMask == null || _wallRadarMask.Length != total) _wallRadarMask = new bool[total];
+                if (_roadRadarMask == null || _roadRadarMask.Length != total) _roadRadarMask = new bool[total];
+                if (_waterRadarMask == null || _waterRadarMask.Length != total) _waterRadarMask = new bool[total];
                 for (int y = 0; y < _radarHeight; y++)
                 for (int x = 0; x < _radarWidth; x++)
-                    _wallRadarMask[y * _radarWidth + x] = layout.IsWallAt(new Vector2(
+                {
+                    Vector2 sample = new Vector2(
                         x * BattlefieldLayout.Width / (float)(_radarWidth - 1),
-                        y * BattlefieldLayout.Height / (float)(_radarHeight - 1)));
+                        y * BattlefieldLayout.Height / (float)(_radarHeight - 1));
+                    int idx = y * _radarWidth + x;
+                    _wallRadarMask[idx] = layout.IsWallAt(sample);
+                    _roadRadarMask[idx] = layout.IsRoadAt(sample);
+                    _waterRadarMask[idx] = layout.IsWaterAt(sample);
+                }
             }
             for (int y = 0; y < _radarHeight; y++)
             {
@@ -619,7 +637,10 @@ namespace Modern8bitTanks
                 {
                     int i = y * _radarWidth + x;
                     bool line = x % 17 == 0 || y % 14 == 0;
-                    _radarPixels[i] = layout != null && _wallRadarMask[i] ? bldgCol : line ? grid : bg;
+                    _radarPixels[i] = layout != null && _wallRadarMask[i] ? bldgCol
+                        : layout != null && _roadRadarMask[i] ? roadCol
+                        : layout != null && _waterRadarMask[i] ? waterCol
+                        : line ? grid : bg;
                 }
             }
             if (layout != null) PlotRadarBoundary(mapScale, Color32.Lerp(grid, BattlefieldLayout.BoundaryColor, 0.55f));
