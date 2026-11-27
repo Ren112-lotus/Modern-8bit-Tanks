@@ -32,7 +32,7 @@ namespace Modern8bitTanks
             {
                 var plan = plans[random.Next(plans.Length)];
                 lastPlan = plan.Name;
-                var layout = new BattlefieldLayout(battleMap, random.Next(), plan, theme);
+                var layout = new BattlefieldLayout(battleMap, random.Next(), plan, theme, spawnAssets);
                 var navigation = new BattlefieldNavigation(layout);
                 await navigation.RebuildAsync(budget);
                 if (!HasConnectedDeployment(layout, navigation)) continue;
