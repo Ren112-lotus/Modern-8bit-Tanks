@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generator": {
-    "name": "Unity Editor BuildPipeline via Unity Pipeline",
-    "version": "1.0.0"
+    "name": "Unity Editor BuildPipeline via Unity CLI",
+    "version": "1.0.0-beta.10"
   },
   "outcome": "success",
   "exitCode": 0,
@@ -20,27 +20,27 @@
   },
   "source": {
     "vcs": "git",
-    "revision": "8d12bbd1dfd1018b9a0e15fa72f51cf15855a292",
+    "revision": "775068f6ccbd7095c9b701813e082b51e60b6ba9",
     "dirty": false
   },
   "artifact": {
-    "preparedAt": "2026-11-25T04:04:35.341062+00:00",
+    "preparedAt": "2026-11-27T22:38:50.589564+00:00",
     "playerFiles": {
-      "Build/8d12bbd/WebGL.loader.js": {
+      "Build/775068f/WebGL.loader.js": {
         "bytes": 26982,
-        "sha256": "d29e17db6c37fd1903f961b49ef3cc4ba98e420a00789601e4a047ab3c121f8b"
+        "sha256": "8eaec7dee150dbeda9d314cdc52d1ae4d7187c64484de60adfaff4608ef4e90c"
       },
-      "Build/8d12bbd/WebGL.data": {
-        "bytes": 36344816,
-        "sha256": "b8ababd8d17735d7a5d2e77c934869a44a4d42282155c0a7a9ce5f84325c3207"
+      "Build/775068f/WebGL.data": {
+        "bytes": 36591448,
+        "sha256": "71a08214dc3b1bea26c07f2ce9300b7ebeb0d414501d0cb02f28bd891f1fbb97"
       },
-      "Build/8d12bbd/WebGL.framework.js": {
-        "bytes": 528043,
-        "sha256": "c8a7b8b2a04fb4e79a29742471c7c34fb3e077c347e24a0ba6f9f0e061f95942"
+      "Build/775068f/WebGL.framework.js": {
+        "bytes": 531552,
+        "sha256": "7f7582b8e409f78ca86e6be03a8867403681cd8c33b7df6b96295dc7cfc9e539"
       },
-      "Build/8d12bbd/WebGL.wasm": {
-        "bytes": 78301722,
-        "sha256": "e8c08e3779f08e434a730532be784e9157dbc20e536211add53a0f3beed05a39"
+      "Build/775068f/WebGL.wasm": {
+        "bytes": 78728727,
+        "sha256": "7ead8851b6162e0fb5d66a5491b6dc5f619473b132803ef6183331367044fee2"
       }
     }
   }
