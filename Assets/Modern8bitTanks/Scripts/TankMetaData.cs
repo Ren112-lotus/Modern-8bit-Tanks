@@ -156,6 +156,16 @@ namespace Modern8bitTanks
         public PropMetaEntry rock_arch;
         public PropMetaEntry bush_cluster;
         public PropMetaEntry tree_stump;
+        public PropMetaEntry radio_mast;
+        public PropMetaEntry oil_drum_stack;
+        public PropMetaEntry checkpoint_gate;
+        public PropMetaEntry generator_unit;
+        public PropMetaEntry wrecked_tank;
+        public PropMetaEntry brick_wall;
+        public PropMetaEntry bus_stop;
+        public PropMetaEntry abandoned_car;
+        public PropMetaEntry wooden_shed;
+        public PropMetaEntry solar_array;
 
         public PropMetaEntry GetByKind(string kind)
         {
@@ -200,6 +210,16 @@ namespace Modern8bitTanks
                 "rock_arch" => rock_arch,
                 "bush_cluster" => bush_cluster,
                 "tree_stump" => tree_stump,
+                "radio_mast" => radio_mast,
+                "oil_drum_stack" => oil_drum_stack,
+                "checkpoint_gate" => checkpoint_gate,
+                "generator_unit" => generator_unit,
+                "wrecked_tank" => wrecked_tank,
+                "brick_wall" => brick_wall,
+                "bus_stop" => bus_stop,
+                "abandoned_car" => abandoned_car,
+                "wooden_shed" => wooden_shed,
+                "solar_array" => solar_array,
                 _ => desert_rock
             };
         }
@@ -480,7 +500,17 @@ namespace Modern8bitTanks
                 autumn_tree = new PropMetaEntry { slices = 22, width = 32, length = 32, destructible = true, roundedFootprint = true },
                 rock_arch = new PropMetaEntry { slices = 20, width = 44, length = 24, destructible = true, ricochetHeavy = true, heavyStructure = true },
                 bush_cluster = new PropMetaEntry { slices = 10, width = 26, length = 24, destructible = true, roundedFootprint = true },
-                tree_stump = new PropMetaEntry { slices = 8, width = 18, length = 18, destructible = true, roundedFootprint = true }
+                tree_stump = new PropMetaEntry { slices = 8, width = 18, length = 18, destructible = true, roundedFootprint = true },
+                radio_mast = new PropMetaEntry { slices = 30, width = 20, length = 20, destructible = true },
+                oil_drum_stack = new PropMetaEntry { slices = 12, width = 24, length = 20, destructible = true },
+                checkpoint_gate = new PropMetaEntry { slices = 15, width = 46, length = 14, destructible = true },
+                generator_unit = new PropMetaEntry { slices = 14, width = 32, length = 18, destructible = true, ricochetHeavy = true },
+                wrecked_tank = new PropMetaEntry { slices = 15, width = 38, length = 24, destructible = true, ricochetHeavy = true },
+                brick_wall = new PropMetaEntry { slices = 12, width = 40, length = 10, destructible = true },
+                bus_stop = new PropMetaEntry { slices = 16, width = 32, length = 16, destructible = true },
+                abandoned_car = new PropMetaEntry { slices = 12, width = 34, length = 16, destructible = true },
+                wooden_shed = new PropMetaEntry { slices = 18, width = 30, length = 24, destructible = true },
+                solar_array = new PropMetaEntry { slices = 13, width = 36, length = 22, destructible = true }
             };
         }
     }

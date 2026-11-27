@@ -71,7 +71,10 @@ namespace Modern8bitTanks
             stack.sliceMaterial = mat;
             stack.metallicWear = (kind == "fuel_tank" || kind == "tank_trap" || kind == "watch_tower" ||
                                   kind == "city_factory" || kind == "cargo_container" || kind == "radar_station" ||
-                                  kind == "water_tower" || kind == "wrecked_truck" || kind == "steel_silo" || kind == "guard_booth")
+                                  kind == "water_tower" || kind == "wrecked_truck" || kind == "steel_silo" || kind == "guard_booth" ||
+                                  kind == "radio_mast" || kind == "oil_drum_stack" || kind == "checkpoint_gate" ||
+                                  kind == "generator_unit" || kind == "wrecked_tank" || kind == "bus_stop" ||
+                                  kind == "abandoned_car" || kind == "solar_array")
                 ? 0.55f
                 : 0.08f;
             CaptureSpawnAndReset();
@@ -316,10 +319,11 @@ namespace Modern8bitTanks
 
             bool explosiveCollapse = (kind == "supply_crate" && isCannon && ratio < 0.72f)
                                      || (kind == "fuel_tank" && isCannon && ratio < 0.80f)
-                                     || (kind == "ammo_depot" && isCannon && ratio < 0.76f);
+                                     || (kind == "ammo_depot" && isCannon && ratio < 0.76f)
+                                     || (kind == "oil_drum_stack" && isCannon && ratio < 0.78f);
             bool treeOrTowerSnap = (kind == "palm_tree" || kind == "desert_scrub" || kind == "dead_tree" || kind == "autumn_tree" ||
                                     kind == "bush_cluster" || kind == "watch_tower" || kind == "radar_station" ||
-                                    kind == "water_tower" || kind == "guard_booth") && isCannon && ratio < 0.62f;
+                                    kind == "water_tower" || kind == "guard_booth" || kind == "radio_mast" || kind == "bus_stop") && isCannon && ratio < 0.62f;
             float collapseThresh = isHeavy ? 0.16f : 0.30f;
 
             if (ratio < collapseThresh || explosiveCollapse || treeOrTowerSnap)

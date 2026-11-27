@@ -308,5 +308,85 @@
     "ricochetHeavy": false,
     "heavyStructure": false,
     "roundedFootprint": true
+  },
+  "radio_mast": {
+    "slices": 30,
+    "width": 20,
+    "length": 20,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "oil_drum_stack": {
+    "slices": 12,
+    "width": 24,
+    "length": 20,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "checkpoint_gate": {
+    "slices": 15,
+    "width": 46,
+    "length": 14,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "generator_unit": {
+    "slices": 14,
+    "width": 32,
+    "length": 18,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": false
+  },
+  "wrecked_tank": {
+    "slices": 15,
+    "width": 38,
+    "length": 24,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": false
+  },
+  "brick_wall": {
+    "slices": 12,
+    "width": 40,
+    "length": 10,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "bus_stop": {
+    "slices": 16,
+    "width": 32,
+    "length": 16,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "abandoned_car": {
+    "slices": 12,
+    "width": 34,
+    "length": 16,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "wooden_shed": {
+    "slices": 18,
+    "width": 30,
+    "length": 24,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "solar_array": {
+    "slices": 13,
+    "width": 36,
+    "length": 22,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
   }
 }
