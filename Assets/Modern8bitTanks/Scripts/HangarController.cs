@@ -77,11 +77,9 @@ namespace Modern8bitTanks
         [SerializeField] private Material _stackFlashMat;
         [SerializeField] private Material _groundHd2dMat;
 
-        private VehicleDef[] _allVehicles = Array.Empty<VehicleDef>();
-        private readonly Dictionary<string, VehicleDef> _vehicleMap = new();
+        private VehicleCatalogIndex _vehicleCatalog = VehicleCatalogIndex.Empty;
+        private readonly VehicleSliceSheets _vehicleSheets = new();
         private float _maxViewHeightPixels;
-        private readonly Dictionary<string, Texture2D> _hullTexCache = new();
-        private readonly Dictionary<string, Texture2D> _turretTexCache = new();
 
         private string _treeNation = "USA";
         private bool _treeOpen = false;
@@ -290,18 +288,15 @@ namespace Modern8bitTanks
             ForceFontPointFilter(_titleFont);
             Font.textureRebuilt += OnFontTextureRebuilt;
 
-            VehicleCatalog cat = MetaLoader.LoadVehicleCatalog();
-            _allVehicles = cat != null && cat.vehicles != null ? cat.vehicles : Array.Empty<VehicleDef>();
-            _vehicleMap.Clear();
+            _vehicleCatalog = VehicleCatalogIndex.Load();
             _maxViewHeightPixels = 1f;
-            foreach (var v in _allVehicles)
+            foreach (var v in _vehicleCatalog.Vehicles)
             {
                 if (v == null || string.IsNullOrEmpty(v.id)) continue;
-                _vehicleMap[v.id] = v;
                 _maxViewHeightPixels = Mathf.Max(_maxViewHeightPixels, v.EffectiveCameraHeightPixels);
             }
-            if (!_vehicleMap.ContainsKey(_sessionState.SelectedPlayerVehicleId) && _allVehicles.Length > 0)
-                _sessionState.SelectedPlayerVehicleId = _allVehicles[0].id;
+            if (_vehicleCatalog.Find(_sessionState.SelectedPlayerVehicleId) == null && _vehicleCatalog.Vehicles.Length > 0)
+                _sessionState.SelectedPlayerVehicleId = _vehicleCatalog.Vehicles[0].id;
 
             _previewSfxClip = Resources.Load<AudioClip>("SFX/reload_clank");
         }
@@ -367,12 +362,7 @@ namespace Modern8bitTanks
             showcaseTank.factionTeam = "ally";
         }
 
-        private VehicleDef GetSelectedVehicle()
-        {
-            if (_vehicleMap.TryGetValue(_sessionState.SelectedPlayerVehicleId, out var def))
-                return def;
-            return _allVehicles.Length > 0 ? _allVehicles[0] : null;
-        }
+        private VehicleDef GetSelectedVehicle() => _vehicleCatalog.FindOrFirst(_sessionState.SelectedPlayerVehicleId);
 
         private void ApplySelectedTankToTurntable()
         {
@@ -380,7 +370,8 @@ namespace Modern8bitTanks
             if (def == null || showcaseTank == null) return;
 
             Vector2 center = new Vector2(WorldW * 0.5f, WorldH * 0.5f + 0.15f);
-            if (!showcaseTank.TrySpawnAsVehicle(def, LoadCachedHull(def.id), LoadCachedTurret(def.id),
+            var (hullSheet, turretSheet) = _vehicleSheets.Get(def.id);
+            if (!showcaseTank.TrySpawnAsVehicle(def, hullSheet, turretSheet,
                 center, 35f + _manualAngleOffset, _stackFlashMat))
                 return;
 
@@ -393,7 +384,7 @@ namespace Modern8bitTanks
 
         private void SelectVehicle(string id, bool closeTreeIfSame = false)
         {
-            if (!_vehicleMap.ContainsKey(id)) return;
+            if (_vehicleCatalog.Find(id) == null) return;
             bool wasSame = _sessionState.SelectedPlayerVehicleId == id;
             _sessionState.SelectedPlayerVehicleId = id;
             ApplySelectedTankToTurntable();
@@ -413,7 +404,7 @@ namespace Modern8bitTanks
 
             // Pick a flagship modern or mid-tier tank of that nation (preferring highest tier non-special MBT)
             VehicleDef pick = null;
-            foreach (var v in _allVehicles)
+            foreach (var v in _vehicleCatalog.Vehicles)
             {
                 if (v == null || v.nation != nextNation) continue;
                 if (pick == null) pick = v;
@@ -427,7 +418,7 @@ namespace Modern8bitTanks
             VehicleDef cur = GetSelectedVehicle();
             if (cur == null) return;
             var list = new List<VehicleDef>();
-            foreach (var v in _allVehicles)
+            foreach (var v in _vehicleCatalog.Vehicles)
                 if (v != null && v.nation == cur.nation) list.Add(v);
             if (list.Count == 0) return;
 
@@ -693,7 +684,7 @@ namespace Modern8bitTanks
             foreach (var slot in _treeNodes.Values)
             {
                 if (slot == null || slot.hitGo == null) continue;
-                bool activeItem = _vehicleMap[slot.vehicleId].nation == _treeNation;
+                bool activeItem = _vehicleCatalog.Find(slot.vehicleId).nation == _treeNation;
                 if (!activeItem)
                 {
                     slot.hitGo.SetActive(false);
@@ -825,7 +816,7 @@ namespace Modern8bitTanks
 
                 if (_garageIndexBadge != null)
                 {
-                    var nationList = Array.FindAll(_allVehicles, v => v != null && v.nation == sel.nation);
+                    var nationList = Array.FindAll(_vehicleCatalog.Vehicles, v => v != null && v.nation == sel.nation);
                     int idx = Array.FindIndex(nationList, v => v.id == sel.id);
                     _garageIndexBadge.text = UiText.Format("UNIT {0:00}/{1:00}", idx >= 0 ? idx + 1 : 1, nationList.Length);
                 }
@@ -891,7 +882,7 @@ namespace Modern8bitTanks
 
                 if (_garageNationBtnLabel != null)
                 {
-                    int nCount = Array.FindAll(_allVehicles, v => v != null && v.nation == sel.nation).Length;
+                    int nCount = Array.FindAll(_vehicleCatalog.Vehicles, v => v != null && v.nation == sel.nation).Length;
                     _garageNationBtnLabel.text = $"{sel.nation} ({nCount})";
                     _garageNationBtnLabel.color = nationAccent;
                 }
@@ -911,7 +902,7 @@ namespace Modern8bitTanks
 
             foreach (var (id, slot) in _treeNodes)
             {
-                VehicleDef vehicle = _vehicleMap[id];
+                VehicleDef vehicle = _vehicleCatalog.Find(id);
                 bool visible = vehicle.nation == _treeNation;
                 slot.visualGo.SetActive(visible);
                 if (!visible) continue;
@@ -930,7 +921,7 @@ namespace Modern8bitTanks
 
         private string GetNationTabLabel(string nation, string title)
         {
-            int count = Array.FindAll(_allVehicles, vehicle => vehicle != null && vehicle.nation == nation).Length;
+            int count = Array.FindAll(_vehicleCatalog.Vehicles, vehicle => vehicle != null && vehicle.nation == nation).Length;
             return $"{title} ({count})";
         }
 

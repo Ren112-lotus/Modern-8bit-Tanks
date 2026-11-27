@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
@@ -95,7 +94,7 @@ namespace Modern8bitTanks
         private string _modeKey = "1v1 DUEL";
         private string _tipKey = "LOADING TIP 1";
 
-        private static Dictionary<string, VehicleDef> _vehicleCache;
+        private static VehicleCatalogIndex _vehicleCatalog;
         private static readonly string[] CheckKeys = { "LOADING CHECK ARMOR", "LOADING CHECK AMMO", "LOADING CHECK FCS" };
         private static readonly float[] CheckThresholds = { 0.30f, 0.65f, 0.96f };
 
@@ -461,8 +460,7 @@ namespace Modern8bitTanks
                 return;
             }
 
-            Texture2D hullSheet = Resources.Load<Texture2D>($"Vehicles/{def.id}_hull_slices");
-            Texture2D turretSheet = Resources.Load<Texture2D>($"Vehicles/{def.id}_turret_slices");
+            var (hullSheet, turretSheet) = VehicleSliceSheets.Load(def.id);
 
             _hullPreviewTex = CompositeTopDownSlices(hullSheet, def.hullSlices);
             _turretPreviewTex = CompositeTopDownSlices(turretSheet, def.turretSlices);
@@ -763,20 +761,8 @@ namespace Modern8bitTanks
         private static VehicleDef ResolveVehicleDef(string vehicleId)
         {
             if (string.IsNullOrEmpty(vehicleId)) return null;
-            if (_vehicleCache == null)
-            {
-                _vehicleCache = new Dictionary<string, VehicleDef>(StringComparer.Ordinal);
-                VehicleCatalog catalog = MetaLoader.LoadVehicleCatalog();
-                if (catalog != null && catalog.vehicles != null)
-                {
-                    foreach (var v in catalog.vehicles)
-                    {
-                        if (v != null && !string.IsNullOrEmpty(v.id))
-                            _vehicleCache[v.id] = v;
-                    }
-                }
-            }
-            return _vehicleCache.TryGetValue(vehicleId, out VehicleDef def) ? def : null;
+            _vehicleCatalog ??= VehicleCatalogIndex.Load();
+            return _vehicleCatalog.Find(vehicleId);
         }
 
         private void ReleasePreviewTextures()

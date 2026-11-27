@@ -207,7 +207,8 @@ namespace Modern8bitTanks
         private string FormatRosterVehicleTag(string vehicleId)
         {
             if (string.IsNullOrEmpty(vehicleId)) return "";
-            if (_vehicleMap.TryGetValue(vehicleId, out var def) && !string.IsNullOrEmpty(def.name))
+            var def = _vehicleCatalog.Find(vehicleId);
+            if (def != null && !string.IsNullOrEmpty(def.name))
                 return TruncateLabel(FormatTreeShortName(def.name, 7), 7);
             return TruncateLabel(vehicleId.ToUpperInvariant(), 7);
         }

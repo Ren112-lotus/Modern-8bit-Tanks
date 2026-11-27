@@ -50,7 +50,7 @@ namespace Modern8bitTanks
             treeViewTankAction.Bind(() => SetTechTreeOpen(false));
             treeDeployAction.Bind(() => SetDeployModalOpen(true, fromTree: true));
 
-            foreach (var vehicle in _allVehicles)
+            foreach (var vehicle in _vehicleCatalog.Vehicles)
             {
                 int x = PadX + TreeColumn(vehicle) * ColStep;
                 Color border = TreeLineColor(vehicle);
@@ -59,7 +59,7 @@ namespace Modern8bitTanks
                 _treeNodes.Add(vehicle.id, slot);
             }
 
-            foreach (var vehicle in _allVehicles)
+            foreach (var vehicle in _vehicleCatalog.Vehicles)
             {
                 VehicleDef parent = TreeParent(vehicle);
                 if (parent != null)
@@ -109,12 +109,14 @@ namespace Modern8bitTanks
         private VehicleDef TreeParent(VehicleDef vehicle)
         {
             if (!string.IsNullOrEmpty(vehicle.treeFrom))
-                return _vehicleMap.TryGetValue(vehicle.treeFrom, out var linked) && linked.nation == vehicle.nation
-                    ? linked : null;
+            {
+                var linked = _vehicleCatalog.Find(vehicle.treeFrom);
+                return linked?.nation == vehicle.nation ? linked : null;
+            }
 
             if (vehicle.historyColumn > 0) return null;
             VehicleDef previous = null;
-            foreach (var other in _allVehicles)
+            foreach (var other in _vehicleCatalog.Vehicles)
             {
                 if (other.nation != vehicle.nation || other.historyColumn > 0 || other.tier >= vehicle.tier)
                     continue;
@@ -123,7 +125,7 @@ namespace Modern8bitTanks
             }
 
             if (previous != null || vehicle.tab == "T1_5") return previous;
-            foreach (var other in _allVehicles)
+            foreach (var other in _vehicleCatalog.Vehicles)
                 if (other.nation == vehicle.nation && other.tab == "T1_5" && other.tier < vehicle.tier &&
                     (previous == null || previous.tier < other.tier))
                     previous = other;

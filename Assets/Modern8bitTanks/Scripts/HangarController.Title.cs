@@ -44,32 +44,13 @@ namespace Modern8bitTanks
             {
                 if (tank == null) continue;
                 string id = tank.tankType;
-                var vehicle = _vehicleMap.TryGetValue(id, out var found) ? found : GetSelectedVehicle();
+                var vehicle = _vehicleCatalog.Find(id) ?? GetSelectedVehicle();
                 if (vehicle == null) continue;
-                if (tank.TrySpawnAsVehicle(vehicle, LoadCachedHull(vehicle.id), LoadCachedTurret(vehicle.id),
+                var (hullSheet, turretSheet) = _vehicleSheets.Get(vehicle.id);
+                if (tank.TrySpawnAsVehicle(vehicle, hullSheet, turretSheet,
                     tank.Position2D, 90f, _stackFlashMat))
                     tank.SyncVisuals(squash, spacingPx);
             }
-        }
-
-        private Texture2D LoadCachedHull(string id)
-        {
-            if (!_hullTexCache.TryGetValue(id, out Texture2D tex))
-            {
-                tex = Resources.Load<Texture2D>($"Vehicles/{id}_hull_slices");
-                _hullTexCache[id] = tex;
-            }
-            return tex;
-        }
-
-        private Texture2D LoadCachedTurret(string id)
-        {
-            if (!_turretTexCache.TryGetValue(id, out Texture2D tex))
-            {
-                tex = Resources.Load<Texture2D>($"Vehicles/{id}_turret_slices");
-                _turretTexCache[id] = tex;
-            }
-            return tex;
         }
 
         // ============================================================

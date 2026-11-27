@@ -478,16 +478,16 @@ namespace Modern8bitTanks
         // =====================================================================
         private VehicleDef PickRangeTarget(VehicleDef playerDef, string preferredRole, int tierOffset)
         {
-            if (_allVehicles == null || _allVehicles.Length == 0) return SelectedEnemyVehicle;
+            if (AllVehicles.Length == 0) return SelectedEnemyVehicle;
             string rivalNation = (playerDef != null && playerDef.nation == "USSR") ? "USA" : "USSR";
             int desiredTier = Mathf.Clamp((playerDef != null ? playerDef.tier : 11) + tierOffset,
                 VehicleDef.LowestTier, VehicleDef.LastRegularTier);
 
             VehicleDef best = null;
             int bestScore = int.MaxValue;
-            for (int i = 0; i < _allVehicles.Length; i++)
+            for (int i = 0; i < AllVehicles.Length; i++)
             {
-                var v = _allVehicles[i];
+                var v = AllVehicles[i];
                 if (v == null || v.nation != rivalNation) continue;
                 int score = Mathf.Abs(v.tier - desiredTier) * 10 + (v.role == preferredRole ? 0 : 6);
                 if (score < bestScore)

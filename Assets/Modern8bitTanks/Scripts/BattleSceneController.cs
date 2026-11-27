@@ -81,11 +81,8 @@ namespace Modern8bitTanks
         private Color32[] _groundPixels;
         private bool _groundDirty;
 
-        // 63-Vehicle Tech Tree Catalog & Lazy-Cached Slice Sheets
-        private VehicleDef[] _allVehicles = System.Array.Empty<VehicleDef>();
-        private readonly Dictionary<string, VehicleDef> _vehicleMap = new();
-        private readonly Dictionary<string, Texture2D> _hullTexCache = new();
-        private readonly Dictionary<string, Texture2D> _turretTexCache = new();
+        private VehicleCatalogIndex _vehicleCatalog = VehicleCatalogIndex.Empty;
+        private readonly VehicleSliceSheets _vehicleSheets = new();
         [SerializeField] private Material _stackFlashMat;
         private bool _enemyManuallySelected;
 
@@ -152,7 +149,7 @@ namespace Modern8bitTanks
         [SerializeField] private LineRenderer _aimLine;
         [SerializeField] private SpriteRenderer _reticleSr;
 
-        public VehicleDef[] AllVehicles => _allVehicles;
+        public VehicleDef[] AllVehicles => _vehicleCatalog.Vehicles;
         public VehicleDef SelectedPlayerVehicle => GetVehicleDef(selectedPlayerVehicleId);
         public VehicleDef SelectedEnemyVehicle => GetVehicleDef(selectedEnemyVehicleId);
 
@@ -245,32 +242,21 @@ namespace Modern8bitTanks
 
         private void LoadVehicleCatalog()
         {
-            VehicleCatalog cat = MetaLoader.LoadVehicleCatalog();
-            _allVehicles = cat != null && cat.vehicles != null ? cat.vehicles : System.Array.Empty<VehicleDef>();
-            _vehicleMap.Clear();
-            foreach (var v in _allVehicles)
-            {
-                if (v != null && !string.IsNullOrEmpty(v.id))
-                    _vehicleMap[v.id] = v;
-            }
+            _vehicleCatalog = VehicleCatalogIndex.Load();
+            if (AllVehicles.Length == 0) return;
 
-            if (!_vehicleMap.ContainsKey(selectedPlayerVehicleId) && _allVehicles.Length > 0)
-                selectedPlayerVehicleId = _allVehicles[0].id;
-            if (!_vehicleMap.ContainsKey(selectedEnemyVehicleId) && _allVehicles.Length > 0)
-                selectedEnemyVehicleId = _allVehicles[_allVehicles.Length - 1].id;
+            if (_vehicleCatalog.Find(selectedPlayerVehicleId) == null)
+                selectedPlayerVehicleId = AllVehicles[0].id;
+            if (_vehicleCatalog.Find(selectedEnemyVehicleId) == null)
+                selectedEnemyVehicleId = AllVehicles[^1].id;
         }
 
-        public VehicleDef GetVehicleDef(string id)
-        {
-            if (!string.IsNullOrEmpty(id) && _vehicleMap.TryGetValue(id, out var def))
-                return def;
-            return _allVehicles.Length > 0 ? _allVehicles[0] : null;
-        }
+        public VehicleDef GetVehicleDef(string id) => _vehicleCatalog.FindOrFirst(id);
 
         public List<VehicleDef> GetVehiclesFor(string nation, string tab)
         {
             var list = new List<VehicleDef>();
-            foreach (var v in _allVehicles)
+            foreach (var v in AllVehicles)
             {
                 if (v != null && v.nation == nation && v.tab == tab)
                     list.Add(v);
@@ -280,56 +266,15 @@ namespace Modern8bitTanks
 
         public void SelectPlayerVehicle(string id)
         {
-            if (!_vehicleMap.ContainsKey(id)) return;
+            if (_vehicleCatalog.Find(id) == null) return;
             selectedPlayerVehicleId = id;
             _sessionState.SelectedPlayerVehicleId = id;
         }
 
         public void SelectEnemyVehicle(string id)
         {
-            if (!_vehicleMap.ContainsKey(id)) return;
+            if (_vehicleCatalog.Find(id) == null) return;
             selectedEnemyVehicleId = id;
-        }
-
-        private VehicleDef PickOpposingRivalFor(VehicleDef playerDef)
-        {
-            if (playerDef == null || _allVehicles.Length == 0) return null;
-            string rivalNation = playerDef.nation switch
-            {
-                "USA" => "USSR",
-                "GER" => "USSR",
-                _ => "USA"
-            };
-
-            VehicleDef best = null;
-            int bestScore = int.MaxValue;
-            foreach (var v in _allVehicles)
-            {
-                if (v == null || v.nation != rivalNation) continue;
-                int tierDiff = Mathf.Abs(v.tier - playerDef.tier) * 10;
-                int roleDiff = (v.role == playerDef.role) ? 0 : 3;
-                int score = tierDiff + roleDiff;
-                if (score < bestScore)
-                {
-                    bestScore = score;
-                    best = v;
-                }
-            }
-            return best ?? _allVehicles[0];
-        }
-
-        private VehicleDef PickAllyWingmanFor(VehicleDef playerDef)
-        {
-            if (playerDef == null || _allVehicles.Length == 0) return playerDef;
-            VehicleDef best = null;
-            int bestScore = int.MaxValue;
-            foreach (var v in _allVehicles)
-            {
-                if (v == null || v.nation != playerDef.nation || v.id == playerDef.id) continue;
-                int score = Mathf.Abs(v.tier - playerDef.tier) * 10 + (v.role != playerDef.role ? 0 : 4);
-                if (score < bestScore) { bestScore = score; best = v; }
-            }
-            return best ?? playerDef;
         }
 
         private bool TryDeployTank(TankEntity tank, VehicleDef def, string faction, Vector2 position, float angleDeg,
@@ -342,16 +287,7 @@ namespace Modern8bitTanks
                 return false;
             }
 
-            if (!_hullTexCache.TryGetValue(def.id, out Texture2D hullTex))
-            {
-                hullTex = Resources.Load<Texture2D>($"Vehicles/{def.id}_hull_slices");
-                _hullTexCache[def.id] = hullTex;
-            }
-            if (!_turretTexCache.TryGetValue(def.id, out Texture2D turretTex))
-            {
-                turretTex = Resources.Load<Texture2D>($"Vehicles/{def.id}_turret_slices");
-                _turretTexCache[def.id] = turretTex;
-            }
+            var (hullTex, turretTex) = _vehicleSheets.Get(def.id);
             if (!tank.TrySpawnAsVehicle(def, hullTex, turretTex, position, angleDeg, _stackFlashMat))
             {
                 tank.gameObject.SetActive(false);
@@ -587,7 +523,7 @@ namespace Modern8bitTanks
 
             // Pick a fresh RANDOM same-Tier performance-matched rival every battle!
             VehicleDef playerDef = SelectedPlayerVehicle;
-            VehicleDef randRival = _multiplayer.IsInBattle ? null : BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: selectedEnemyVehicleId);
+            VehicleDef randRival = _multiplayer.IsInBattle ? null : BattleSessionState.PickRandomSameTierRival(AllVehicles, playerDef, excludeId: selectedEnemyVehicleId);
             if (randRival != null)
                 selectedEnemyVehicleId = randRival.id;
 
@@ -721,8 +657,8 @@ namespace Modern8bitTanks
 
             if (battleMode == BattleMode.Squad2v2)
             {
-                VehicleDef allyWing = BattleSessionState.PickRandomSameTierAlly(_allVehicles, playerDef);
-                VehicleDef enemyWing = BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: enemyDef != null ? enemyDef.id : null);
+                VehicleDef allyWing = BattleSessionState.PickRandomSameTierAlly(AllVehicles, playerDef);
+                VehicleDef enemyWing = BattleSessionState.PickRandomSameTierRival(AllVehicles, playerDef, excludeId: enemyDef != null ? enemyDef.id : null);
                 SpawnTankFromPrefab(allyWing, "ally", BattlefieldSpawn(true, 3), 90f, isPlayerTank: false);
                 if (budget != null) await budget.YieldIfSpentAsync();
                 SpawnTankFromPrefab(enemyWing, "enemy", BattlefieldSpawn(false, 3), -90f, isPlayerTank: false);
@@ -732,12 +668,12 @@ namespace Modern8bitTanks
                 string prevEnemyId = enemyDef != null ? enemyDef.id : null;
                 for (int k = 0; k < 4; k++)
                 {
-                    VehicleDef allyMate = BattleSessionState.PickRandomSameTierAlly(_allVehicles, playerDef);
+                    VehicleDef allyMate = BattleSessionState.PickRandomSameTierAlly(AllVehicles, playerDef);
                     int deploymentSlot = k + 1;
                     SpawnTankFromPrefab(allyMate, "ally", BattlefieldSpawn(true, deploymentSlot), 90f, isPlayerTank: false);
                     if (budget != null) await budget.YieldIfSpentAsync();
 
-                    VehicleDef foe = BattleSessionState.PickRandomSameTierRival(_allVehicles, playerDef, excludeId: prevEnemyId);
+                    VehicleDef foe = BattleSessionState.PickRandomSameTierRival(AllVehicles, playerDef, excludeId: prevEnemyId);
                     if (foe != null) prevEnemyId = foe.id;
                     SpawnTankFromPrefab(foe, "enemy", BattlefieldSpawn(false, deploymentSlot), -90f, isPlayerTank: false);
                     if (budget != null) await budget.YieldIfSpentAsync();
@@ -762,14 +698,14 @@ namespace Modern8bitTanks
         private VehicleDef PickSurvivalWaveEnemy(int wave, int slotIndex)
         {
             VehicleDef baseEnemy = SelectedEnemyVehicle;
-            if (baseEnemy == null || _allVehicles.Length == 0) return baseEnemy;
+            if (baseEnemy == null || AllVehicles.Length == 0) return baseEnemy;
             string nation = baseEnemy.nation;
 
             // Wave 1 = chosen rival; Wave 2+ escalates tiers across the rival nation, bringing Special Bosses on Wave 4+!
             int targetTier = Mathf.Clamp(baseEnemy.tier + (wave - 2) + (slotIndex == 0 && wave >= 4 ? 2 : 0),
                 VehicleDef.LowestTier, VehicleDef.SpecialTier);
             var candidates = new List<VehicleDef>();
-            foreach (var v in _allVehicles)
+            foreach (var v in AllVehicles)
             {
                 if (v != null && v.nation == nation && Mathf.Abs(v.tier - targetTier) <= 1)
                     candidates.Add(v);
