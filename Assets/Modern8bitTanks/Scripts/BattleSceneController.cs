@@ -1162,6 +1162,9 @@ namespace Modern8bitTanks
                 if (tank == null || !tank.gameObject.activeInHierarchy) continue;
 
                 bool visible = _visibility.IsVisible(tank);
+                bool outline = ShowOnlineTankMarkers && visible && tank.alive && IsTeammate(tank);
+                tank.hullStack.SetTeamOutline(outline);
+                tank.turretStack.SetTeamOutline(outline);
                 tank.hullStack.SetBattleVisibility(visible);
                 tank.turretStack.SetBattleVisibility(visible);
                 tank.SyncVisuals(squash, spacingPx,

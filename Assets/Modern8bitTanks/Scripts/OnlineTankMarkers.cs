@@ -6,12 +6,15 @@ namespace Modern8bitTanks
 {
     public sealed class OnlineTankMarkers : MaskableGraphic
     {
+        [SerializeField] private Text nameplateTemplate;
         private static readonly Color32 Outline = new(22, 26, 31, 255);
         private readonly List<(Vector2 Position, Color32 Color)> _markers = new(MultiplayerSessionConnection.MaxPlayers - 1);
+        private readonly Text[] _nameplates = new Text[MultiplayerSessionConnection.PlayersPerTeam - 1];
 
         internal void Render(Camera camera, List<TankEntity> tanks, BattleSceneController battle)
         {
             _markers.Clear();
+            int nameCount = 0;
             Rect area = rectTransform.rect;
             Vector2 up = camera.transform.up;
             foreach (var tank in tanks)
@@ -33,10 +36,28 @@ namespace Modern8bitTanks
                 if (point.x < area.xMin + 5f || point.x > area.xMax - 5f ||
                     point.y < area.yMin || point.y > area.yMax - 6f) continue;
 
-                bool friendly = (tank.factionTeam == "ally") == battle.IsLocalAlpha;
+                bool friendly = battle.IsTeammate(tank);
                 _markers.Add((point, OnlineTeamColors.ForRelation(friendly)));
+                if (friendly && !string.IsNullOrEmpty(tank.OnlinePlayerName) && nameCount < _nameplates.Length)
+                    PositionNameplate(nameCount++, tank.OnlinePlayerName, point, area);
             }
+
+            for (int i = nameCount; i < _nameplates.Length; i++)
+                if (_nameplates[i] != null && _nameplates[i].gameObject.activeSelf) _nameplates[i].gameObject.SetActive(false);
             SetVerticesDirty();
+        }
+
+        private void PositionNameplate(int index, string playerName, Vector2 marker, Rect area)
+        {
+            Text label = _nameplates[index];
+            if (label == null) _nameplates[index] = label = Instantiate(nameplateTemplate, transform, false);
+            label.text = playerName;
+            RectTransform labelRect = label.rectTransform;
+            float halfWidth = labelRect.rect.width * 0.5f;
+            labelRect.anchoredPosition = new Vector2(
+                Mathf.Clamp(marker.x, area.xMin + halfWidth, area.xMax - halfWidth),
+                Mathf.Min(marker.y + 7f, area.yMax - labelRect.rect.height));
+            if (!label.gameObject.activeSelf) label.gameObject.SetActive(true);
         }
 
         protected override void OnPopulateMesh(VertexHelper mesh)

@@ -46,6 +46,8 @@ namespace Modern8bitTanks
         private readonly List<SpriteRenderer> _renderers = new();
         private readonly List<Transform> _holders = new();
         private readonly List<SpriteRenderer> _fillRenderers = new();
+        private readonly List<SpriteRenderer> _outlineRenderers = new();
+        private bool _teamOutlineEnabled;
         private readonly List<Transform> _fillHolders = new();
         private SpriteRenderer _shadowSr;
         private Transform _shadowHolder;
@@ -74,6 +76,13 @@ namespace Modern8bitTanks
             _visibleInBattle = visible;
             if (_visualRoot != null && _visualRoot.gameObject.activeSelf != visible)
                 _visualRoot.gameObject.SetActive(visible);
+        }
+
+        internal void SetTeamOutline(bool enabled)
+        {
+            if (_teamOutlineEnabled == enabled) return;
+            _teamOutlineEnabled = enabled;
+            foreach (var outline in _outlineRenderers) outline.enabled = enabled;
         }
 
         internal bool SetOcclusionFocus(Vector4 focus)
@@ -229,6 +238,15 @@ namespace Modern8bitTanks
                 if (sliceMaterial != null) sr.sharedMaterial = sliceMaterial;
                 _renderers.Add(sr);
                 _holders.Add(sr.transform.parent);
+
+                var outline = layer.Outline;
+                if (outline != null)
+                {
+                    outline.sprite = spr;
+                    outline.color = OnlineTeamColors.Friendly;
+                    outline.enabled = _teamOutlineEnabled;
+                    _outlineRenderers.Add(outline);
+                }
 
                 var fill = layer.Fill;
                 fill.sprite = spr;
@@ -544,6 +562,7 @@ namespace Modern8bitTanks
             _renderers.Clear();
             _fillHolders.Clear();
             _fillRenderers.Clear();
+            _outlineRenderers.Clear();
             _sliceTextures.Clear();
         }
 

@@ -67,6 +67,7 @@ namespace Modern8bitTanks
 
         internal bool IsLocalAlpha => !_multiplayer.IsInBattle || MultiplayerSessionConnection.IsAlphaSlot(_multiplayer.LocalSlot);
         internal bool ShowOnlineTankMarkers => _multiplayer.IsInBattle && _phase == GamePhase.Playing;
+        internal bool IsTeammate(TankEntity tank) => !tank.isPlayer && (tank.factionTeam == "ally") == IsLocalAlpha;
 
         private bool MultiplayerBattleReady()
         {
@@ -111,6 +112,8 @@ namespace Modern8bitTanks
                 if (budget != null) await budget.YieldIfSpentAsync();
                 _networkTanks[slot] = tank;
                 if (tank == null) continue;
+                if (room.TryGetMemberAtSlot(slot, out var member))
+                    tank.OnlinePlayerName = member.DisplayName.IsEmpty ? UiText.Format("PLAYER {0}", slot + 1) : member.DisplayName.ToString();
                 tank.alive = false;
                 tank.gameObject.SetActive(false);
             }

@@ -18,6 +18,7 @@ namespace Modern8bitTanks
         [Header("Tank Configuration (Prefab)")]
         public string tankType = "abrams"; // Legacy prefab tag or VehicleDef.id
         public string factionTeam = "ally"; // "ally" (player side) or "enemy" (hostile side)
+        internal string OnlinePlayerName { get; set; }
         public VehicleDef vehicleDef;
         public TankMetaEntry meta;
         public SpriteStackRenderer hullStack;
