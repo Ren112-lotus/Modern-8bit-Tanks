@@ -191,5 +191,122 @@
     "ricochetHeavy": true,
     "heavyStructure": false,
     "roundedFootprint": true
+  },
+  "ammo_depot": {
+    "slices": 13,
+    "width": 32,
+    "length": 22,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "guard_booth": {
+    "slices": 18,
+    "width": 20,
+    "length": 20,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "water_tower": {
+    "slices": 28,
+    "width": 26,
+    "length": 26,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "concrete_wall": {
+    "slices": 12,
+    "width": 42,
+    "length": 12,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": false
+  },
+  "military_tent": {
+    "slices": 16,
+    "width": 40,
+    "length": 26,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "wrecked_truck": {
+    "slices": 14,
+    "width": 38,
+    "length": 18,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": false
+  },
+  "steel_silo": {
+    "slices": 26,
+    "width": 32,
+    "length": 32,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": true,
+    "roundedFootprint": true
+  },
+  "street_kiosk": {
+    "slices": 18,
+    "width": 26,
+    "length": 22,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "dead_tree": {
+    "slices": 20,
+    "width": 24,
+    "length": 24,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "fallen_log": {
+    "slices": 9,
+    "width": 36,
+    "length": 14,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "autumn_tree": {
+    "slices": 22,
+    "width": 32,
+    "length": 32,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "rock_arch": {
+    "slices": 20,
+    "width": 44,
+    "length": 24,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": true
+  },
+  "bush_cluster": {
+    "slices": 10,
+    "width": 26,
+    "length": 24,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "tree_stump": {
+    "slices": 8,
+    "width": 18,
+    "length": 18,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
   }
 }

@@ -70,7 +70,8 @@ namespace Modern8bitTanks
             stack.pixelsPerUnit = ppu;
             stack.sliceMaterial = mat;
             stack.metallicWear = (kind == "fuel_tank" || kind == "tank_trap" || kind == "watch_tower" ||
-                                  kind == "city_factory" || kind == "cargo_container" || kind == "radar_station")
+                                  kind == "city_factory" || kind == "cargo_container" || kind == "radar_station" ||
+                                  kind == "water_tower" || kind == "wrecked_truck" || kind == "steel_silo" || kind == "guard_booth")
                 ? 0.55f
                 : 0.08f;
             CaptureSpawnAndReset();
@@ -178,8 +179,9 @@ namespace Modern8bitTanks
             float s = Mathf.Sin(rad);
             Vector2 local = new Vector2(delta.x * c - delta.y * s, delta.x * s + delta.y * c);
 
-            float fillRatio = meta.fixedCover ? 0.50f : (kind == "palm_tree" || kind == "desert_scrub") ? 0.22f
-                : (kind == "pine_cluster" || kind == "broadleaf_grove" || kind == "desert_mesa" || kind == "forest_boulder" || kind == "moss_rocks") ? 0.38f
+            float fillRatio = meta.fixedCover ? 0.50f
+                : (kind == "palm_tree" || kind == "desert_scrub" || kind == "dead_tree" || kind == "autumn_tree" || kind == "bush_cluster" || kind == "tree_stump") ? 0.22f
+                : (kind == "pine_cluster" || kind == "broadleaf_grove" || kind == "desert_mesa" || kind == "forest_boulder" || kind == "moss_rocks" || kind == "rock_arch" || kind == "steel_silo") ? 0.38f
                 : 0.44f;
             float halfW = Mathf.Max(0.30f, (meta.width * fillRatio) / pixelsPerUnit);
             float halfL = Mathf.Max(0.30f, (meta.length * fillRatio) / pixelsPerUnit);
@@ -313,8 +315,11 @@ namespace Modern8bitTanks
                 return false;
 
             bool explosiveCollapse = (kind == "supply_crate" && isCannon && ratio < 0.72f)
-                                     || (kind == "fuel_tank" && isCannon && ratio < 0.80f);
-            bool treeOrTowerSnap = (kind == "palm_tree" || kind == "desert_scrub" || kind == "watch_tower" || kind == "radar_station") && isCannon && ratio < 0.62f;
+                                     || (kind == "fuel_tank" && isCannon && ratio < 0.80f)
+                                     || (kind == "ammo_depot" && isCannon && ratio < 0.76f);
+            bool treeOrTowerSnap = (kind == "palm_tree" || kind == "desert_scrub" || kind == "dead_tree" || kind == "autumn_tree" ||
+                                    kind == "bush_cluster" || kind == "watch_tower" || kind == "radar_station" ||
+                                    kind == "water_tower" || kind == "guard_booth") && isCannon && ratio < 0.62f;
             float collapseThresh = isHeavy ? 0.16f : 0.30f;
 
             if (ratio < collapseThresh || explosiveCollapse || treeOrTowerSnap)

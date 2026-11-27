@@ -1,0 +1,139 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1454570091619655277
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2007639737718371295}
+  - component: {fileID: 8253560274694974820}
+  - component: {fileID: 8717138520564656156}
+  m_Layer: 0
+  m_Name: Prop_SteelSilo
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2007639737718371295
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1454570091619655277}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 8109875241163998586}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!210 &8253560274694974820
+SortingGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1454570091619655277}
+  m_Enabled: 1
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_SortAtRoot: 0
+  m_Sort3DAs2D: 0
+--- !u!114 &8717138520564656156
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1454570091619655277}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c49eb10f79157a243a29c6b3a286ee6f, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.DestructibleProp
+  kind: steel_silo
+  meta:
+    slices: 26
+    width: 32
+    length: 32
+    destructible: 1
+    ricochetHeavy: 1
+    heavyStructure: 1
+    fixedCover: 0
+    roundedFootprint: 1
+  stack: {fileID: 1496643630544004695}
+  initialAngleDeg: 0
+  pixelsPerUnit: 16
+  sliceSpacingScale: 1
+  revealOverlappingTank: 0
+  sortingGroup: {fileID: 8253560274694974820}
+  alive: 1
+  isDynamicSpawned: 0
+  approxRadiusUnits: 1.04
+--- !u!1 &8333270752621308632
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8109875241163998586}
+  - component: {fileID: 1496643630544004695}
+  m_Layer: 0
+  m_Name: PropStack
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8109875241163998586
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8333270752621308632}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2007639737718371295}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1496643630544004695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8333270752621308632}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+  sourceSheet: {fileID: 2800000, guid: 7895dea285f34053a51ca325065cb4a4, type: 3}
+  sliceCount: 26
+  pixelsPerUnit: 16
+  squash: 0.8
+  spacingPx: 0.72
+  baseZOffsetSlices: 0
+  baseSortingOrder: 0
+  sliceMaterial: {fileID: 2100000, guid: b53d8785100743345b06df30af2e71d1, type: 2}
+  addGroundShadow: 1
+  angleDeg: 0
+  hitFlash: 0
+  charred: 0
+  metallicWear: 0.65
+  dropProgress: 1
+  dropHeightPx: 44

@@ -643,10 +643,13 @@ namespace Modern8bitTanks
                     continue;
                 }
                 bool isHuge = prop.meta != null && prop.meta.heavyStructure;
-                Color32 pCol = (prop.kind == "supply_crate" || prop.kind == "fuel_tank") ? explosiveCol
-                    : (prop.kind == "palm_tree" || prop.kind == "pine_cluster" || prop.kind == "broadleaf_grove" || prop.kind == "desert_scrub" ? treeCol
-                    : (prop.kind.StartsWith("city_") || prop.kind == "forest_cabin" || prop.kind == "desert_compound" || prop.kind == "cargo_container" || prop.kind == "radar_station" ? bldgCol
-                    : (prop.kind == "desert_bunker" || prop.kind == "desert_rock" || prop.kind == "desert_mesa" || prop.kind == "forest_boulder" || prop.kind == "moss_rocks" ? rockCol : propCol)));
+                Color32 pCol = (prop.kind == "supply_crate" || prop.kind == "fuel_tank" || prop.kind == "ammo_depot") ? explosiveCol
+                    : (prop.kind == "palm_tree" || prop.kind == "pine_cluster" || prop.kind == "broadleaf_grove" || prop.kind == "desert_scrub" ||
+                       prop.kind == "dead_tree" || prop.kind == "autumn_tree" || prop.kind == "bush_cluster" || prop.kind == "fallen_log" || prop.kind == "tree_stump" ? treeCol
+                    : (prop.kind.StartsWith("city_") || prop.kind == "forest_cabin" || prop.kind == "desert_compound" || prop.kind == "cargo_container" || prop.kind == "radar_station" ||
+                       prop.kind == "guard_booth" || prop.kind == "water_tower" || prop.kind == "concrete_wall" || prop.kind == "military_tent" ||
+                       prop.kind == "wrecked_truck" || prop.kind == "steel_silo" || prop.kind == "street_kiosk" ? bldgCol
+                    : (prop.kind == "desert_bunker" || prop.kind == "desert_rock" || prop.kind == "desert_mesa" || prop.kind == "forest_boulder" || prop.kind == "moss_rocks" || prop.kind == "rock_arch" ? rockCol : propCol)));
                 int radius = isHuge ? 1 : (prop.kind == "desert_bunker" || prop.kind == "desert_rock" ? 1 : 0);
                 PlotDot(px, py, radius, pCol);
             }

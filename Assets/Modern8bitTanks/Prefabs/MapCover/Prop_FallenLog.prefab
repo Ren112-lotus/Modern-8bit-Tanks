@@ -1,0 +1,139 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &956145982146585567
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8793389354932077416}
+  - component: {fileID: 3822684646618424126}
+  - component: {fileID: 5262695024566078114}
+  m_Layer: 0
+  m_Name: Prop_FallenLog
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8793389354932077416
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 956145982146585567}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 4181321200070464600}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!210 &3822684646618424126
+SortingGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 956145982146585567}
+  m_Enabled: 1
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_SortAtRoot: 0
+  m_Sort3DAs2D: 0
+--- !u!114 &5262695024566078114
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 956145982146585567}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c49eb10f79157a243a29c6b3a286ee6f, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.DestructibleProp
+  kind: fallen_log
+  meta:
+    slices: 9
+    width: 36
+    length: 14
+    destructible: 1
+    ricochetHeavy: 0
+    heavyStructure: 0
+    fixedCover: 0
+    roundedFootprint: 0
+  stack: {fileID: 3403804708219465519}
+  initialAngleDeg: 0
+  pixelsPerUnit: 16
+  sliceSpacingScale: 1
+  revealOverlappingTank: 0
+  sortingGroup: {fileID: 3822684646618424126}
+  alive: 1
+  isDynamicSpawned: 0
+  approxRadiusUnits: 1.17
+--- !u!1 &1464056339911690235
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4181321200070464600}
+  - component: {fileID: 3403804708219465519}
+  m_Layer: 0
+  m_Name: PropStack
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4181321200070464600
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1464056339911690235}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8793389354932077416}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3403804708219465519
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1464056339911690235}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f92e4fb5f57288045854698e7664cd6d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Modern8bitTanks.SpriteStackRenderer
+  sourceSheet: {fileID: 2800000, guid: bae1a1c40a574a7bacb297d07af51ebd, type: 3}
+  sliceCount: 9
+  pixelsPerUnit: 16
+  squash: 0.8
+  spacingPx: 0.72
+  baseZOffsetSlices: 0
+  baseSortingOrder: 0
+  sliceMaterial: {fileID: 2100000, guid: b53d8785100743345b06df30af2e71d1, type: 2}
+  addGroundShadow: 1
+  angleDeg: 0
+  hitFlash: 0
+  charred: 0
+  metallicWear: 0.04
+  dropProgress: 1
+  dropHeightPx: 44
