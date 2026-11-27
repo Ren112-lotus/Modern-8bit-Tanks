@@ -94,25 +94,29 @@ namespace Modern8bitTanks
                 : new Vector2(128, ControlPoint.y + random.Next(-17, 18));
             float reflection = random.Next(2) == 0 ? 1f : -1f;
 
-            // Pass 0: Build a continuous, end-to-end connected road network (and forest woodland creek).
-            BuildRoadNetwork(map, reflection, random);
-            if (map == BattleMap.Forest)
-                BuildForestStreamNetwork(reflection, random);
-
-            // Pass 1: Register ridges and corner detours first so main districts respect them.
+            // Pass 1: Place ridges, corner detours, and collect soft corridor hints from the plan.
             var mainDistrictIndices = new List<int>();
             var ridgeAnchors = new List<(Vector2 Position, float Radius, float Angle)>();
+            var corridorHints = new List<DistrictGround>();
+            var artificialAnchors = new List<(Vector2 Center, Vector2 GroundSize, ZoneArchetype Archetype)>();
+            var wetlandHints = new List<Vector2>();
 
             for (int i = 0; i < plan.Districts.Length; i++)
             {
                 var district = plan.Districts[i];
-                if (district.Cover.Length == 0)
-                    continue; // Replaced by continuous connected RoadSegment network!
-
                 Vector2 center = district.Center * PlanScale + new Vector2(random.Next(-10, 11), random.Next(-12, 13));
                 float rawAngle = district.Angle + random.Next(-6, 7);
                 if (map == BattleMap.City) rawAngle = Mathf.Round(district.Angle / 90f) * 90f;
                 center.y = ControlPoint.y + (center.y - ControlPoint.y) * reflection;
+
+                if (district.Cover.Length == 0)
+                {
+                    // Use plan connector gaps as soft low-cost hints for object-aware road routing.
+                    Vector2 hintSize = district.GroundSize * PlanScale;
+                    if (hintSize.x > 0f && hintSize.y > 0f)
+                        corridorHints.Add(new DistrictGround(center, hintSize, Direction(rawAngle * reflection), true));
+                    continue;
+                }
 
                 if (IsRidgeDistrict(district))
                 {
@@ -129,7 +133,7 @@ namespace Modern8bitTanks
                 mainDistrictIndices.Add(i);
             }
 
-            // Pass 2: Assign scenario-coherent artificial & natural archetypes to each main district.
+            // Pass 2: Place all scenario-coherent artificial installations & natural formations FIRST.
             var archetypes = AssignDistrictArchetypes(_scenario, mainDistrictIndices.Count, random);
             for (int m = 0; m < mainDistrictIndices.Count; m++)
             {
@@ -142,7 +146,7 @@ namespace Modern8bitTanks
 
                 float baseAngle = district.Angle + (natural ? random.Next(-14, 15) : random.Next(-5, 6));
                 if (map == BattleMap.City)
-                    baseAngle = 0f; // Lock all urban blocks cleanly to the orthogonal city street grid!
+                    baseAngle = 0f;
                 else if (!natural)
                     baseAngle = Mathf.Round(baseAngle / 15f) * 15f;
 
@@ -163,182 +167,850 @@ namespace Modern8bitTanks
                 }
 
                 if (natural)
+                {
                     PopulateNaturalDistrict(district, archetype, center, baseAngle, reflection, theme, assets, random);
+                    if (archetype == ZoneArchetype.WetlandMangroveGrove)
+                        wetlandHints.Add(center);
+                }
                 else
+                {
                     PopulateArtificialDistrict(district, archetype, center, baseAngle, reflection, map, theme, assets, random);
+                    artificialAnchors.Add((center, district.GroundSize, archetype));
+                }
             }
 
-            // Pass 3: Scatter scenario-matched natural scree, trees & stream-bank flora.
+            // Pass 3: Generate an object-aware, fully connected road network via weighted A* routing
+            // that physically weaves around placed cover, ridges & groves to link bases & artificial sites!
+            BuildObjectAwareRoadNetwork(map, reflection, artificialAnchors, corridorHints, random);
+
+            // Pass 4: Route the Forest woodland brook around buildings/camps & across roads (creating bridges).
+            if (map == BattleMap.Forest)
+                BuildObjectAwareForestStream(reflection, wetlandHints, random);
+
+            // Pass 5: Contextual post-road dressing (roadside furniture aligned to actual routed streets,
+            // ridge foothill scree, and woodland stream-bank flora — all strictly respecting roads & streams).
+            PopulateRoadsideProps(map, assets, random);
             PopulateRidgeFoothills(_scenario, ridgeAnchors, assets, random);
             if (map == BattleMap.Forest)
                 PopulateStreamBanks(_scenario, assets, random);
         }
 
         // =====================================================================
-        // CONNECTED ROAD NETWORKS & FOREST WOODLAND STREAM
+        // OBJECT-AWARE A* ROAD & FOREST STREAM ROUTING
         // =====================================================================
-        private void BuildRoadNetwork(BattleMap map, float reflection, System.Random random)
+        private const int RouteCell = 16;
+        private const int RouteCols = Width / RouteCell;   // 120
+        private const int RouteRows = Height / RouteCell;  // 78
+        private const int RouteCount = RouteCols * RouteRows;
+
+        private static readonly int[] DirX4 = { 1, -1, 0, 0 };
+        private static readonly int[] DirY4 = { 0, 0, 1, -1 };
+        private static readonly int[] DirX8 = { 1, -1, 0, 0, 1, 1, -1, -1 };
+        private static readonly int[] DirY8 = { 0, 0, 1, -1, 1, -1, 1, -1 };
+        private static readonly float[] DirCost8 = { 1f, 1f, 1f, 1f, 1.414f, 1.414f, 1.414f, 1.414f };
+
+        private static Vector2 RouteCellCenter(int gx, int gy) =>
+            new((gx + 0.5f) * RouteCell, (gy + 0.5f) * RouteCell);
+
+        private static int WorldToRouteCell(Vector2 pos)
         {
-            float cx = ControlPoint.x;
-            float cy = ControlPoint.y;
+            int gx = Mathf.Clamp(Mathf.FloorToInt(pos.x / RouteCell), 1, RouteCols - 2);
+            int gy = Mathf.Clamp(Mathf.FloorToInt(pos.y / RouteCell), 1, RouteRows - 2);
+            return gy * RouteCols + gx;
+        }
 
-            if (map == BattleMap.City)
+        private static int MirrorRouteCell(int cell)
+        {
+            int gx = cell % RouteCols;
+            int gy = cell / RouteCols;
+            return (RouteRows - 1 - gy) * RouteCols + (RouteCols - 1 - gx);
+        }
+
+        private void BuildObjectAwareRoadNetwork(BattleMap map, float reflection,
+            List<(Vector2 Center, Vector2 GroundSize, ZoneArchetype Archetype)> artificialAnchors,
+            List<DistrictGround> corridorHints, System.Random random)
+        {
+            bool city = map == BattleMap.City;
+            float primaryHalfW = city ? 28f : (map == BattleMap.Desert ? 25f : 23f);
+            float secondaryHalfW = city ? 21f : 17f;
+            float turnPenalty = city ? 4.2f : 0.85f;
+
+            // Build obstacle & terrain cost grids reflecting ALL placed cover, ridges, parks & groves.
+            var strictBlocked = new bool[RouteCount];
+            var relaxedBlocked = new bool[RouteCount];
+            var baseCost = new float[RouteCount];
+            var allRoadMask = new bool[RouteCount];
+            var primaryMask = new bool[RouteCount];
+            var primaryNearMask = new bool[RouteCount];
+            var flankNearMask = new bool[RouteCount];
+            float strictClear = city ? 20f : 17f;
+            float relaxedClear = 11f;
+            float borderKeep = BattleSceneController.BorderPadPx + 28f;
+
+            for (int gy = 0; gy < RouteRows; gy++)
             {
-                // True connected 90-degree orthogonal urban street grid extending seamlessly to map edges!
-                float ringOffset = 338f + random.Next(-22, 23);
-                float yNorth = cy + ringOffset;
-                float ySouth = cy - ringOffset;
-                float xOuter = 258f + random.Next(-20, 21);
-                float xInner = 588f + random.Next(-32, 33);
+                for (int gx = 0; gx < RouteCols; gx++)
+                {
+                    int idx = gy * RouteCols + gx;
+                    Vector2 p = RouteCellCenter(gx, gy);
 
-                // 1. Central East-West Grand Boulevard (map edge -> West Base -> Central Plaza -> East Base -> map edge)
-                AddMirroredRoadPolyline(new[] { new Vector2(0f, cy), new Vector2(cx, cy) }, 31f, true);
+                    if (p.x < borderKeep || p.x > Width - borderKeep || p.y < borderKeep || p.y > Height - borderKeep)
+                    {
+                        strictBlocked[idx] = true;
+                        relaxedBlocked[idx] = true;
+                        continue;
+                    }
 
-                // 2. North & South Ring Boulevards (running continuously from west map edge to east map edge)
-                AddMirroredRoadPolyline(new[] { new Vector2(0f, yNorth), new Vector2(cx, yNorth) }, 22f, false);
-                AddMirroredRoadPolyline(new[] { new Vector2(0f, ySouth), new Vector2(cx, ySouth) }, 22f, false);
+                    bool hitStrict = false;
+                    bool hitRelaxed = false;
+                    bool nearCover = false;
+                    for (int c = 0; c < _cover.Count; c++)
+                    {
+                        var cov = _cover[c];
+                        if (cov.Contains(p, relaxedClear))
+                        {
+                            hitRelaxed = true;
+                            hitStrict = true;
+                            break;
+                        }
+                        if (!hitStrict && cov.Contains(p, strictClear))
+                            hitStrict = true;
+                        else if (!nearCover && cov.Contains(p, strictClear + 20f))
+                            nearCover = true;
+                    }
 
-                // 3. Orthogonal North-South Cross Streets continuing smoothly to top & bottom city edges!
-                AddMirroredRoadPolyline(new[] { new Vector2(xOuter, 0f), new Vector2(xOuter, Height) }, 21f, false);
-                AddMirroredRoadPolyline(new[] { new Vector2(xInner, 0f), new Vector2(xInner, Height) }, 23f, false);
-                AddRoadSegment(new Vector2(cx, 0f), new Vector2(cx, Height), 24f, true);
+                    strictBlocked[idx] = hitStrict;
+                    relaxedBlocked[idx] = hitRelaxed;
 
-                // Register clean 4-way intersections (for rectangular zebra crosswalks & dash suppression)
-                float[] xs = { xOuter, xInner, cx, Width - xInner, Width - xOuter };
-                float[] ys = { ySouth, cy, yNorth };
-                foreach (float ix in xs)
-                    foreach (float iy in ys)
-                        _intersections.Add(new Vector2(ix, iy));
+                    float cost = 1.0f;
+                    if (nearCover) cost += 3.6f;
+
+                    // Discourage roads from cutting directly through parks or deep natural woodlands.
+                    if (IsInsideAnyDistrict(_parkGround, p) || IsInsideAnyDistrict(_groveGround, p))
+                        cost += 2.4f;
+
+                    // Gently prefer natural open alley corridors between plan districts.
+                    if (IsInsideAnyDistrict(corridorHints, p))
+                        cost *= 0.78f;
+
+                    // In natural biomes, add subtle Perlin meander cost so routes bend organically.
+                    if (!city)
+                    {
+                        float n = Mathf.PerlinNoise(p.x * 0.0045f + (_seed & 255) * 0.13f, p.y * 0.0045f + 3.7f);
+                        cost += n * 0.55f;
+                    }
+
+                    baseCost[idx] = cost;
+                }
             }
-            else if (map == BattleMap.Forest)
+
+            // 1. PRIMARY TRUNK HIGHWAY: Map Edge -> West Base -> Control Point (mirrored seamlessly to East Base!)
+            AddMirroredRoadPolyline(new[] { new Vector2(0f, _westBase.y), _westBase }, primaryHalfW, true);
+            var primaryCost = (float[])baseCost.Clone();
+            for (int gy = 0; gy < RouteRows; gy++)
             {
-                // Smoothly curving country dirt highway entering from map edge -> West Base -> Central Clearing -> East Base
-                float bendAmp = (66f + random.Next(0, 34)) * reflection;
-                var mainPts = new List<Vector2> { new Vector2(0f, _westBase.y) };
-                const int steps = 10;
-                for (int i = 0; i <= steps; i++)
-                {
-                    float t = i / (float)steps;
-                    float x = Mathf.Lerp(_westBase.x, cx, t);
-                    float curve = Mathf.Sin(t * Mathf.PI) * bendAmp + Mathf.Sin(t * Mathf.PI * 2f) * (24f * reflection);
-                    float y = Mathf.Lerp(_westBase.y, cy, t) + curve;
-                    mainPts.Add(new Vector2(x, y));
-                }
-                AddMirroredRoadPolyline(mainPts, 24f, true);
-
-                // Smoothly curving North & South woodland logging trails branching gently off the main road!
-                Vector2 forkWest = mainPts[3];
-                float northY = cy + (342f + random.Next(-22, 23)) * reflection;
-                float southY = cy - (338f + random.Next(-22, 23)) * reflection;
-
-                var northTrail = new List<Vector2>();
-                var southTrail = new List<Vector2>();
-                const int trailSteps = 8;
-                for (int i = 0; i <= trailSteps; i++)
-                {
-                    float t = i / (float)trailSteps;
-                    float ease = Mathf.Sin(t * Mathf.PI * 0.5f);
-                    float x = Mathf.Lerp(forkWest.x, cx, t);
-                    float ny = Mathf.Lerp(forkWest.y, northY, ease) + Mathf.Sin(t * Mathf.PI) * (26f * reflection);
-                    float sy = Mathf.Lerp(forkWest.y, southY, ease) - Mathf.Sin(t * Mathf.PI) * (24f * reflection);
-                    northTrail.Add(new Vector2(x, ny));
-                    southTrail.Add(new Vector2(x, sy));
-                }
-                AddMirroredRoadPolyline(northTrail, 17f, false);
-                AddMirroredRoadPolyline(southTrail, 17f, false);
-
-                // Smooth curving North-South forest spur linking north trail -> central clearing -> south trail
-                var crossTrail = new List<Vector2>();
-                for (int i = 0; i <= 5; i++)
-                {
-                    float t = i / 5f;
-                    float y = Mathf.Lerp(northY, cy, t);
-                    float x = cx - Mathf.Sin(t * Mathf.PI) * (28f * reflection);
-                    crossTrail.Add(new Vector2(x, y));
-                }
-                AddMirroredRoadPolyline(crossTrail, 16f, false);
-
-                _intersections.Add(forkWest);
-                _intersections.Add(Mirror(forkWest));
-                _intersections.Add(ControlPoint);
+                float py = (gy + 0.5f) * RouteCell;
+                float bandPen = Mathf.Max(0f, (Mathf.Abs(py - ControlPoint.y) - 150f) / 140f) * 1.4f;
+                if (bandPen <= 0f) continue;
+                int rowOff = gy * RouteCols;
+                for (int gx = 0; gx < RouteCols; gx++)
+                    primaryCost[rowOff + gx] += bandPen;
             }
+            var primaryCells = RouteCellsBetween(_westBase, ControlPoint, !city, turnPenalty,
+                strictBlocked, relaxedBlocked, primaryCost, null, null);
+            if (primaryCells != null && primaryCells.Count >= 2)
+                CommitMirroredCellPath(primaryCells, _westBase, ControlPoint, primaryHalfW, isPrimary: true, city: city,
+                    allRoadMask, primaryMask, primaryNearMask, flankNearMask);
             else
+                AddMirroredRoadPolyline(new[] { _westBase, ControlPoint }, primaryHalfW, true);
+
+            // Clear primaryNearMask right around bases & center plaza so flank roads and cross-avenue join cleanly.
+            Vector2 eastBase = Mirror(_westBase);
+            for (int gy = 0; gy < RouteRows; gy++)
             {
-                // Desert: Sweeping military convoy highway from map edge + smooth canyon supply tracks
-                float bendY = (54f + random.Next(-16, 24)) * reflection;
-                var mainHighway = new[]
+                for (int gx = 0; gx < RouteCols; gx++)
                 {
-                    new Vector2(0f, _westBase.y),
-                    _westBase,
-                    new Vector2(330f, _westBase.y + bendY * 0.55f),
-                    new Vector2(610f, cy + bendY),
-                    new Vector2(810f, cy + bendY * 0.35f),
-                    new Vector2(cx, cy)
-                };
-                AddMirroredRoadPolyline(mainHighway, 26f, true);
-
-                Vector2 forkWest = mainHighway[2];
-                float northY = cy + (342f + random.Next(-20, 21)) * reflection;
-                float southY = cy - (336f + random.Next(-20, 21)) * reflection;
-
-                var northTrack = new List<Vector2>();
-                var southTrack = new List<Vector2>();
-                for (int i = 0; i <= 6; i++)
-                {
-                    float t = i / 6f;
-                    float ease = Mathf.Sin(t * Mathf.PI * 0.5f);
-                    float x = Mathf.Lerp(forkWest.x, cx, t);
-                    northTrack.Add(new Vector2(x, Mathf.Lerp(forkWest.y, northY, ease)));
-                    southTrack.Add(new Vector2(x, Mathf.Lerp(forkWest.y, southY, ease)));
+                    int idx = gy * RouteCols + gx;
+                    if (!primaryNearMask[idx]) continue;
+                    Vector2 p = RouteCellCenter(gx, gy);
+                    if (Vector2.Distance(p, _westBase) < 145f ||
+                        Vector2.Distance(p, eastBase) < 145f ||
+                        Vector2.Distance(p, ControlPoint) < 120f)
+                        primaryNearMask[idx] = false;
                 }
-                AddMirroredRoadPolyline(northTrack, 18f, false);
-                AddMirroredRoadPolyline(southTrack, 18f, false);
+            }
 
-                AddMirroredRoadPolyline(new[]
+            // 2. CONTINUOUS NORTH & SOUTH FLANK HIGHWAYS CHAINING ARTIFICIAL FACILITIES!
+            // Skip midline facilities (|y - cp.y| < 155) already served directly by the Primary Trunk.
+            var northSites = new List<Vector2>();
+            var southSites = new List<Vector2>();
+            foreach (var site in artificialAnchors)
+            {
+                if (Mathf.Abs(site.Center.y - ControlPoint.y) < 155f) continue;
+                Vector2 access = FindCorridorAccessPoint(site.Center, site.GroundSize, strictBlocked, relaxedBlocked, preferInner: true);
+                if (Mathf.Abs(access.y - ControlPoint.y) < 150f) continue;
+                if (access.y > ControlPoint.y) northSites.Add(access);
+                else southSites.Add(access);
+            }
+            northSites.Sort((a, b) => a.x.CompareTo(b.x));
+            southSites.Sort((a, b) => a.x.CompareTo(b.x));
+            northSites = FilterSpacedWaypoints(northSites, 120f);
+            southSites = FilterSpacedWaypoints(southSites, 120f);
+
+            // Compute natural centerline seam altitude matching actual northern/southern facilities!
+            float sumOff = 0f;
+            int cntOff = 0;
+            foreach (var s in northSites) { sumOff += Mathf.Abs(s.y - ControlPoint.y); cntOff++; }
+            foreach (var s in southSites) { sumOff += Mathf.Abs(s.y - ControlPoint.y); cntOff++; }
+            float seamOff = Mathf.Clamp(cntOff > 0 ? sumOff / cntOff : 325f, 255f, 390f);
+
+            Vector2 northSeam = FindCorridorAccessPoint(
+                new Vector2(ControlPoint.x, ControlPoint.y + seamOff), new Vector2(64f, 64f), strictBlocked, relaxedBlocked, preferInner: false);
+            Vector2 southSeam = Mirror(northSeam);
+
+            if (northSites.Count == 0)
+                northSites.Add(FindCorridorAccessPoint(new Vector2(Width * 0.32f, ControlPoint.y + seamOff), new Vector2(64f, 64f), strictBlocked, relaxedBlocked, preferInner: false));
+            if (southSites.Count == 0)
+                southSites.Add(FindCorridorAccessPoint(new Vector2(Width * 0.32f, ControlPoint.y - seamOff), new Vector2(64f, 64f), strictBlocked, relaxedBlocked, preferInner: false));
+
+            // Hemisphere-guided flank costs prevent flank roads from hijacking or hugging the central trunk!
+            float[] northCost = BuildFlankCostGrid(baseCost, primaryMask, primaryNearMask, +1f);
+            float[] southCost = BuildFlankCostGrid(baseCost, primaryMask, primaryNearMask, -1f);
+
+            var northWaypoints = new List<Vector2>(northSites.Count + 2) { _westBase };
+            northWaypoints.AddRange(northSites);
+            northWaypoints.Add(northSeam);
+            RouteAndCommitChain(northWaypoints, !city, turnPenalty, strictBlocked, relaxedBlocked,
+                northCost, flankNearMask, secondaryHalfW, city, allRoadMask, primaryMask, primaryNearMask);
+
+            var southWaypoints = new List<Vector2>(southSites.Count + 2) { _westBase };
+            southWaypoints.AddRange(southSites);
+            southWaypoints.Add(southSeam);
+            RouteAndCommitChain(southWaypoints, !city, turnPenalty, strictBlocked, relaxedBlocked,
+                southCost, flankNearMask, secondaryHalfW, city, allRoadMask, primaryMask, primaryNearMask);
+
+            // 3. CENTRAL CROSS-AVENUE: North Seam -> Control Point (mirrored to South Seam -> Control Point!)
+            var crossCost = (float[])baseCost.Clone();
+            for (int gy = 0; gy < RouteRows; gy++)
+            {
+                int rowOff = gy * RouteCols;
+                for (int gx = 0; gx < RouteCols; gx++)
                 {
-                    new Vector2(cx, northY),
-                    new Vector2(cx + 20f * reflection, cy + (northY - cy) * 0.48f),
-                    new Vector2(cx, cy)
-                }, 17f, false);
+                    float px = (gx + 0.5f) * RouteCell;
+                    crossCost[rowOff + gx] += Mathf.Max(0f, (Mathf.Abs(px - ControlPoint.x) - 110f) / 90f) * 1.8f;
+                }
+            }
+            var crossCells = RouteCellsBetween(northSeam, ControlPoint, !city, turnPenalty,
+                strictBlocked, relaxedBlocked, crossCost, allRoadMask, flankNearMask, nearPenalty: 4.0f, shareCost: 0.45f);
+            if (crossCells != null && crossCells.Count >= 2)
+                CommitMirroredCellPath(crossCells, northSeam, ControlPoint, secondaryHalfW, isPrimary: false, city: city,
+                    allRoadMask, primaryMask, primaryNearMask, flankNearMask);
 
-                _intersections.Add(forkWest);
-                _intersections.Add(Mirror(forkWest));
-                _intersections.Add(ControlPoint);
+            // Detect real street intersections / junctions for crisp City crosswalks & dash breaks!
+            RebuildRoadIntersections(city);
+        }
+
+        private float[] BuildFlankCostGrid(float[] baseCost, bool[] primaryMask, bool[] primaryNearMask, float signY)
+        {
+            var fc = (float[])baseCost.Clone();
+            for (int gy = 0; gy < RouteRows; gy++)
+            {
+                float py = (gy + 0.5f) * RouteCell;
+                int rowOff = gy * RouteCols;
+                for (int gx = 0; gx < RouteCols; gx++)
+                {
+                    int idx = rowOff + gx;
+                    float px = (gx + 0.5f) * RouteCell;
+                    if (primaryMask[idx] && Vector2.Distance(new Vector2(px, py), _westBase) > 140f)
+                        fc[idx] += 6.5f;
+                    else if (primaryNearMask[idx])
+                        fc[idx] += 5.0f;
+
+                    if (px > _westBase.x + 150f)
+                    {
+                        if (signY > 0f && py < ControlPoint.y + 120f) fc[idx] += 7.0f;
+                        else if (signY < 0f && py > ControlPoint.y - 120f) fc[idx] += 7.0f;
+                    }
+                }
+            }
+            return fc;
+        }
+
+        private static List<Vector2> FilterSpacedWaypoints(List<Vector2> sortedByX, float minDeltaX)
+        {
+            var result = new List<Vector2>(sortedByX.Count);
+            for (int i = 0; i < sortedByX.Count; i++)
+            {
+                if (result.Count == 0 || sortedByX[i].x - result[^1].x >= minDeltaX)
+                    result.Add(sortedByX[i]);
+            }
+            return result;
+        }
+
+        private void RouteAndCommitChain(List<Vector2> waypoints, bool allowDiagonal, float turnPenalty,
+            bool[] strictBlocked, bool[] relaxedBlocked, float[] costGrid, bool[] flankNearMask,
+            float halfWidth, bool city, bool[] allRoadMask, bool[] primaryMask, bool[] primaryNearMask)
+        {
+            var combined = new List<int>();
+            for (int i = 0; i < waypoints.Count - 1; i++)
+            {
+                var leg = RouteCellsBetween(waypoints[i], waypoints[i + 1], allowDiagonal, turnPenalty,
+                    strictBlocked, relaxedBlocked, costGrid, null, flankNearMask, nearPenalty: 4.5f, shareCost: 0.35f);
+                if (leg == null || leg.Count < 2) continue;
+                int startIdx = (combined.Count > 0 && leg[0] == combined[^1]) ? 1 : 0;
+                for (int k = startIdx; k < leg.Count; k++)
+                    combined.Add(leg[k]);
+            }
+            if (combined.Count < 2) return;
+            combined = CollapseBacktrackLoops(combined);
+            CommitMirroredCellPath(combined, waypoints[0], waypoints[^1], halfWidth, isPrimary: false, city: city,
+                allRoadMask, primaryMask, primaryNearMask, flankNearMask);
+        }
+
+        private static List<int> CollapseBacktrackLoops(List<int> cells)
+        {
+            // Eliminate any 1-to-3 cell U-turn stubs caused where chained legs meet a waypoint!
+            var stack = new List<int>(cells.Count);
+            for (int i = 0; i < cells.Count; i++)
+            {
+                int c = cells[i];
+                int revisit = -1;
+                int lookBack = Mathf.Max(0, stack.Count - 6);
+                for (int j = stack.Count - 1; j >= lookBack; j--)
+                {
+                    if (stack[j] == c) { revisit = j; break; }
+                }
+                if (revisit >= 0)
+                    stack.RemoveRange(revisit + 1, stack.Count - (revisit + 1));
+                else
+                    stack.Add(c);
+            }
+            return stack;
+        }
+
+        private void BuildObjectAwareForestStream(float reflection, List<Vector2> wetlandHints, System.Random random)
+        {
+            float streamHalfW = _scenario == RegionalScenario.ForestWetlandGrove ? 22f : 16.5f;
+
+            // Build stream cost grid: avoid all cover & artificial yards, favor wild forest & wetlands,
+            // and cross roads cleanly rather than running lengthwise inside a road!
+            var blocked = new bool[RouteCount];
+            var cost = new float[RouteCount];
+            for (int gy = 0; gy < RouteRows; gy++)
+            {
+                for (int gx = 0; gx < RouteCols; gx++)
+                {
+                    int idx = gy * RouteCols + gx;
+                    Vector2 p = RouteCellCenter(gx, gy);
+
+                    // Keep stream cleanly on the west half (mirrored to east half) and clear of bases/plaza
+                    if (p.x < 260f || p.x > ControlPoint.x - 95f ||
+                        Vector2.Distance(p, _westBase) < BaseClearRadius + 24f ||
+                        Vector2.Distance(p, ControlPoint) < ControlClearRadius + 28f)
+                    {
+                        blocked[idx] = true;
+                        continue;
+                    }
+
+                    bool hitCover = false;
+                    for (int c = 0; c < _cover.Count; c++)
+                    {
+                        if (_cover[c].Contains(p, 12f))
+                        {
+                            hitCover = true;
+                            break;
+                        }
+                    }
+                    blocked[idx] = hitCover;
+
+                    float cVal = 1.0f;
+                    if (IsInsideAnyDistrict(_districtGround, p) || IsInsideAnyDistrict(_farmGround, p))
+                        cVal += 9.0f; // Stay out of man-made cabins, farms & camps
+                    if (IsInsideAnyDistrict(_groveGround, p))
+                        cVal *= 0.65f; // Flow gracefully through natural woodlands
+                    if (IsOnRoad(p, 8f, primaryOnly: false))
+                        cVal += 2.6f; // Allow clean perpendicular bridge crossings, discourage riding along roads
+                    cVal += Mathf.PerlinNoise(p.x * 0.006f + 11.3f, p.y * 0.006f + (_seed & 127) * 0.21f) * 0.8f;
+                    cost[idx] = cVal;
+                }
+            }
+
+            // Anchor north & south valley endpoints (pulled subtly toward any wetland grove!)
+            float biasX = wetlandHints.Count > 0 ? Mathf.Clamp(wetlandHints[0].x, 420f, 760f) : 630f;
+            float northX = Mathf.Clamp(biasX + random.Next(-90, 91), 380f, 800f);
+            float southX = Mathf.Clamp(biasX + random.Next(-110, 111), 380f, 800f);
+            Vector2 startPt = new(northX, reflection >= 0f ? Height - 32f : 32f);
+            Vector2 endPt = new(southX, reflection >= 0f ? 32f : Height - 32f);
+
+            int startCell = FindNearestOpenCell(startPt, blocked);
+            int endCell = FindNearestOpenCell(endPt, blocked);
+            var cellPath = RunGridAStar(startCell, endCell, allowDiagonal: true, turnPenalty: 0.45f, blocked, cost, null, null);
+
+            if (cellPath != null && cellPath.Count >= 3)
+            {
+                var pts = new List<Vector2>(cellPath.Count + 2)
+                {
+                    new Vector2(RouteCellCenter(cellPath[0] % RouteCols, cellPath[0] / RouteCols).x,
+                        reflection >= 0f ? Height : 0f)
+                };
+                for (int i = 0; i < cellPath.Count; i++)
+                    pts.Add(RouteCellCenter(cellPath[i] % RouteCols, cellPath[i] / RouteCols));
+                int last = cellPath[^1];
+                pts.Add(new Vector2(RouteCellCenter(last % RouteCols, last / RouteCols).x,
+                    reflection >= 0f ? 0f : Height));
+
+                pts = SimplifyAndSmoothPath(pts, orthogonal: false, checkClearance: 10f);
+                for (int i = 0; i < pts.Count - 1; i++)
+                {
+                    _waterStreams.Add(new RoadSegment(pts[i], pts[i + 1], streamHalfW, true));
+                    _waterStreams.Add(new RoadSegment(Mirror(pts[i]), Mirror(pts[i + 1]), streamHalfW, true));
+                }
             }
         }
 
-        private void BuildForestStreamNetwork(float reflection, System.Random random)
+        private static List<int> RouteCellsBetween(Vector2 from, Vector2 to, bool allowDiagonal, float turnPenalty,
+            bool[] strictBlocked, bool[] relaxedBlocked, float[] baseCost, bool[] shareRoadMask, bool[] nearRoadMask,
+            float nearPenalty = 5.5f, float shareCost = 0.35f)
         {
-            // Signature woodland shallow brook curving organically from north flank toward south-west,
-            // mirrored 180 degrees so both halves feature picturesque fordable crossings & stone banks!
-            float cx = ControlPoint.x;
-            float cy = ControlPoint.y;
-            float streamHalfW = _scenario == RegionalScenario.ForestWetlandGrove ? 23f : 17f;
-            float xStart = 695f + random.Next(-35, 36);
-            float xMid = 520f + random.Next(-30, 31);
-            float xEnd = 745f + random.Next(-35, 36);
+            int startCell = FindNearestOpenCell(from, strictBlocked);
+            int goalCell = FindNearestOpenCell(to, strictBlocked);
+            List<int> cellPath = null;
+            if (startCell >= 0 && goalCell >= 0)
+                cellPath = RunGridAStar(startCell, goalCell, allowDiagonal, turnPenalty, strictBlocked, baseCost,
+                    shareRoadMask, nearRoadMask, nearPenalty, shareCost);
 
-            var streamPts = new List<Vector2>();
-            const int segs = 10;
-            for (int i = 0; i <= segs; i++)
+            if (cellPath == null)
             {
-                float t = i / (float)segs;
-                float y = Mathf.Lerp(Height - 10f, 10f, t);
-                // S-curve bending away from the central clearing so it frames the battlefield dramatically
-                float arch = Mathf.Sin(t * Mathf.PI);
-                float wiggle = Mathf.Sin(t * Mathf.PI * 3f + 0.4f) * 28f;
-                float x = Mathf.Lerp(xStart, xEnd, t) - arch * (xStart - xMid) + wiggle;
-                if (reflection < 0f) y = Height - y;
-                streamPts.Add(new Vector2(x, y));
+                startCell = FindNearestOpenCell(from, relaxedBlocked);
+                goalCell = FindNearestOpenCell(to, relaxedBlocked);
+                if (startCell >= 0 && goalCell >= 0)
+                    cellPath = RunGridAStar(startCell, goalCell, allowDiagonal, turnPenalty, relaxedBlocked, baseCost,
+                        shareRoadMask, nearRoadMask, nearPenalty, shareCost);
             }
 
-            // Keep stream strictly on the west-of-center side, then mirror onto the east valley!
-            for (int i = 0; i < streamPts.Count - 1; i++)
+            return (cellPath != null && cellPath.Count >= 2) ? cellPath : null;
+        }
+
+        private void CommitMirroredCellPath(List<int> cellPath, Vector2 exactFrom, Vector2 exactTo,
+            float halfWidth, bool isPrimary, bool city,
+            bool[] allRoadMask, bool[] primaryMask, bool[] primaryNearMask, bool[] flankNearMask)
+        {
+            if (cellPath == null || cellPath.Count < 2) return;
+            var worldPts = new List<Vector2>(cellPath.Count);
+            for (int i = 0; i < cellPath.Count; i++)
             {
-                Vector2 a = streamPts[i];
-                Vector2 b = streamPts[i + 1];
-                _waterStreams.Add(new RoadSegment(a, b, streamHalfW, true));
-                _waterStreams.Add(new RoadSegment(Mirror(a), Mirror(b), streamHalfW, true));
+                int c = cellPath[i];
+                int mc = MirrorRouteCell(c);
+                allRoadMask[c] = true;
+                allRoadMask[mc] = true;
+                if (isPrimary)
+                {
+                    primaryMask[c] = true;
+                    primaryMask[mc] = true;
+                    MarkNearRoad(c, primaryNearMask, radius: 4);
+                    MarkNearRoad(mc, primaryNearMask, radius: 4);
+                }
+                else
+                {
+                    MarkNearRoad(c, flankNearMask, radius: 3);
+                    MarkNearRoad(mc, flankNearMask, radius: 3);
+                }
+                worldPts.Add(RouteCellCenter(c % RouteCols, c / RouteCols));
+            }
+            if (Vector2.Distance(worldPts[0], exactFrom) < 36f) worldPts[0] = exactFrom;
+            if (Vector2.Distance(worldPts[^1], exactTo) < 36f) worldPts[^1] = exactTo;
+            var pts = SimplifyAndSmoothPath(worldPts, orthogonal: city, checkClearance: 12f);
+            AddMirroredRoadPolyline(pts, halfWidth, isPrimary);
+        }
+
+        private static void MarkNearRoad(int cell, bool[] nearRoadMask, int radius)
+        {
+            int cx = cell % RouteCols;
+            int cy = cell / RouteCols;
+            for (int dy = -radius; dy <= radius; dy++)
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                if (dx == 0 && dy == 0) continue;
+                int nx = cx + dx;
+                int ny = cy + dy;
+                if (nx > 0 && nx < RouteCols - 1 && ny > 0 && ny < RouteRows - 1)
+                    nearRoadMask[ny * RouteCols + nx] = true;
+            }
+        }
+
+        private List<Vector2> SimplifyAndSmoothPath(List<Vector2> pts, bool orthogonal, float checkClearance)
+        {
+            if (pts.Count <= 2) return pts;
+
+            // Step 1: Merge consecutive collinear segments (essential for crisp City 90-degree boulevards!)
+            var reduced = new List<Vector2> { pts[0] };
+            for (int i = 1; i < pts.Count - 1; i++)
+            {
+                Vector2 prev = reduced[^1];
+                Vector2 cur = pts[i];
+                Vector2 next = pts[i + 1];
+                Vector2 d1 = (cur - prev).normalized;
+                Vector2 d2 = (next - cur).normalized;
+                if (Vector2.Dot(d1, d2) > 0.995f) continue;
+                reduced.Add(cur);
+            }
+            reduced.Add(pts[^1]);
+
+            if (orthogonal)
+                return reduced;
+
+            // Step 2 (Forest/Desert): Collapse tiny staircase zig-zags if the direct chord stays clear of cover.
+            var cleaned = new List<Vector2> { reduced[0] };
+            int idx = 0;
+            while (idx < reduced.Count - 1)
+            {
+                int best = idx + 1;
+                int lookLimit = Mathf.Min(reduced.Count - 1, idx + 6);
+                for (int probe = lookLimit; probe > idx + 1; probe--)
+                {
+                    if (IsChordClearOfCover(reduced[idx], reduced[probe], checkClearance))
+                    {
+                        best = probe;
+                        break;
+                    }
+                }
+                cleaned.Add(reduced[best]);
+                idx = best;
+            }
+
+            // Step 3 (Forest/Desert): 2 passes of safe Chaikin corner-cutting for natural sweeping curves!
+            var current = cleaned;
+            for (int pass = 0; pass < 2; pass++)
+            {
+                if (current.Count < 3) break;
+                var nextList = new List<Vector2>(current.Count * 2) { current[0] };
+                for (int i = 0; i < current.Count - 1; i++)
+                {
+                    Vector2 a = current[i];
+                    Vector2 b = current[i + 1];
+                    if ((b - a).sqrMagnitude < 28f * 28f)
+                    {
+                        if (i > 0) nextList.Add(a);
+                        continue;
+                    }
+                    Vector2 q = Vector2.Lerp(a, b, 0.25f);
+                    Vector2 r = Vector2.Lerp(a, b, 0.75f);
+                    if (i > 0) nextList.Add(IsPointClearOfCover(q, checkClearance) ? q : a);
+                    if (i < current.Count - 2) nextList.Add(IsPointClearOfCover(r, checkClearance) ? r : b);
+                }
+                nextList.Add(current[^1]);
+                current = nextList;
+            }
+            return current;
+        }
+
+        private bool IsPointClearOfCover(Vector2 p, float clearance)
+        {
+            for (int i = 0; i < _cover.Count; i++)
+                if (_cover[i].Contains(p, clearance)) return false;
+            return true;
+        }
+
+        private bool IsChordClearOfCover(Vector2 a, Vector2 b, float clearance)
+        {
+            float dist = Vector2.Distance(a, b);
+            int samples = Mathf.Max(2, Mathf.CeilToInt(dist / 12f));
+            for (int i = 1; i < samples; i++)
+                if (!IsPointClearOfCover(Vector2.Lerp(a, b, i / (float)samples), clearance))
+                    return false;
+            return true;
+        }
+
+        private void RebuildRoadIntersections(bool city)
+        {
+            _intersections.Clear();
+            _intersections.Add(ControlPoint);
+            if (!city) return;
+
+            // Collect every true orthogonal junction (L-corner, T-junction, or 4-way crossing) between City streets!
+            for (int i = 0; i < _roads.Count; i++)
+            {
+                var s1 = _roads[i];
+                for (int j = i + 1; j < _roads.Count; j++)
+                {
+                    var s2 = _roads[j];
+                    if (Mathf.Abs(Vector2.Dot(s1.Dir, s2.Dir)) > 0.35f) continue;
+
+                    // Check segment-segment intersection or endpoint touch within 18px
+                    if (TrySegmentIntersection(s1.A, s1.B, s2.A, s2.B, 16f, out Vector2 hit))
+                        AddUniqueIntersection(hit);
+                }
+            }
+        }
+
+        private void AddUniqueIntersection(Vector2 pt)
+        {
+            for (int i = 0; i < _intersections.Count; i++)
+                if ((_intersections[i] - pt).sqrMagnitude < 28f * 28f) return;
+            _intersections.Add(pt);
+        }
+
+        private static bool TrySegmentIntersection(Vector2 a1, Vector2 a2, Vector2 b1, Vector2 b2, float pad, out Vector2 hit)
+        {
+            hit = Vector2.zero;
+            Vector2 d1 = a2 - a1;
+            Vector2 d2 = b2 - b1;
+            float cross = d1.x * d2.y - d1.y * d2.x;
+            if (Mathf.Abs(cross) < 0.001f) return false;
+            Vector2 diff = b1 - a1;
+            float t = (diff.x * d2.y - diff.y * d2.x) / cross;
+            float u = (diff.x * d1.y - diff.y * d1.x) / cross;
+            float len1 = Mathf.Max(1f, d1.magnitude);
+            float len2 = Mathf.Max(1f, d2.magnitude);
+            float margin1 = pad / len1;
+            float margin2 = pad / len2;
+            if (t >= -margin1 && t <= 1f + margin1 && u >= -margin2 && u <= 1f + margin2)
+            {
+                hit = a1 + d1 * Mathf.Clamp01(t);
+                return true;
+            }
+            return false;
+        }
+
+        private static List<int> RunGridAStar(int start, int goal, bool allowDiagonal, float turnPenalty,
+            bool[] blocked, float[] baseCost, bool[] roadMask, bool[] nearRoadMask,
+            float nearPenalty = 5.5f, float shareCost = 0.35f)
+        {
+            if (start == goal) return new List<int> { start };
+
+            int dirCount = allowDiagonal ? 8 : 4;
+            int[] dx = allowDiagonal ? DirX8 : DirX4;
+            int[] dy = allowDiagonal ? DirY8 : DirY4;
+
+            var gScore = new float[RouteCount];
+            var cameFrom = new int[RouteCount];
+            var cameDir = new sbyte[RouteCount];
+            var closed = new bool[RouteCount];
+            System.Array.Fill(gScore, float.PositiveInfinity);
+            System.Array.Fill(cameFrom, -1);
+            System.Array.Fill(cameDir, (sbyte)-1);
+
+            int goalX = goal % RouteCols;
+            int goalY = goal / RouteCols;
+
+            // Flat binary min-heap for fast A* (~0.4ms per route)
+            var heapNode = new int[RouteCount * 2];
+            var heapPrio = new float[RouteCount * 2];
+            int heapSize = 0;
+
+            void Push(int node, float prio)
+            {
+                if (heapSize >= heapNode.Length) return;
+                int i = heapSize++;
+                heapNode[i] = node;
+                heapPrio[i] = prio;
+                while (i > 0)
+                {
+                    int p = (i - 1) >> 1;
+                    if (heapPrio[p] <= heapPrio[i]) break;
+                    (heapNode[p], heapNode[i]) = (heapNode[i], heapNode[p]);
+                    (heapPrio[p], heapPrio[i]) = (heapPrio[i], heapPrio[p]);
+                    i = p;
+                }
+            }
+
+            int Pop()
+            {
+                int top = heapNode[0];
+                int last = --heapSize;
+                if (last > 0)
+                {
+                    heapNode[0] = heapNode[last];
+                    heapPrio[0] = heapPrio[last];
+                    int i = 0;
+                    while (true)
+                    {
+                        int l = (i << 1) + 1;
+                        int r = l + 1;
+                        int best = i;
+                        if (l < heapSize && heapPrio[l] < heapPrio[best]) best = l;
+                        if (r < heapSize && heapPrio[r] < heapPrio[best]) best = r;
+                        if (best == i) break;
+                        (heapNode[i], heapNode[best]) = (heapNode[best], heapNode[i]);
+                        (heapPrio[i], heapPrio[best]) = (heapPrio[best], heapPrio[i]);
+                        i = best;
+                    }
+                }
+                return top;
+            }
+
+            gScore[start] = 0f;
+            Push(start, Heuristic(start % RouteCols, start / RouteCols, goalX, goalY, allowDiagonal));
+
+            while (heapSize > 0)
+            {
+                int cur = Pop();
+                if (closed[cur]) continue;
+                if (cur == goal) break;
+                closed[cur] = true;
+
+                int cx = cur % RouteCols;
+                int cy = cur / RouteCols;
+                sbyte prevDir = cameDir[cur];
+                float curG = gScore[cur];
+
+                for (int d = 0; d < dirCount; d++)
+                {
+                    int nx = cx + dx[d];
+                    int ny = cy + dy[d];
+                    if (nx <= 0 || nx >= RouteCols - 1 || ny <= 0 || ny >= RouteRows - 1) continue;
+                    int next = ny * RouteCols + nx;
+                    if (closed[next] || blocked[next]) continue;
+
+                    // Prevent diagonal corner-cutting through solid cover
+                    if (d >= 4 && (blocked[cy * RouteCols + nx] || blocked[ny * RouteCols + cx]))
+                        continue;
+
+                    float step = allowDiagonal ? DirCost8[d] : 1f;
+                    float terrainMult = (roadMask != null && roadMask[next])
+                        ? shareCost
+                        : (nearRoadMask != null && nearRoadMask[next] ? baseCost[next] + nearPenalty : baseCost[next]);
+                    float turn = (prevDir >= 0 && prevDir != d) ? turnPenalty : 0f;
+                    float tentative = curG + step * terrainMult + turn;
+
+                    if (tentative < gScore[next])
+                    {
+                        gScore[next] = tentative;
+                        cameFrom[next] = cur;
+                        cameDir[next] = (sbyte)d;
+                        float h = Heuristic(nx, ny, goalX, goalY, allowDiagonal) * 0.85f;
+                        Push(next, tentative + h);
+                    }
+                }
+            }
+
+            if (cameFrom[goal] < 0) return null;
+            var path = new List<int>();
+            for (int c = goal; c >= 0; c = cameFrom[c])
+                path.Add(c);
+            path.Reverse();
+            return path;
+        }
+
+        private static float Heuristic(int x, int y, int gx, int gy, bool allowDiagonal)
+        {
+            int dx = Mathf.Abs(x - gx);
+            int dy = Mathf.Abs(y - gy);
+            return allowDiagonal ? (dx + dy) + (1.414f - 2f) * Mathf.Min(dx, dy) : dx + dy;
+        }
+
+        private static int FindNearestOpenCell(Vector2 pos, bool[] blocked)
+        {
+            int start = WorldToRouteCell(pos);
+            if (!blocked[start]) return start;
+            int sx = start % RouteCols;
+            int sy = start / RouteCols;
+            for (int r = 1; r <= 8; r++)
+            {
+                for (int dy = -r; dy <= r; dy++)
+                for (int dx = -r; dx <= r; dx++)
+                {
+                    if (Mathf.Abs(dx) != r && Mathf.Abs(dy) != r) continue;
+                    int nx = sx + dx;
+                    int ny = sy + dy;
+                    if (nx <= 1 || nx >= RouteCols - 2 || ny <= 1 || ny >= RouteRows - 2) continue;
+                    int idx = ny * RouteCols + nx;
+                    if (!blocked[idx]) return idx;
+                }
+            }
+            return -1;
+        }
+
+        private Vector2 FindCorridorAccessPoint(Vector2 center, Vector2 groundSize, bool[] strictBlocked, bool[] relaxedBlocked, bool preferInner)
+        {
+            // Pick a clean roadside point along the horizontal corridor edge so flank roads sweep smoothly past each facility!
+            float signY = center.y >= ControlPoint.y ? 1f : -1f;
+            float offY = Mathf.Clamp(groundSize.y * 0.45f, 44f, 84f);
+            float offX = Mathf.Clamp(groundSize.x * 0.45f, 44f, 84f);
+            Vector2[] candidates = preferInner
+                ? new[]
+                {
+                    new Vector2(center.x, center.y - signY * offY),
+                    new Vector2(center.x, center.y + signY * offY),
+                    new Vector2(center.x + offX, center.y),
+                    new Vector2(center.x - offX, center.y),
+                    center
+                }
+                : new[]
+                {
+                    new Vector2(center.x, center.y + signY * offY),
+                    new Vector2(center.x, center.y - signY * offY),
+                    new Vector2(center.x + offX, center.y),
+                    new Vector2(center.x - offX, center.y),
+                    center
+                };
+            foreach (var cand in candidates)
+            {
+                int cell = WorldToRouteCell(cand);
+                if (!strictBlocked[cell]) return RouteCellCenter(cell % RouteCols, cell / RouteCols);
+            }
+            int open = FindNearestOpenCell(candidates[0], relaxedBlocked);
+            return open >= 0 ? RouteCellCenter(open % RouteCols, open / RouteCols) : center;
+        }
+
+        private static bool IsInsideAnyDistrict(List<DistrictGround> list, Vector2 point)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                var d = list[i];
+                if ((point - d.Center).sqrMagnitude > d.RadiusSquared) continue;
+                Vector2 local = d.ToLocal(point);
+                if (Mathf.Abs(local.x) < d.HalfSize.x && Mathf.Abs(local.y) < d.HalfSize.y)
+                    return true;
+            }
+            return false;
+        }
+
+        private void PopulateRoadsideProps(BattleMap map, BattleSpawnAssets assets, System.Random random)
+        {
+            if (_roads.Count == 0) return;
+
+            string[] props = map switch
+            {
+                BattleMap.City => _scenario switch
+                {
+                    RegionalScenario.CityRailFreight => new[] { "guard_booth", "oil_drum_stack", "city_barricade", "abandoned_car" },
+                    RegionalScenario.CityDowntownAvenue => new[] { "bus_stop", "street_kiosk", "abandoned_car", "city_barricade" },
+                    _ => new[] { "guard_booth", "city_barricade", "tank_trap", "hesco_barrier" }
+                },
+                BattleMap.Forest => new[] { "sandbag_wall", "guard_booth", "timber_stack", "wrecked_truck" },
+                _ => new[] { "sandbag_wall", "hesco_barrier", "abandoned_car", "oil_drum_stack" }
+            };
+
+            int placed = 0;
+            int maxRoadside = map == BattleMap.City ? 5 : 3;
+            for (int i = 0; i < _roads.Count && placed < maxRoadside; i += 2)
+            {
+                var seg = _roads[i];
+                if (seg.Length < 88f) continue;
+                Vector2 mid = (seg.A + seg.B) * 0.5f;
+                // Keep west half only (TryPlaceMirrored automatically mirrors onto east half!)
+                if (mid.x > ControlPoint.x - 40f) continue;
+
+                // Skip intersections & stream bridges
+                bool nearInter = false;
+                for (int k = 0; k < _intersections.Count; k++)
+                    if (Vector2.Distance(mid, _intersections[k]) < 68f) { nearInter = true; break; }
+                if (nearInter || IsInWater(mid, 30f)) continue;
+
+                float roadAngle = Mathf.Atan2(seg.Dir.y, seg.Dir.x) * Mathf.Rad2Deg;
+                if (map == BattleMap.City) roadAngle = Mathf.Round(roadAngle / 90f) * 90f;
+                Vector2 perp = Vector2.Perpendicular(seg.Dir);
+                float side = (placed % 2 == 0) ? 1f : -1f;
+                string kind = props[(placed + random.Next(props.Length)) % props.Length];
+                var prefab = GetProp(assets, kind);
+                if (prefab == null) continue;
+
+                float offset = seg.HalfWidth + Mathf.Min(prefab.meta.width, prefab.meta.length) * 0.5f + 12f;
+                if (TryPlaceMirrored(prefab, mid + perp * (side * offset), roadAngle, clearance: 7f, avoidRoads: true))
+                    placed++;
+                else if (TryPlaceMirrored(prefab, mid - perp * (side * offset), roadAngle + 180f, clearance: 7f, avoidRoads: true))
+                    placed++;
             }
         }
 
@@ -1715,14 +2387,14 @@ namespace Modern8bitTanks
                     bestAsphalt = Mathf.Max(bestAsphalt, w);
 
                     // Clean yellow/ivory dashed center line outside intersections & central plaza
-                    if (minInterBox > 44f && Vector2.Distance(point, ControlPoint) > 78f)
+                    if (minInterBox > hw + 15f && Vector2.Distance(point, ControlPoint) > 78f)
                     {
                         if (Mathf.Abs(signedPerp) < (seg.IsPrimary ? 1.45f : 1.15f) && Mathf.Repeat(along + 8f, 34f) < 17f)
                             bestDash = Mathf.Max(bestDash, w);
                     }
 
-                    // Razor-straight white zebra crosswalk stripes right outside every 4-way intersection!
-                    if (minInterBox >= 34f && minInterBox <= 43f && Mathf.Abs(signedPerp) < hw - 3.5f)
+                    // Razor-straight white zebra crosswalk stripes right outside every real street junction!
+                    if (minInterBox >= hw + 5f && minInterBox <= hw + 14f && Mathf.Abs(signedPerp) < hw - 3.5f)
                     {
                         if (Mathf.Repeat(Mathf.Abs(signedPerp) + 2f, 7f) < 3.5f)
                             bestCrosswalk = Mathf.Max(bestCrosswalk, w);
