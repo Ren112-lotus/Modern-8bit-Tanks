@@ -79,12 +79,27 @@ namespace Modern8bitTanks
                             wave < -1.1f ? sandDeep :
                             wave < -0.68f ? sandShade : sandBase;
 
-                        // Wide East-West highway + North-South crossroad + North & South canyon trails
-                        bool mainRoad = Mathf.Abs(y - cy) < 34 || Mathf.Abs(x - cx) < 36;
-                        bool northTrail = Mathf.Abs(y - (h * 0.80f + Mathf.Sin(x * 0.006f) * 32f)) < 20;
-                        bool southTrail = Mathf.Abs(y - (h * 0.20f - Mathf.Sin(x * 0.006f) * 28f)) < 18;
-                        if (mainRoad || northTrail || southTrail)
-                            c = Color32.Lerp(c, roadCol, 0.38f);
+                        // Wide East-West military convoy highway + North-South crossroad + canyon supply trails
+                        float dyMain = Mathf.Abs(y - cy);
+                        float dxMain = Mathf.Abs(x - cx);
+                        bool onMainH = dyMain < 28f;
+                        bool onMainV = dxMain < 28f;
+                        bool onNorthTrail = Mathf.Abs(y - (h * 0.80f + Mathf.Sin(x * 0.006f) * 30f)) < 17f;
+                        bool onSouthTrail = Mathf.Abs(y - (h * 0.20f - Mathf.Sin(x * 0.006f) * 28f)) < 17f;
+                        if (onMainH || onMainV)
+                        {
+                            Color32 tarmac = new Color32(124, 112, 92, 255);
+                            c = Color32.Lerp(c, tarmac, 0.72f);
+                            bool rut = (onMainH && Mathf.Abs(dyMain - 12f) < 2.2f) || (onMainV && Mathf.Abs(dxMain - 12f) < 2.2f);
+                            if (rut) c = Color32.Lerp(c, canyonDark, 0.32f);
+                            bool dash = (onMainH && !onMainV && dyMain < 1.3f && (x % 36) < 16)
+                                || (onMainV && !onMainH && dxMain < 1.3f && (y % 36) < 16);
+                            if (dash) c = Color32.Lerp(c, sandLight, 0.65f);
+                        }
+                        else if (onNorthTrail || onSouthTrail)
+                        {
+                            c = Color32.Lerp(c, new Color32(142, 112, 74, 255), 0.72f);
+                        }
 
                         // Contested Central Outpost Concrete Foundation Pad
                         if (Mathf.Abs(x - cx) <= 108 && Mathf.Abs(y - cy) <= 78)
@@ -191,10 +206,16 @@ namespace Modern8bitTanks
                     {
                         bool grain = (((x * 13 + y * 29) & 15) == 0);
                         c = grain ? asphaltDark : asphalt;
+                        float boxInter = Mathf.Max(minDx, minDy);
+                        bool nearInter = minDx < roadHalf + 14f && minDy < roadHalf + 14f;
                         // Dashed yellow-white center lane markings (outside intersections)
-                        bool dashH = onRoadH && !onRoadV && minDy < 1.6f && ((x % 28) < 13);
-                        bool dashV = onRoadV && !onRoadH && minDx < 1.6f && ((y % 28) < 13);
+                        bool dashH = onRoadH && !nearInter && minDy < 1.6f && ((x % 28) < 13);
+                        bool dashV = onRoadV && !nearInter && minDx < 1.6f && ((y % 28) < 13);
                         if (dashH || dashV) c = laneDash;
+                        // Crisp white zebra crosswalk stripes right outside every 4-way intersection
+                        bool xwalkH = onRoadH && !onRoadV && boxInter >= roadHalf + 2f && boxInter <= roadHalf + 11f && minDy < roadHalf - 4f && (((int)minDy % 7) < 3);
+                        bool xwalkV = onRoadV && !onRoadH && boxInter >= roadHalf + 2f && boxInter <= roadHalf + 11f && minDx < roadHalf - 4f && (((int)minDx % 7) < 3);
+                        if (xwalkH || xwalkV) c = Color32.Lerp(c, new Color32(208, 206, 196, 255), 0.72f);
                     }
                     else if (minDy < walkHalf || minDx < walkHalf)
                     {
@@ -234,15 +255,21 @@ namespace Modern8bitTanks
             BattleLoadBudget budget, System.Action<float> progress)
         {
             var px = new Color32[w * h];
-            Color32 grassBase  = new Color32( 88, 118,  62, 255);
-            Color32 grassLight = new Color32(106, 136,  72, 255);
-            Color32 mossShade  = new Color32( 70,  98,  52, 255);
-            Color32 pineDeep   = new Color32( 56,  80,  44, 255);
-            Color32 dirtRoad   = new Color32(138, 112,  76, 255);
-            Color32 mudEdge    = new Color32(108,  88,  58, 255);
-            Color32 campClear  = new Color32(126, 108,  76, 255);
-            Color32 borderPine = new Color32( 38,  58,  32, 255);
-            Color32 borderEdge = new Color32( 28,  42,  24, 255);
+            Color32 grassBase   = new Color32(100, 132,  66, 255);
+            Color32 grassSunlit = new Color32(128, 158,  78, 255);
+            Color32 mossShade   = new Color32( 74, 106,  54, 255);
+            Color32 pineDeep    = new Color32( 58,  86,  46, 255);
+            Color32 dirtRoad    = new Color32(154, 126,  86, 255);
+            Color32 rutDark     = new Color32(114,  90,  58, 255);
+            Color32 mudEdge     = new Color32(118,  98,  66, 255);
+            Color32 campClear   = new Color32(138, 118,  84, 255);
+            Color32 brookShallow = new Color32( 62, 116, 124, 255);
+            Color32 brookDeep    = new Color32( 38,  78,  98, 255);
+            Color32 bankStone    = new Color32(102,  94,  72, 255);
+            Color32 bridgeWood   = new Color32(146, 108,  68, 255);
+            Color32 bridgeRail   = new Color32( 66,  48,  32, 255);
+            Color32 borderPine   = new Color32( 38,  58,  32, 255);
+            Color32 borderEdge   = new Color32( 28,  42,  24, 255);
 
             float cx = w * 0.5f;
             float cy = h * 0.5f;
@@ -262,27 +289,62 @@ namespace Modern8bitTanks
                         Mathf.Sin(x * 0.011f + y * 0.016f) +
                         0.55f * Mathf.Cos(x * 0.024f - y * 0.019f + 0.9f) +
                         0.30f * Mathf.Sin(x * 0.041f + y * 0.033f);
-                    Color32 c = wave > 0.65f ? grassLight :
-                        wave < -0.85f ? pineDeep :
-                        wave < -0.35f ? mossShade : grassBase;
+                    Color32 c = wave > 0.62f ? grassSunlit :
+                        wave < -0.82f ? pineDeep :
+                        wave < -0.28f ? mossShade : grassBase;
 
-                    // Winding main dirt logging road (East-West) + North-South forest trail
-                    float roadY = cy + Mathf.Sin(x * 0.0045f) * 76f;
-                    float roadX = cx + Mathf.Cos(y * 0.0055f) * 68f;
-                    float dyR = Mathf.Abs(y - roadY);
-                    float dxR = Mathf.Abs(x - roadX);
-                    float dRoad = Mathf.Min(dyR, dxR);
-                    if (dRoad < 28f)
-                        c = Color32.Lerp(c, dirtRoad, 0.78f);
-                    else if (dRoad < 38f)
+                    // Twin winding woodland brooks curving through West & East valleys
+                    float streamW = w * 0.30f + Mathf.Sin(y * 0.0062f + 0.5f) * 58f;
+                    float streamE = w * 0.70f - Mathf.Sin(y * 0.0062f + 0.5f) * 58f;
+                    float dStream = Mathf.Min(Mathf.Abs(x - streamW), Mathf.Abs(x - streamE));
+                    bool inBrook = dStream < 18f;
+                    if (inBrook)
+                    {
+                        c = Color32.Lerp(brookDeep, brookShallow, dStream / 18f);
+                        if (Mathf.Sin(x * 0.16f + y * 0.24f) > 0.86f && dStream < 12f)
+                            c = Color32.Lerp(c, new Color32(174, 212, 222, 255), 0.52f);
+                    }
+                    else if (dStream < 26f)
+                    {
+                        c = Color32.Lerp(c, bankStone, (26f - dStream) / 8f * 0.68f);
+                    }
+
+                    // Connected winding dirt highway + North-South crossroad + North & South forest trails
+                    float roadY = cy + Mathf.Sin(x * 0.0045f) * 68f;
+                    float roadX = cx + Mathf.Cos(y * 0.0055f) * 54f;
+                    float trailN = h * 0.80f + Mathf.Sin(x * 0.005f) * 24f;
+                    float trailS = h * 0.20f - Mathf.Sin(x * 0.005f) * 24f;
+                    float dyMain = Mathf.Abs(y - roadY);
+                    float dxMain = Mathf.Abs(x - roadX);
+                    float dyTrail = Mathf.Min(Mathf.Abs(y - trailN), Mathf.Abs(y - trailS));
+                    float dRoad = Mathf.Min(Mathf.Min(dyMain, dxMain), dyTrail + 6f);
+                    if (dRoad < 24f)
+                    {
+                        if (inBrook)
+                        {
+                            // Timber bridge crossing over the woodland brook!
+                            bool rail = dRoad > 20.5f;
+                            bool plank = (((int)(x + y)) % 6) < 4;
+                            c = rail ? bridgeRail : (plank ? bridgeWood : rutDark);
+                        }
+                        else
+                        {
+                            c = Color32.Lerp(c, dirtRoad, 0.86f);
+                            bool rut = Mathf.Abs(dRoad - 10.5f) < 2.4f;
+                            if (rut) c = Color32.Lerp(c, rutDark, 0.48f);
+                        }
+                    }
+                    else if (dRoad < 32f && !inBrook)
+                    {
                         c = Color32.Lerp(c, mudEdge, 0.45f);
+                    }
 
                     // Central Timber Clearing
-                    float cdx = (x - cx) / 138f;
-                    float cdy = (y - cy) / 96f;
+                    float cdx = (x - cx) / 132f;
+                    float cdy = (y - cy) / 92f;
                     float cd = cdx * cdx + cdy * cdy;
-                    if (cd < 0.72f) c = Color32.Lerp(c, campClear, 0.52f);
-                    else if (cd < 1.18f) c = Color32.Lerp(c, grassLight, 0.35f);
+                    if (cd < 0.72f) c = Color32.Lerp(c, campClear, 0.62f);
+                    else if (cd < 1.18f) c = Color32.Lerp(c, grassSunlit, 0.35f);
 
                     px[y * w + x] = c;
                 }
@@ -290,15 +352,16 @@ namespace Modern8bitTanks
                 if (budget != null) await budget.YieldIfSpentAsync();
             }
 
-            // Scattered wildflowers, ferns, mossy rocks, & fallen pine needles
-            int tuftCount = Mathf.RoundToInt((w * h) / 1450f);
+            // Scattered wildflowers, clover & mossy stone accents
+            int tuftCount = Mathf.RoundToInt((w * h) / 1600f);
             for (int i = 0; i < tuftCount; i++)
             {
                 int gx = ((i * 239 + 53) % (w - 64)) + 32;
                 int gy = ((i * 163 + 79) % (h - 64)) + 32;
-                Color32 col = (i % 7 == 0) ? new Color32(124, 146, 76, 255)
-                    : (i % 5 == 0) ? new Color32(106, 108, 102, 255)
-                    : new Color32(52, 74, 38, 255);
+                Color32 col = (i % 9 == 0) ? new Color32(214, 198, 112, 255)
+                    : (i % 7 == 0) ? new Color32(138, 166, 84, 255)
+                    : (i % 5 == 0) ? new Color32(118, 118, 108, 255)
+                    : new Color32(62, 92, 46, 255);
                 for (int dy = 0; dy < 2; dy++)
                     for (int dx = 0; dx < 2; dx++)
                         px[(gy + dy) * w + (gx + dx)] = col;
