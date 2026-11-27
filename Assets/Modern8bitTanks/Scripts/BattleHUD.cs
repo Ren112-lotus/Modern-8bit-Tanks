@@ -618,7 +618,7 @@ namespace Modern8bitTanks
                 for (int x = 0; x < _radarWidth; x++)
                 {
                     int i = y * _radarWidth + x;
-                    bool line = x % 24 == 0 || y % 20 == 0;
+                    bool line = x % 17 == 0 || y % 14 == 0;
                     _radarPixels[i] = layout != null && _wallRadarMask[i] ? bldgCol : line ? grid : bg;
                 }
             }
@@ -673,11 +673,11 @@ namespace Modern8bitTanks
             {
                 Vector2Int position = Vector2Int.RoundToInt(Vector2.Scale(_mgr.ControlPointPosition, mapScale));
                 Color32 color = _mgr.ControlPointColor();
-                for (int y = -5; y <= 5; y++)
-                for (int x = -5; x <= 5; x++)
+                for (int y = -3; y <= 3; y++)
+                for (int x = -3; x <= 3; x++)
                 {
                     int distanceSquared = x * x + y * y;
-                    if (distanceSquared >= 12 && distanceSquared <= 21)
+                    if (distanceSquared >= 6 && distanceSquared <= 12)
                         PlotRadarPixel(position.x + x, position.y + y, color);
                 }
             }
