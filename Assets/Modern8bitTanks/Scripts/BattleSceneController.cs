@@ -127,7 +127,7 @@ namespace Modern8bitTanks
         private MultiplayerSessionState _multiplayer;
         private BattleVisibility _visibility;
         private ControlPointSystem _controlPoints;
-        private System.Func<TankEntity, TankEntity, bool> _hasTankSight;
+        private System.Func<Vector2, Vector2, bool> _hasLineOfSight;
 
         [Inject]
         private void Construct(Camera worldCamera, BattleSessionState sessionState, GameSceneLoader sceneLoader,
@@ -140,7 +140,7 @@ namespace Modern8bitTanks
             _multiplayer = multiplayer;
             _visibility = visibility;
             _controlPoints = controlPoints;
-            _hasTankSight = HasTankSight;
+            _hasLineOfSight = HasLineOfSight;
             _getNetworkViewport = GetNetworkViewport;
             _windowbox = windowbox;
             _postProcess = postProcess;
@@ -1156,7 +1156,7 @@ namespace Modern8bitTanks
             TankEntity observer = BattleVisibility.FindObserver(_tanks, player);
             UpdateCameraAndAim(player, observer, dt);
             bool limitVisibility = _phase == GamePhase.Playing && battleMode != BattleMode.FiringRange;
-            _visibility.Refresh(_tanks, _networkTanks, player, observer, CameraViewport, _cam.aspect, limitVisibility, _hasTankSight);
+            _visibility.Refresh(_tanks, _networkTanks, player, observer, CameraViewport, _cam.aspect, limitVisibility, _hasLineOfSight);
             foreach (var tank in _tanks)
             {
                 if (tank == null || !tank.gameObject.activeInHierarchy) continue;

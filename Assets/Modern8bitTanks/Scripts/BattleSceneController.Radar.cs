@@ -11,16 +11,6 @@ namespace Modern8bitTanks
         private BattleViewport CameraViewport => new BattleViewport(_cam.transform.position,
             new Vector2(_cam.orthographicSize * _cam.aspect, _cam.orthographicSize), _camRollDeg);
 
-        private bool HasTankSight(TankEntity observer, TankEntity target)
-        {
-            Vector2 from = observer.Position2D;
-            Vector2 position = target.Position2D;
-            if (HasLineOfSight(from, position)) return true;
-            // The visible edge of the hull can peek around cover before its center.
-            Vector2 shoulder = Vector2.Perpendicular((position - from).normalized) * (9f / PPU);
-            return HasLineOfSight(from, position + shoulder) || HasLineOfSight(from, position - shoulder);
-        }
-
         private void UpdateRadarContacts()
         {
             if (_phase != GamePhase.Playing)
@@ -29,7 +19,7 @@ namespace Modern8bitTanks
                 return;
             }
 
-            _visibility.RefreshNetworkContacts(_networkTanks, _getNetworkViewport, _hasTankSight);
+            _visibility.RefreshNetworkContacts(_networkTanks, _getNetworkViewport, _hasLineOfSight);
         }
 
         private BattleViewport? GetNetworkViewport(int slot, TankEntity observer)
