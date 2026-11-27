@@ -388,5 +388,77 @@
     "destructible": true,
     "ricochetHeavy": false,
     "heavyStructure": false
+  },
+  "cactus_cluster": {
+    "slices": 20,
+    "width": 24,
+    "length": 24,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "cypress_tree": {
+    "slices": 26,
+    "width": 20,
+    "length": 20,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "birch_clump": {
+    "slices": 22,
+    "width": 34,
+    "length": 32,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "rock_pillar": {
+    "slices": 24,
+    "width": 24,
+    "length": 24,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": true,
+    "roundedFootprint": true
+  },
+  "hay_bale": {
+    "slices": 12,
+    "width": 26,
+    "length": 22,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "basalt_rocks": {
+    "slices": 18,
+    "width": 32,
+    "length": 28,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": true,
+    "roundedFootprint": true
+  },
+  "reed_marsh": {
+    "slices": 13,
+    "width": 30,
+    "length": 26,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "bamboo_grove": {
+    "slices": 24,
+    "width": 28,
+    "length": 26,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
   }
 }

@@ -166,6 +166,14 @@ namespace Modern8bitTanks
         public PropMetaEntry abandoned_car;
         public PropMetaEntry wooden_shed;
         public PropMetaEntry solar_array;
+        public PropMetaEntry cactus_cluster;
+        public PropMetaEntry cypress_tree;
+        public PropMetaEntry birch_clump;
+        public PropMetaEntry rock_pillar;
+        public PropMetaEntry hay_bale;
+        public PropMetaEntry basalt_rocks;
+        public PropMetaEntry reed_marsh;
+        public PropMetaEntry bamboo_grove;
 
         public PropMetaEntry GetByKind(string kind)
         {
@@ -220,6 +228,14 @@ namespace Modern8bitTanks
                 "abandoned_car" => abandoned_car,
                 "wooden_shed" => wooden_shed,
                 "solar_array" => solar_array,
+                "cactus_cluster" => cactus_cluster,
+                "cypress_tree" => cypress_tree,
+                "birch_clump" => birch_clump,
+                "rock_pillar" => rock_pillar,
+                "hay_bale" => hay_bale,
+                "basalt_rocks" => basalt_rocks,
+                "reed_marsh" => reed_marsh,
+                "bamboo_grove" => bamboo_grove,
                 _ => desert_rock
             };
         }
@@ -510,7 +526,15 @@ namespace Modern8bitTanks
                 bus_stop = new PropMetaEntry { slices = 16, width = 32, length = 16, destructible = true },
                 abandoned_car = new PropMetaEntry { slices = 12, width = 34, length = 16, destructible = true },
                 wooden_shed = new PropMetaEntry { slices = 18, width = 30, length = 24, destructible = true },
-                solar_array = new PropMetaEntry { slices = 13, width = 36, length = 22, destructible = true }
+                solar_array = new PropMetaEntry { slices = 13, width = 36, length = 22, destructible = true },
+                cactus_cluster = new PropMetaEntry { slices = 20, width = 24, length = 24, destructible = true, roundedFootprint = true },
+                cypress_tree = new PropMetaEntry { slices = 26, width = 20, length = 20, destructible = true, roundedFootprint = true },
+                birch_clump = new PropMetaEntry { slices = 22, width = 34, length = 32, destructible = true, roundedFootprint = true },
+                rock_pillar = new PropMetaEntry { slices = 24, width = 24, length = 24, destructible = true, ricochetHeavy = true, heavyStructure = true, roundedFootprint = true },
+                hay_bale = new PropMetaEntry { slices = 12, width = 26, length = 22, destructible = true, roundedFootprint = true },
+                basalt_rocks = new PropMetaEntry { slices = 18, width = 32, length = 28, destructible = true, ricochetHeavy = true, heavyStructure = true, roundedFootprint = true },
+                reed_marsh = new PropMetaEntry { slices = 13, width = 30, length = 26, destructible = true, roundedFootprint = true },
+                bamboo_grove = new PropMetaEntry { slices = 24, width = 28, length = 26, destructible = true, roundedFootprint = true }
             };
         }
     }
