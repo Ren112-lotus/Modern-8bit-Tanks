@@ -4,7 +4,6 @@ using R3;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
@@ -34,22 +33,6 @@ namespace Modern8bitTanks
         [Range(0.45f, 1.0f)] public float squash = 0.80f;
         [Range(0f, 2.5f)] public float spacingPx = 0.72f;
         [Range(1.0f, 3.0f)] public float showcaseZoom = 2.0f;
-        private float _currentShowcaseZoom = 2.0f;
-
-        // Horizontal WoT Tech Tree Layout Constants (all EVEN integer pixels!)
-        private const int ViewX = 8;
-        private const int ViewY = 70;
-        private const int ViewW = 464;
-        private const int ViewH = 260;
-        private const int NodeW = 104;
-        private const int NodeH = 30;
-        private const int ColGap = 20;
-        private const int ColStep = NodeW + ColGap; // 124px per Tier column!
-        private const int PadX = 16;
-        private const int HistoryColumns = 8;
-        private const int ContentW = PadX * 2 + (HistoryColumns + VehicleDef.SpecialTier) * ColStep - ColGap;
-        private const float MaxScrollX = ContentW - ViewW;
-
         private Camera _cam;
         private BattleSessionState _sessionState;
         private GameSceneLoader _sceneLoader;
@@ -81,30 +64,14 @@ namespace Modern8bitTanks
         private readonly VehicleSliceSheets _vehicleSheets = new();
         private float _maxViewHeightPixels;
 
-        private string _treeNation = "USA";
-        private bool _treeOpen = false;
         private bool _settingsOpen = false;
-        private bool _xrayMode = false;
-        private bool _draggingTank;
-        private float _lastDragX;
-        private float _manualAngleOffset;
         [SerializeField] private GameObject _hangarXrayWrap;
         [SerializeField] private TankCutawayGraphic _hangarXrayGraphic;
         [SerializeField] private Image _btnXrayBg;
         [SerializeField] private Text _hangarXrayBadge;
 
-        // Horizontal Tree Scroll state
-        private float _treeScrollX = 0f;
-        private float _targetScrollX = 0f;
-        private bool _draggingTree;
-        private float _treeDragStartScreenX;
-        private float _treeDragStartScroll;
-        private float _treeDragAccumDist;
         [SerializeField] private RectTransform _treeContentRt;
         [SerializeField] private RectTransform _scrollThumbRt;
-        private const int ScrollTrackX = 32;
-        private const int ScrollTrackW = 416;
-
         // UI Roots
         [SerializeField] private Canvas _pixelCanvas;
         [SerializeField] private RectTransform _menuHitRoot;
@@ -161,32 +128,8 @@ namespace Modern8bitTanks
         [SerializeField] private StatBarSlot _statTur;
         [SerializeField] private StatBarSlot _statView;
 
-        // Tech Tree UI
-        private static readonly (string Code, string Label)[] TreeNations =
-        {
-            ("USA", "USA"), ("GER", "GERMANY"), ("USSR", "USSR / RU"), ("JPN", "JAPAN")
-        };
-        private readonly Dictionary<string, Image> _nationButtons = new();
-        private readonly Dictionary<string, GameObject> _nationLinks = new();
         [SerializeField] private Text _treeDetailTitle;
         [SerializeField] private Text _treeDetailStats;
-
-        private class TreeNodeSlot
-        {
-            public GameObject visualGo;
-            public GameObject hitGo;
-            public RectTransform hitRt;
-            public Image borderImg;
-            public Image fillImg;
-            public Text topText;
-            public Text nameText;
-            public string vehicleId;
-            public Color idleBorder;
-            public int contentX;
-            public int contentY; // local inside viewport [0..ViewH]
-        }
-
-        private readonly Dictionary<string, TreeNodeSlot> _treeNodes = new();
 
         // Gritty Military Olive-Drab Steel & Brass Warfare Palette
         private static readonly Color PanelBorder = new Color(0.42f, 0.38f, 0.26f, 1f);
@@ -211,16 +154,6 @@ namespace Modern8bitTanks
             "JPN" => new Color(0.92f, 0.38f, 0.42f, 1f),
             _ => GoldColor
         };
-
-        private float GetAdaptiveShowcaseZoom(VehicleDef def)
-        {
-            if (def == null) return showcaseZoom;
-            float len = def.hullLength > 0 ? def.hullLength : 38f;
-            if (len <= 26f) return 2.50f; // Micro tankettes (Wiesel, MS-1, M50, ASU-57): crystal-clear close framing!
-            if (len <= 34f) return 2.25f; // Light tanks (Stuart, Ha-Go, Pz II, Sheridan)
-            if (len <= 44f) return 2.00f; // Standard MBTs: exact 2x pixel scale!
-            return 1.80f;                 // Massive heavies (Tiger II, A7V, M103)
-        }
 
         private void Awake()
         {
@@ -312,75 +245,13 @@ namespace Modern8bitTanks
                 f.material.mainTexture.filterMode = FilterMode.Point;
         }
 
-        private void SetupMapBackdrop()
-        {
-            mapBackdropRenderer.enabled = true;
-            mapBackdropRenderer.transform.position = new Vector3(WorldW * 0.5f, WorldH * 0.5f, 5f);
-            mapBackdropRenderer.sortingOrder = -30000;
-            if (_groundHd2dMat != null) mapBackdropRenderer.sharedMaterial = _groundHd2dMat;
-        }
-
-        private void RefreshMapBackdropTheme(BattleMap map)
-        {
-            if (_titleOpen)
-            {
-                mapBackdropRenderer.sprite = Resources.Load<Sprite>($"Hangar/{map}Backdrop");
-                mapBackdropRenderer.transform.localScale = Vector3.one;
-            }
-            else
-            {
-                mapBackdropRenderer.sprite = _garageBackdrop;
-                FitGarageBackdrop();
-            }
-
-            _postProcess?.ApplyMapTheme(_titleOpen ? map : BattleMap.City);
-        }
-
-        private void FitGarageBackdrop()
-        {
-            float height = _cam.orthographicSize * 2f;
-            Vector3 size = _garageBackdrop.bounds.size;
-            float scale = Mathf.Max(height * _cam.aspect / size.x, height / size.y);
-            mapBackdropRenderer.transform.localScale = new Vector3(scale, scale, 1f);
-        }
-
         private void SelectBattleMap(BattleMap map)
         {
             _sessionState.SelectedBattleMap = map;
             RefreshAllUI();
         }
 
-        private void SetupCenterShowcaseTank()
-        {
-
-            if (showcaseTank.hullStack != null && showcaseTank.hullStack.sliceMaterial != null)
-                _stackFlashMat = showcaseTank.hullStack.sliceMaterial;
-
-            Vector2 center = new Vector2(WorldW * 0.5f, WorldH * 0.5f + 0.15f);
-            showcaseTank.transform.position = new Vector3(center.x, center.y, 0f);
-            showcaseTank.isPlayer = false;
-            showcaseTank.factionTeam = "ally";
-        }
-
         private VehicleDef GetSelectedVehicle() => _vehicleCatalog.FindOrFirst(_sessionState.SelectedPlayerVehicleId);
-
-        private void ApplySelectedTankToTurntable()
-        {
-            VehicleDef def = GetSelectedVehicle();
-            if (def == null || showcaseTank == null) return;
-
-            Vector2 center = new Vector2(WorldW * 0.5f, WorldH * 0.5f + 0.15f);
-            var (hullSheet, turretSheet) = _vehicleSheets.Get(def.id);
-            if (!showcaseTank.TrySpawnAsVehicle(def, hullSheet, turretSheet,
-                center, 35f + _manualAngleOffset, _stackFlashMat))
-                return;
-
-            showcaseTank.SetAssemblyDrop(1f);
-            ClearArmorPreviewHistory();
-            // A larger vehicle must fit as soon as it replaces the previous model.
-            _currentShowcaseZoom = Mathf.Min(_currentShowcaseZoom, GetAdaptiveShowcaseZoom(def));
-            RefreshAllUI();
-        }
 
         private void SelectVehicle(string id, bool closeTreeIfSame = false)
         {
@@ -434,26 +305,6 @@ namespace Modern8bitTanks
             _sceneLoader.LoadAsync(BattleSessionState.BattleSceneName).Forget();
         }
 
-        private void ScrollTreeToSelected(bool instant = false)
-        {
-            VehicleDef sel = GetSelectedVehicle();
-            if (sel == null || sel.nation != _treeNation)
-            {
-                _targetScrollX = 0f;
-            }
-            else
-            {
-                int col = TreeColumn(sel);
-                float nodeCenterX = PadX + col * ColStep + NodeW * 0.5f;
-                _targetScrollX = Mathf.Clamp(nodeCenterX - ViewW * 0.5f, 0f, MaxScrollX);
-            }
-            if (instant)
-            {
-                _treeScrollX = _targetScrollX;
-                ApplyTreeScrollVisuals();
-            }
-        }
-
         private void Update()
         {
             if (_sceneLoader != null && _sceneLoader.IsLoading) return;
@@ -477,47 +328,7 @@ namespace Modern8bitTanks
                 return;
             }
 
-            if (kb != null)
-            {
-                if (kb.escapeKey.wasPressedThisFrame)
-                {
-                    if (_settingsOpen) SetSettingsOpen(false);
-                    else if (_deployOpen) SetDeployModalOpen(false);
-                    else if (_treeOpen) SetTechTreeOpen(false);
-                    else if (_choosingOnlineVehicle) ConfirmOnlineVehicle();
-                    else SetSettingsOpen(true);
-                }
-                else if (kb.oKey.wasPressedThisFrame && !_treeOpen && !_deployOpen)
-                {
-                    SetSettingsOpen(!_settingsOpen);
-                }
-                else if (!_settingsOpen)
-                {
-                    if (_titleOpen)
-                    {
-                        if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame)
-                            BeginEnterGarageFromTitle();
-                    }
-                    else if (_deployOpen)
-                    {
-                        if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)
-                            LaunchBattleScene();
-                    }
-                    else
-                    {
-                        if (kb.tKey.wasPressedThisFrame)
-                            SetTechTreeOpen(!_treeOpen);
-                        else if (kb.xKey.wasPressedThisFrame && !_treeOpen)
-                            SetXRayMode(!_xrayMode);
-                        else if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)
-                            SetDeployModalOpen(true, fromTree: _treeOpen);
-                        else if (!_treeOpen && kb.leftArrowKey.wasPressedThisFrame)
-                            CycleSelectedInCurrentNation(-1);
-                        else if (!_treeOpen && kb.rightArrowKey.wasPressedThisFrame)
-                            CycleSelectedInCurrentNation(1);
-                    }
-                }
-            }
+            HandleMenuKeyboard(kb);
 
             // Live 3D Sprite-Stacking Title Screen Stage
             if (_titleOpen)
@@ -538,257 +349,16 @@ namespace Modern8bitTanks
             }
             else if (_treeOpen)
             {
-                if (kb != null)
-                {
-                    float keyDir = 0f;
-                    if (kb.leftArrowKey.isPressed || kb.aKey.isPressed) keyDir -= 1f;
-                    if (kb.rightArrowKey.isPressed || kb.dKey.isPressed) keyDir += 1f;
-                    if (Mathf.Abs(keyDir) > 0.01f)
-                        _targetScrollX = Mathf.Clamp(_targetScrollX + keyDir * 360f * dt, 0f, MaxScrollX);
-                }
-
-                if (mouse != null)
-                {
-                    Vector2 wheel = mouse.scroll.ReadValue();
-                    float wheelDelta = Mathf.Abs(wheel.x) > 0.01f ? wheel.x : -wheel.y;
-                    if (Mathf.Abs(wheelDelta) > 0.01f)
-                    {
-                        float step = Mathf.Sign(wheelDelta) * 86f;
-                        _targetScrollX = Mathf.Clamp(_targetScrollX + step, 0f, MaxScrollX);
-                    }
-
-                    // Click-drag horizontal panning inside tree viewport
-                    Vector2 screenPos = mouse.position.ReadValue();
-                    bool inTreeBand = _windowbox.TryScreenToViewport(screenPos, out Vector2 uv)
-                                      && uv.y * PixelWindowbox.RenderHeight >= ViewY - 12
-                                      && uv.y * PixelWindowbox.RenderHeight <= ViewY + ViewH;
-
-                    if (mouse.leftButton.wasPressedThisFrame && inTreeBand)
-                    {
-                        _draggingTree = true;
-                        _treeDragStartScreenX = screenPos.x;
-                        _treeDragStartScroll = _targetScrollX;
-                        _treeDragAccumDist = 0f;
-                    }
-                    if (mouse.leftButton.wasReleasedThisFrame)
-                        _draggingTree = false;
-
-                    if (_draggingTree)
-                    {
-                        float dxScreen = screenPos.x - _treeDragStartScreenX;
-                        _treeDragAccumDist = Mathf.Max(_treeDragAccumDist, Mathf.Abs(dxScreen));
-                        float scaleToVirtual = PixelWindowbox.RenderWidth / Mathf.Max(1f, _windowbox.HitOverlayRect.rect.width);
-                        _targetScrollX = Mathf.Clamp(_treeDragStartScroll - dxScreen * scaleToVirtual, 0f, MaxScrollX);
-                    }
-                }
-
-                _treeScrollX = Mathf.Lerp(_treeScrollX, _targetScrollX, 1f - Mathf.Exp(-14f * dt));
-                if (Mathf.Abs(_treeScrollX - _targetScrollX) < 0.3f) _treeScrollX = _targetScrollX;
-                ApplyTreeScrollVisuals();
+                UpdateTreeScroll(kb, mouse, dt);
                 _draggingTank = false;
                 _armorPreviewPress = null;
             }
             else if (mouse != null)
             {
-                // Garage view: drag mouse to inspect your tank from any angle
-                bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-                if (_xrayMode)
-                {
-                    if (_hangarXrayGraphic.HangarShotBusy)
-                    {
-                        _armorPreviewPress = null;
-                        _draggingTank = false;
-                    }
-                    else
-                    {
-                        fireArmorPreview = ReadArmorPreviewClick(mouse, overUI);
-                    }
-                }
-                else if (!overUI && mouse.leftButton.wasPressedThisFrame)
-                {
-                    _lastDragX = mouse.position.ReadValue().x;
-                    _draggingTank = float.IsFinite(_lastDragX);
-                }
-                if (mouse.leftButton.wasReleasedThisFrame)
-                    _draggingTank = false;
-                if (_draggingTank)
-                {
-                    float curX = mouse.position.ReadValue().x;
-                    if (float.IsFinite(curX))
-                    {
-                        float dx = curX - _lastDragX;
-                        _lastDragX = curX;
-                        _manualAngleOffset = Mathf.Repeat(_manualAngleOffset + dx * 0.45f, 360f);
-                    }
-                }
+                fireArmorPreview = ReadShowcasePointer(mouse);
             }
 
-            // Adaptive crisp showcase zoom (automatically frames small tankettes close-up & MBTs at crisp 2x pixels!)
-            float targetZoom = GetAdaptiveShowcaseZoom(GetSelectedVehicle());
-            _currentShowcaseZoom = Mathf.Lerp(_currentShowcaseZoom, targetZoom, 1f - Mathf.Exp(-10f * dt));
-            if (Mathf.Abs(_currentShowcaseZoom - targetZoom) < 0.006f) _currentShowcaseZoom = targetZoom;
-
-            // Center camera squarely on the showcase turntable
-            if (_cam != null)
-            {
-                float orthoSize = ((PixelWindowbox.RenderHeight / PPU) * 0.5f) / _currentShowcaseZoom;
-                _cam.orthographicSize = orthoSize;
-                FitGarageBackdrop();
-                float camX = Mathf.Round((WorldW * 0.5f) * PPU) / PPU;
-                float camY = Mathf.Round((WorldH * 0.5f) * PPU) / PPU;
-                _cam.transform.position = new Vector3(camX, camY, -20f);
-                _cam.transform.rotation = Quaternion.identity;
-            }
-
-            if (showcaseTank != null)
-            {
-                bool inspect = _xrayMode && !_treeOpen;
-                if (inspect && fireArmorPreview)
-                    ResetArmorPreviewDamage();
-
-                if (!_draggingTank && !inspect)
-                    _manualAngleOffset = Mathf.Repeat(_manualAngleOffset + 24f * dt, 360f);
-                showcaseTank.hullAngleDeg = Mathf.Repeat(35f + _manualAngleOffset, 360f);
-                if (!inspect || !_hangarXrayGraphic.HangarShotBusy)
-                    showcaseTank.turretAngleDeg = showcaseTank.hullAngleDeg + Mathf.Sin(Time.time * 0.95f) *
-                        Mathf.Min(28f, showcaseTank.vehicleDef?.fixedGunTraverse is > 0 ? showcaseTank.vehicleDef.fixedGunTraverse : 28f);
-
-                if (showcaseTank.gameObject.activeSelf == inspect)
-                    showcaseTank.gameObject.SetActive(!inspect);
-                showcaseTank.SyncVisuals(squash, spacingPx);
-                if (inspect)
-                {
-                    _hangarXrayGraphic.ShowHangarInspect(showcaseTank, _cam, _windowbox.HudCamera);
-                    UpdateArmorPreview(kb, mouse, fireArmorPreview, dt);
-                }
-            }
-        }
-
-        private void ApplyTreeScrollVisuals()
-        {
-            int scrollInt = Mathf.RoundToInt(_treeScrollX);
-            if (_treeContentRt != null)
-                _treeContentRt.anchoredPosition = new Vector2(-scrollInt, 0f);
-
-            // Sync pixel scrollbar thumb
-            if (_scrollThumbRt != null)
-            {
-                int thumbW = Mathf.RoundToInt(ScrollTrackW * ((float)ViewW / ContentW));
-                int travel = ScrollTrackW - thumbW;
-                int thumbX = ScrollTrackX + Mathf.RoundToInt((scrollInt / Mathf.Max(1f, MaxScrollX)) * travel);
-                _scrollThumbRt.anchoredPosition = new Vector2(thumbX, 58);
-                _scrollThumbRt.sizeDelta = new Vector2(thumbW, 6);
-            }
-
-            // Dynamically sync every visible node's click hitbox clipped cleanly to the scroll viewport!
-            foreach (var slot in _treeNodes.Values)
-            {
-                if (slot == null || slot.hitGo == null) continue;
-                bool activeItem = _vehicleCatalog.Find(slot.vehicleId).nation == _treeNation;
-                if (!activeItem)
-                {
-                    slot.hitGo.SetActive(false);
-                    continue;
-                }
-
-                float sx0 = ViewX + slot.contentX - scrollInt;
-                float sx1 = sx0 + NodeW;
-                float clipX0 = Mathf.Max(ViewX, sx0);
-                float clipX1 = Mathf.Min(ViewX + ViewW, sx1);
-
-                if (clipX1 - clipX0 < 4f)
-                {
-                    slot.hitGo.SetActive(false);
-                }
-                else
-                {
-                    slot.hitGo.SetActive(true);
-                    float sy0 = ViewY + slot.contentY;
-                    float sy1 = sy0 + NodeH;
-                    slot.hitRt.anchorMin = new Vector2(clipX0 / PixelWindowbox.RenderWidth, sy0 / PixelWindowbox.RenderHeight);
-                    slot.hitRt.anchorMax = new Vector2(clipX1 / PixelWindowbox.RenderWidth, sy1 / PixelWindowbox.RenderHeight);
-                    slot.hitRt.offsetMin = Vector2.zero;
-                    slot.hitRt.offsetMax = Vector2.zero;
-                }
-            }
-        }
-
-        // ============================================================
-        // 100% Pixel-Perfect UI (Strictly 8px / 16px Fonts & EVEN Rects!)
-        // ============================================================
-        private void SetXRayMode(bool on)
-        {
-            if (!on) ResetArmorPreviewDamage();
-            _xrayMode = on;
-            if (_hangarXrayWrap != null) _hangarXrayWrap.SetActive(on && !_treeOpen);
-            if (_btnXrayBg != null) _btnXrayBg.color = on ? new Color(0.22f, 0.54f, 0.62f, 1f) : BtnBg;
-            if (showcaseTank != null) showcaseTank.gameObject.SetActive(!on || _treeOpen);
-            RefreshAllUI();
-        }
-
-        private void PlayHangarPreviewSfx()
-        {
-            if (_previewAudio == null || _previewSfxClip == null) return;
-            if (!_sessionState.SfxEnabled || _sessionState.SfxVolume <= 0.001f) return;
-            _previewAudio.Stop();
-            _previewAudio.clip = _previewSfxClip;
-            _previewAudio.volume = Mathf.Clamp01(0.62f * _sessionState.SfxVolume);
-            _previewAudio.pitch = 1.0f;
-            _previewAudio.Play();
-        }
-
-        private void RefreshSettingsLabels()
-        {
-            if (_setSfxLabel != null)
-            {
-                _setSfxLabel.text = BattleSessionState.FormatVolumeLabel("SE", _sessionState.SfxEnabled, _sessionState.SfxVolume);
-                _setSfxLabel.color = (_sessionState.SfxEnabled && _sessionState.SfxVolume > 0.001f) ? MbtGreen : TextMuted;
-            }
-            if (_setBgmLabel != null)
-            {
-                _setBgmLabel.text = BattleSessionState.FormatVolumeLabel("BGM", _sessionState.BgmEnabled, _sessionState.BgmVolume);
-                _setBgmLabel.color = (_sessionState.BgmEnabled && _sessionState.BgmVolume > 0.001f) ? LightCyan : TextMuted;
-            }
-            if (_setDriveLabel != null)
-                _setDriveLabel.text = UiText.Get(_sessionState.ArcadeWASD ? "DRIVE: ARCADE WASD" : "DRIVE: TANK STEER");
-            if (_setAiLabel != null)
-                _setAiLabel.text = UiText.Get(_sessionState.AiEnabled ? "ENEMY AI: ON" : "ENEMY AI: OFF");
-            if (_setGfxLabel != null)
-                _setGfxLabel.text = UiText.Get(_sessionState.PostProcessEnabled ? "GFX: HD-2D" : "GFX: RETRO");
-            if (_setViewLabel != null)
-                _setViewLabel.text = UiText.Get(_sessionState.IntegerWindowbox ? "VIEW: INT WINDOWBOX" : "VIEW: 4:3");
-        }
-
-        private void SetSettingsOpen(bool open)
-        {
-            _settingsOpen = open;
-            if (_settingsVisualGroup != null) _settingsVisualGroup.SetActive(open);
-            SyncActiveHitGroups();
-            if (open) RefreshSettingsLabels();
-        }
-
-        private void SetTechTreeOpen(bool open)
-        {
-            if (open && _settingsOpen) SetSettingsOpen(false);
-            if (open && _deployOpen) SetDeployModalOpen(false);
-            if (open) ResetArmorPreviewDamage();
-            _treeOpen = open;
-            if (_treeVisualGroup != null) _treeVisualGroup.SetActive(open && !_titleOpen);
-            if (_garageVisualGroup != null) _garageVisualGroup.SetActive(!open && !_titleOpen);
-            if (_hangarXrayWrap != null) _hangarXrayWrap.SetActive(_xrayMode && !open && !_titleOpen);
-            if (showcaseTank != null) showcaseTank.gameObject.SetActive(!_xrayMode || open || _titleOpen);
-            SyncActiveHitGroups();
-            if (open)
-            {
-                VehicleDef cur = GetSelectedVehicle();
-                if (cur != null) _treeNation = cur.nation;
-                RefreshAllUI();
-                ScrollTreeToSelected(instant: true);
-            }
-            else
-            {
-                RefreshAllUI();
-            }
+            UpdateShowcase(kb, mouse, fireArmorPreview, dt);
         }
 
         private void RefreshAllUI()
@@ -886,66 +456,12 @@ namespace Modern8bitTanks
                     _garageNationBtnLabel.text = $"{sel.nation} ({nCount})";
                     _garageNationBtnLabel.color = nationAccent;
                 }
-
-                if (_treeDetailTitle != null)
-                    _treeDetailTitle.text = $"{sel.TierRoman}  {sel.name.ToUpper()}  ({sel.role} / {sel.WeaponLabel})";
-                if (_treeDetailStats != null)
-                    _treeDetailStats.text = $"SPD {(int)sel.speed}  TRN {(int)sel.EffectiveHullTurnSpeed}  TUR {(int)sel.EffectiveTurretTurnSpeed}  PEN {(int)sel.penetration}  RLD {sel.reload:F2}s  {sel.engine.ToUpper()}";
             }
 
             RefreshDeployModalUI();
-
-            foreach (var (nation, button) in _nationButtons)
-                button.color = _treeNation == nation ? BtnSelected : BtnBg;
-            foreach (var (nation, links) in _nationLinks)
-                links.SetActive(_treeNation == nation);
-
-            foreach (var (id, slot) in _treeNodes)
-            {
-                VehicleDef vehicle = _vehicleCatalog.Find(id);
-                bool visible = vehicle.nation == _treeNation;
-                slot.visualGo.SetActive(visible);
-                if (!visible) continue;
-
-                bool selected = vehicle.id == _sessionState.SelectedPlayerVehicleId;
-                string tag = vehicle.year > 0 ? vehicle.year.ToString() : vehicle.TierRoman;
-                slot.topText.text = $"{tag}  {vehicle.role}";
-                slot.topText.color = selected || vehicle.IsSpecial ? GoldColor : TextMuted;
-                slot.nameText.text = FormatTreeShortName(vehicle.name, 15);
-                slot.nameText.color = selected ? GoldColor : TextLight;
-                slot.fillImg.color = selected ? BtnSelected : BtnBg;
-                slot.borderImg.color = selected ? GoldColor : slot.idleBorder;
-            }
-            if (_treeOpen) ApplyTreeScrollVisuals();
+            RefreshTechTreeUI(sel);
         }
 
-        private string GetNationTabLabel(string nation, string title)
-        {
-            int count = Array.FindAll(_vehicleCatalog.Vehicles, vehicle => vehicle != null && vehicle.nation == nation).Length;
-            return $"{title} ({count})";
-        }
-
-        private static string FormatTreeShortName(string raw, int maxChars)
-        {
-            if (string.IsNullOrEmpty(raw)) return "";
-            string s = raw
-                .Replace("Kanonenjagdpanzer", "KanJPz")
-                .Replace("M41 Walker Bulldog", "M41 Bulldog")
-                .Replace("M41 (Bundeswehr)", "M41 Bundeswehr")
-                .Replace("Ru 251 Prototype", "Ru 251")
-                .Replace("Spahpanzer ", "")
-                .Replace("Raketenjagdpanzer ", "RAKJPZ ")
-                .Replace("M1128 Stryker MGS", "STRYKER MGS")
-                .Replace("BMPT Terminator", "BMPT TERM.")
-                .Replace("2S25M Sprut-SDM1", "SPRUT-SDM1")
-                .Replace("2S25 Sprut-SD", "SPRUT-SD")
-                .ToUpper();
-            return s.Length <= maxChars ? s : s.Substring(0, maxChars);
-        }
-
-        // ============================================================
-        // Exact Integer-Pixel uGUI Builders (Strictly 8px / 16px!)
-        // ============================================================
         private static void SetPixelRect(RectTransform rt, int x, int y, int w, int h)
         {
             rt.anchorMin = Vector2.zero;

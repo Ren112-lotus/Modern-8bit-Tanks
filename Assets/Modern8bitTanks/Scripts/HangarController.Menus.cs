@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Modern8bitTanks
 {
@@ -157,5 +158,94 @@ namespace Modern8bitTanks
             _sessionState.SaveSettings();
             RefreshSettingsLabels();
         }
+
+        private void HandleMenuKeyboard(Keyboard keyboard)
+        {
+            if (keyboard == null) return;
+
+            if (keyboard.escapeKey.wasPressedThisFrame)
+            {
+                if (_settingsOpen) SetSettingsOpen(false);
+                else if (_deployOpen) SetDeployModalOpen(false);
+                else if (_treeOpen) SetTechTreeOpen(false);
+                else if (_choosingOnlineVehicle) ConfirmOnlineVehicle();
+                else SetSettingsOpen(true);
+                return;
+            }
+
+            if (keyboard.oKey.wasPressedThisFrame && !_treeOpen && !_deployOpen)
+            {
+                SetSettingsOpen(!_settingsOpen);
+                return;
+            }
+
+            if (_settingsOpen) return;
+
+            bool confirm = keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame;
+            if (_titleOpen)
+            {
+                if (confirm || keyboard.spaceKey.wasPressedThisFrame) BeginEnterGarageFromTitle();
+                return;
+            }
+
+            if (_deployOpen)
+            {
+                if (confirm) LaunchBattleScene();
+                return;
+            }
+
+            if (keyboard.tKey.wasPressedThisFrame)
+                SetTechTreeOpen(!_treeOpen);
+            else if (keyboard.xKey.wasPressedThisFrame && !_treeOpen)
+                SetXRayMode(!_xrayMode);
+            else if (confirm)
+                SetDeployModalOpen(true, fromTree: _treeOpen);
+            else if (!_treeOpen && keyboard.leftArrowKey.wasPressedThisFrame)
+                CycleSelectedInCurrentNation(-1);
+            else if (!_treeOpen && keyboard.rightArrowKey.wasPressedThisFrame)
+                CycleSelectedInCurrentNation(1);
+        }
+
+        private void PlayHangarPreviewSfx()
+        {
+            if (_previewAudio == null || _previewSfxClip == null) return;
+            if (!_sessionState.SfxEnabled || _sessionState.SfxVolume <= 0.001f) return;
+            _previewAudio.Stop();
+            _previewAudio.clip = _previewSfxClip;
+            _previewAudio.volume = Mathf.Clamp01(0.62f * _sessionState.SfxVolume);
+            _previewAudio.pitch = 1.0f;
+            _previewAudio.Play();
+        }
+
+        private void RefreshSettingsLabels()
+        {
+            if (_setSfxLabel != null)
+            {
+                _setSfxLabel.text = BattleSessionState.FormatVolumeLabel("SE", _sessionState.SfxEnabled, _sessionState.SfxVolume);
+                _setSfxLabel.color = (_sessionState.SfxEnabled && _sessionState.SfxVolume > 0.001f) ? MbtGreen : TextMuted;
+            }
+            if (_setBgmLabel != null)
+            {
+                _setBgmLabel.text = BattleSessionState.FormatVolumeLabel("BGM", _sessionState.BgmEnabled, _sessionState.BgmVolume);
+                _setBgmLabel.color = (_sessionState.BgmEnabled && _sessionState.BgmVolume > 0.001f) ? LightCyan : TextMuted;
+            }
+            if (_setDriveLabel != null)
+                _setDriveLabel.text = UiText.Get(_sessionState.ArcadeWASD ? "DRIVE: ARCADE WASD" : "DRIVE: TANK STEER");
+            if (_setAiLabel != null)
+                _setAiLabel.text = UiText.Get(_sessionState.AiEnabled ? "ENEMY AI: ON" : "ENEMY AI: OFF");
+            if (_setGfxLabel != null)
+                _setGfxLabel.text = UiText.Get(_sessionState.PostProcessEnabled ? "GFX: HD-2D" : "GFX: RETRO");
+            if (_setViewLabel != null)
+                _setViewLabel.text = UiText.Get(_sessionState.IntegerWindowbox ? "VIEW: INT WINDOWBOX" : "VIEW: 4:3");
+        }
+
+        private void SetSettingsOpen(bool open)
+        {
+            _settingsOpen = open;
+            if (_settingsVisualGroup != null) _settingsVisualGroup.SetActive(open);
+            SyncActiveHitGroups();
+            if (open) RefreshSettingsLabels();
+        }
+
     }
 }
