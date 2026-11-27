@@ -552,9 +552,15 @@ namespace Modern8bitTanks
             SpawnMapProp("desert_mesa", 0.25f, 0.22f, -6f);
             SpawnMapProp("desert_mesa", 0.75f, 0.22f, 10f);
 
-            // 2. Massive Fortified Desert Compounds (major mid-lane strongholds!)
+            // 2. Massive Fortified Desert Compounds & Aligned Supply Yard (major mid-lane strongholds!)
             SpawnMapProp("desert_compound", 0.36f, 0.62f, 0f);
             SpawnMapProp("desert_compound", 0.64f, 0.38f, 180f);
+            SpawnMapProp("radar_station", 0.32f, 0.66f, 0f);
+            SpawnMapProp("radar_station", 0.68f, 0.34f, 180f);
+            SpawnMapProp("cargo_container", 0.34f, 0.56f, 0f);
+            SpawnMapProp("cargo_container", 0.34f, 0.53f, 0f);
+            SpawnMapProp("cargo_container", 0.66f, 0.44f, 180f);
+            SpawnMapProp("cargo_container", 0.66f, 0.47f, 180f);
 
             // 3. Central Outpost Bunkers, Watch Towers & Fuel Depots
             SpawnMapProp("desert_bunker", 0.44f, 0.54f, 0f);
@@ -564,13 +570,17 @@ namespace Modern8bitTanks
             SpawnMapProp("fuel_tank", 0.46f, 0.45f, 0f);
             SpawnMapProp("fuel_tank", 0.54f, 0.55f, 0f);
 
-            // 4. Dry Southern Palm Grove (kept lush palm trees — ZERO water!)
+            // 4. Dry Southern Palm Grove & Natural Mesa Foothill Scrub (organic free-angle clusters!)
             SpawnMapProp("palm_tree", 0.43f, 0.19f, 10f);
             SpawnMapProp("palm_tree", 0.48f, 0.14f, -20f);
             SpawnMapProp("palm_tree", 0.53f, 0.21f, 35f);
             SpawnMapProp("palm_tree", 0.58f, 0.15f, -15f);
             SpawnMapProp("palm_tree", 0.46f, 0.24f, 50f);
             SpawnMapProp("palm_tree", 0.55f, 0.24f, -40f);
+            SpawnMapProp("desert_scrub", 0.41f, 0.15f, 74f);
+            SpawnMapProp("desert_scrub", 0.59f, 0.21f, 212f);
+            SpawnMapProp("desert_scrub", 0.24f, 0.75f, 145f);
+            SpawnMapProp("desert_scrub", 0.76f, 0.26f, 308f);
             SpawnMapProp("desert_rock", 0.50f, 0.17f, 12f);
             SpawnMapProp("desert_rock", 0.39f, 0.84f, -18f);
             SpawnMapProp("desert_rock", 0.61f, 0.84f, 22f);
@@ -590,9 +600,14 @@ namespace Modern8bitTanks
 
         private void BuildCityLayout()
         {
-            // 1. Massive Industrial Factories anchoring the Northern District!
+            // 1. Massive Industrial Factories & Parallel Freight Containers anchoring the Northern District!
             SpawnMapProp("city_factory", 0.37f, 0.87f, 0f);
             SpawnMapProp("city_factory", 0.63f, 0.87f, 0f);
+            SpawnMapProp("cargo_container", 0.29f, 0.88f, 0f);
+            SpawnMapProp("cargo_container", 0.29f, 0.85f, 0f);
+            SpawnMapProp("cargo_container", 0.71f, 0.88f, 0f);
+            SpawnMapProp("cargo_container", 0.71f, 0.85f, 0f);
+            SpawnMapProp("radar_station", 0.50f, 0.79f, 0f);
 
             // 2. Towering 3-Story European Apartment Blocks creating real city boulevards & flanking alleys!
             SpawnMapProp("city_apartment", 0.37f, 0.63f, 0f);
@@ -637,25 +652,33 @@ namespace Modern8bitTanks
             SpawnMapProp("forest_boulder", 0.66f, 0.24f, 16f);
             SpawnMapProp("forest_boulder", 0.50f, 0.50f, 5f);
 
-            // 2. Sturdy Woodland Log Cabins / Farmhouses
+            // 2. Sturdy Woodland Log Cabins with Aligned Timber Stacks
             SpawnMapProp("forest_cabin", 0.43f, 0.64f, 0f);
+            SpawnMapProp("timber_stack", 0.39f, 0.65f, 0f);
+            SpawnMapProp("timber_stack", 0.39f, 0.62f, 0f);
             SpawnMapProp("forest_cabin", 0.57f, 0.36f, 180f);
+            SpawnMapProp("timber_stack", 0.61f, 0.35f, 180f);
+            SpawnMapProp("timber_stack", 0.61f, 0.38f, 180f);
             SpawnMapProp("forest_cabin", 0.22f, 0.58f, 14f);
             SpawnMapProp("forest_cabin", 0.78f, 0.42f, -14f);
 
-            // 3. Dense Towering Pine Tree Clusters forming rich woodland ambush corridors!
+            // 3. Organic Mixed Pine & Broadleaf Woodland Clusters + Mossy Boulder Outcrops!
             SpawnMapProp("pine_cluster", 0.20f, 0.82f, 0f);
-            SpawnMapProp("pine_cluster", 0.26f, 0.72f, 25f);
+            SpawnMapProp("broadleaf_grove", 0.26f, 0.72f, 48f);
             SpawnMapProp("pine_cluster", 0.80f, 0.82f, -20f);
-            SpawnMapProp("pine_cluster", 0.74f, 0.72f, 15f);
+            SpawnMapProp("broadleaf_grove", 0.74f, 0.72f, 132f);
             SpawnMapProp("pine_cluster", 0.20f, 0.18f, 35f);
-            SpawnMapProp("pine_cluster", 0.26f, 0.29f, -12f);
+            SpawnMapProp("broadleaf_grove", 0.26f, 0.29f, 215f);
             SpawnMapProp("pine_cluster", 0.80f, 0.18f, -30f);
-            SpawnMapProp("pine_cluster", 0.74f, 0.29f, 20f);
+            SpawnMapProp("broadleaf_grove", 0.74f, 0.29f, 294f);
             SpawnMapProp("pine_cluster", 0.48f, 0.82f, 8f);
             SpawnMapProp("pine_cluster", 0.52f, 0.18f, -18f);
-            SpawnMapProp("pine_cluster", 0.33f, 0.48f, 40f);
-            SpawnMapProp("pine_cluster", 0.67f, 0.52f, -35f);
+            SpawnMapProp("broadleaf_grove", 0.33f, 0.48f, 76f);
+            SpawnMapProp("broadleaf_grove", 0.67f, 0.52f, 252f);
+            SpawnMapProp("moss_rocks", 0.31f, 0.79f, 38f);
+            SpawnMapProp("moss_rocks", 0.69f, 0.21f, 198f);
+            SpawnMapProp("moss_rocks", 0.37f, 0.22f, 118f);
+            SpawnMapProp("moss_rocks", 0.63f, 0.78f, 286f);
 
             // 4. Forest Fire-Lookout Towers, Timber Supply Depots & Field Defenses
             SpawnMapProp("watch_tower", 0.42f, 0.34f, 0f);
