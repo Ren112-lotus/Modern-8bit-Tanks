@@ -233,16 +233,14 @@ namespace Modern8bitTanks
             bool city = map == BattleMap.City;
             float primaryHalfW = city ? 28f : (map == BattleMap.Desert ? 25f : 23f);
             float secondaryHalfW = city ? 21f : 17f;
-            float turnPenalty = city ? 4.2f : 0.85f;
+            float turnPenalty = city ? 4.2f : 0.80f;
 
             // Build obstacle & terrain cost grids reflecting ALL placed cover, ridges, parks & groves.
             var strictBlocked = new bool[RouteCount];
             var relaxedBlocked = new bool[RouteCount];
             var baseCost = new float[RouteCount];
-            var allRoadMask = new bool[RouteCount];
-            var primaryMask = new bool[RouteCount];
-            var primaryNearMask = new bool[RouteCount];
-            var flankNearMask = new bool[RouteCount];
+            var roadMask = new bool[RouteCount];
+            var nearRoadMask = new bool[RouteCount];
             float strictClear = city ? 20f : 17f;
             float relaxedClear = 11f;
             float borderKeep = BattleSceneController.BorderPadPx + 28f;
@@ -287,11 +285,11 @@ namespace Modern8bitTanks
 
                     // Discourage roads from cutting directly through parks or deep natural woodlands.
                     if (IsInsideAnyDistrict(_parkGround, p) || IsInsideAnyDistrict(_groveGround, p))
-                        cost += 2.4f;
+                        cost += 2.6f;
 
                     // Gently prefer natural open alley corridors between plan districts.
                     if (IsInsideAnyDistrict(corridorHints, p))
-                        cost *= 0.78f;
+                        cost *= 0.80f;
 
                     // In natural biomes, add subtle Perlin meander cost so routes bend organically.
                     if (!city)
@@ -304,179 +302,329 @@ namespace Modern8bitTanks
                 }
             }
 
-            // 1. PRIMARY TRUNK HIGHWAY: Map Edge -> West Base -> Control Point (mirrored seamlessly to East Base!)
-            AddMirroredRoadPolyline(new[] { new Vector2(0f, _westBase.y), _westBase }, primaryHalfW, true);
-            var primaryCost = (float[])baseCost.Clone();
-            for (int gy = 0; gy < RouteRows; gy++)
-            {
-                float py = (gy + 0.5f) * RouteCell;
-                float bandPen = Mathf.Max(0f, (Mathf.Abs(py - ControlPoint.y) - 150f) / 140f) * 1.4f;
-                if (bandPen <= 0f) continue;
-                int rowOff = gy * RouteCols;
-                for (int gx = 0; gx < RouteCols; gx++)
-                    primaryCost[rowOff + gx] += bandPen;
-            }
-            var primaryCells = RouteCellsBetween(_westBase, ControlPoint, !city, turnPenalty,
-                strictBlocked, relaxedBlocked, primaryCost, null, null);
-            if (primaryCells != null && primaryCells.Count >= 2)
-                CommitMirroredCellPath(primaryCells, _westBase, ControlPoint, primaryHalfW, isPrimary: true, city: city,
-                    allRoadMask, primaryMask, primaryNearMask, flankNearMask);
-            else
-                AddMirroredRoadPolyline(new[] { _westBase, ControlPoint }, primaryHalfW, true);
-
-            // Clear primaryNearMask right around bases & center plaza so flank roads and cross-avenue join cleanly.
-            Vector2 eastBase = Mirror(_westBase);
-            for (int gy = 0; gy < RouteRows; gy++)
-            {
-                for (int gx = 0; gx < RouteCols; gx++)
-                {
-                    int idx = gy * RouteCols + gx;
-                    if (!primaryNearMask[idx]) continue;
-                    Vector2 p = RouteCellCenter(gx, gy);
-                    if (Vector2.Distance(p, _westBase) < 145f ||
-                        Vector2.Distance(p, eastBase) < 145f ||
-                        Vector2.Distance(p, ControlPoint) < 120f)
-                        primaryNearMask[idx] = false;
-                }
-            }
-
-            // 2. CONTINUOUS NORTH & SOUTH FLANK HIGHWAYS CHAINING ARTIFICIAL FACILITIES!
-            // Skip midline facilities (|y - cp.y| < 155) already served directly by the Primary Trunk.
-            var northSites = new List<Vector2>();
-            var southSites = new List<Vector2>();
+            // =========================================================================
+            // FREE-FORM OBJECT-DRIVEN SYMMETRIC ROAD GRAPH (NO FIXED 3-LANE TEMPLATE!)
+            // Nodes: 0 = WestBase, 1 = EastBase, 2 = ControlPoint,
+            //        3..3+k-1 = real West artificial facilities, 3+k..3+2k-1 = East mirrors
+            // =========================================================================
+            var westFacs = new List<Vector2>();
             foreach (var site in artificialAnchors)
             {
-                if (Mathf.Abs(site.Center.y - ControlPoint.y) < 155f) continue;
-                Vector2 access = FindCorridorAccessPoint(site.Center, site.GroundSize, strictBlocked, relaxedBlocked, preferInner: true);
-                if (Mathf.Abs(access.y - ControlPoint.y) < 150f) continue;
-                if (access.y > ControlPoint.y) northSites.Add(access);
-                else southSites.Add(access);
+                Vector2 access = FindFacilityAccessPoint(site.Center, site.GroundSize, strictBlocked, relaxedBlocked);
+                if (Vector2.Distance(access, _westBase) < 145f || Vector2.Distance(access, ControlPoint) < 135f)
+                    continue;
+                bool tooClose = false;
+                for (int i = 0; i < westFacs.Count; i++)
+                    if (Vector2.Distance(access, westFacs[i]) < 155f) { tooClose = true; break; }
+                if (!tooClose) westFacs.Add(access);
             }
-            northSites.Sort((a, b) => a.x.CompareTo(b.x));
-            southSites.Sort((a, b) => a.x.CompareTo(b.x));
-            northSites = FilterSpacedWaypoints(northSites, 120f);
-            southSites = FilterSpacedWaypoints(southSites, 120f);
 
-            // Compute natural centerline seam altitude matching actual northern/southern facilities!
-            float sumOff = 0f;
-            int cntOff = 0;
-            foreach (var s in northSites) { sumOff += Mathf.Abs(s.y - ControlPoint.y); cntOff++; }
-            foreach (var s in southSites) { sumOff += Mathf.Abs(s.y - ControlPoint.y); cntOff++; }
-            float seamOff = Mathf.Clamp(cntOff > 0 ? sumOff / cntOff : 325f, 255f, 390f);
+            int k = westFacs.Count;
+            var nodes = new List<Vector2>(3 + k * 2) { _westBase, Mirror(_westBase), ControlPoint };
+            nodes.AddRange(westFacs);
+            for (int i = 0; i < k; i++) nodes.Add(Mirror(westFacs[i]));
+            int nCnt = nodes.Count;
 
-            Vector2 northSeam = FindCorridorAccessPoint(
-                new Vector2(ControlPoint.x, ControlPoint.y + seamOff), new Vector2(64f, 64f), strictBlocked, relaxedBlocked, preferInner: false);
-            Vector2 southSeam = Mirror(northSeam);
+            int MirrorNode(int u) => u == 0 ? 1 : (u == 1 ? 0 : (u == 2 ? 2 : (u < 3 + k ? u + k : u - k)));
 
-            if (northSites.Count == 0)
-                northSites.Add(FindCorridorAccessPoint(new Vector2(Width * 0.32f, ControlPoint.y + seamOff), new Vector2(64f, 64f), strictBlocked, relaxedBlocked, preferInner: false));
-            if (southSites.Count == 0)
-                southSites.Add(FindCorridorAccessPoint(new Vector2(Width * 0.32f, ControlPoint.y - seamOff), new Vector2(64f, 64f), strictBlocked, relaxedBlocked, preferInner: false));
+            var adj = new HashSet<int>[nCnt];
+            var dsu = new int[nCnt];
+            for (int i = 0; i < nCnt; i++) { adj[i] = new HashSet<int>(); dsu[i] = i; }
 
-            // Hemisphere-guided flank costs prevent flank roads from hijacking or hugging the central trunk!
-            float[] northCost = BuildFlankCostGrid(baseCost, primaryMask, primaryNearMask, +1f);
-            float[] southCost = BuildFlankCostGrid(baseCost, primaryMask, primaryNearMask, -1f);
-
-            var northWaypoints = new List<Vector2>(northSites.Count + 2) { _westBase };
-            northWaypoints.AddRange(northSites);
-            northWaypoints.Add(northSeam);
-            RouteAndCommitChain(northWaypoints, !city, turnPenalty, strictBlocked, relaxedBlocked,
-                northCost, flankNearMask, secondaryHalfW, city, allRoadMask, primaryMask, primaryNearMask);
-
-            var southWaypoints = new List<Vector2>(southSites.Count + 2) { _westBase };
-            southWaypoints.AddRange(southSites);
-            southWaypoints.Add(southSeam);
-            RouteAndCommitChain(southWaypoints, !city, turnPenalty, strictBlocked, relaxedBlocked,
-                southCost, flankNearMask, secondaryHalfW, city, allRoadMask, primaryMask, primaryNearMask);
-
-            // 3. CENTRAL CROSS-AVENUE: North Seam -> Control Point (mirrored to South Seam -> Control Point!)
-            var crossCost = (float[])baseCost.Clone();
-            for (int gy = 0; gy < RouteRows; gy++)
+            int Find(int x)
             {
-                int rowOff = gy * RouteCols;
-                for (int gx = 0; gx < RouteCols; gx++)
+                while (dsu[x] != x) { dsu[x] = dsu[dsu[x]]; x = dsu[x]; }
+                return x;
+            }
+            void Union(int a, int b)
+            {
+                int ra = Find(a), rb = Find(b);
+                if (ra != rb) dsu[ra] = rb;
+            }
+            int GraphDist(int src, int dst)
+            {
+                if (src == dst) return 0;
+                var q = new Queue<(int node, int dist)>();
+                var vis = new bool[nCnt];
+                vis[src] = true;
+                q.Enqueue((src, 0));
+                while (q.Count > 0)
                 {
-                    float px = (gx + 0.5f) * RouteCell;
-                    crossCost[rowOff + gx] += Mathf.Max(0f, (Mathf.Abs(px - ControlPoint.x) - 110f) / 90f) * 1.8f;
+                    var (u, d) = q.Dequeue();
+                    foreach (int w in adj[u])
+                    {
+                        if (w == dst) return d + 1;
+                        if (!vis[w]) { vis[w] = true; q.Enqueue((w, d + 1)); }
+                    }
+                }
+                return 99;
+            }
+
+            bool CommitSymmetricChain(int[] seq, bool isPrimary, float[] costGrid, bool avoidExisting, float maxNearOverlap)
+            {
+                var combined = new List<int>();
+                for (int i = 0; i < seq.Length - 1; i++)
+                {
+                    int u = seq[i], v = seq[i + 1];
+                    if (u == v || v == MirrorNode(u)) return false;
+                    var leg = RouteCellsBetween(nodes[u], nodes[v], !city, turnPenalty,
+                        strictBlocked, relaxedBlocked, costGrid, roadMask, nearRoadMask,
+                        avoidExistingRoad: avoidExisting, nearPenalty: 5.8f, shareCost: 0.35f, avoidRoadPenalty: 8.0f);
+                    if (leg == null || leg.Count < 2) return false;
+                    int startIdx = (combined.Count > 0 && leg[0] == combined[^1]) ? 1 : 0;
+                    for (int c = startIdx; c < leg.Count; c++) combined.Add(leg[c]);
+                }
+
+                combined = CollapseBacktrackLoops(combined, lookBack: 14);
+                if (combined.Count < 2) return false;
+
+                // Reject redundant loop routes that hug or retrace an already-routed road!
+                if (maxNearOverlap < 0.99f && combined.Count > 10)
+                {
+                    int bad = 0;
+                    int midCount = combined.Count - 8;
+                    for (int i = 4; i < combined.Count - 4; i++)
+                    {
+                        int c = combined[i];
+                        if (roadMask[c] || nearRoadMask[c]) bad++;
+                    }
+                    if (bad / (float)Mathf.Max(1, midCount) > maxNearOverlap)
+                        return false;
+                }
+
+                var worldPts = new List<Vector2>(combined.Count);
+                for (int i = 0; i < combined.Count; i++)
+                {
+                    int c = combined[i];
+                    int mc = MirrorRouteCell(c);
+                    roadMask[c] = true;
+                    roadMask[mc] = true;
+                    MarkNearRoad(c, nearRoadMask, radius: 4);
+                    MarkNearRoad(mc, nearRoadMask, radius: 4);
+                    worldPts.Add(RouteCellCenter(c % RouteCols, c / RouteCols));
+                }
+                Vector2 exactA = nodes[seq[0]];
+                Vector2 exactB = nodes[seq[^1]];
+                if (Vector2.Distance(worldPts[0], exactA) < 36f) worldPts[0] = exactA;
+                if (Vector2.Distance(worldPts[^1], exactB) < 36f) worldPts[^1] = exactB;
+
+                var smoothed = SimplifyAndSmoothPath(worldPts, orthogonal: city, checkClearance: 12f);
+                AddMirroredRoadPolyline(smoothed, isPrimary ? primaryHalfW : secondaryHalfW, isPrimary);
+
+                for (int i = 0; i < seq.Length - 1; i++)
+                {
+                    int u = seq[i], v = seq[i + 1];
+                    int mu = MirrorNode(u), mv = MirrorNode(v);
+                    adj[u].Add(v); adj[v].Add(u);
+                    adj[mu].Add(mv); adj[mv].Add(mu);
+                    Union(u, v); Union(mu, mv);
+                }
+                return true;
+            }
+
+            // Base entrances from left/right map edge
+            AddMirroredRoadPolyline(new[] { new Vector2(0f, _westBase.y), _westBase }, primaryHalfW, true);
+
+            // Stage 1: Pick an emergent Primary Spine driven by actual placed facilities & seed!
+            // 0 = DirectHub (W -> C -> E)
+            // 1 = SCurve    (W -> Facility -> C -> Mirror(Facility) -> E — single sweeping winding highway!)
+            // 2 = TwinArc   (W -> NorthFac -> Mirror(SouthFac) -> E — 2 sweeping flank highways, no center straight!)
+            // 3 = Perimeter (W -> outer NorthFac -> Mirror(outer SouthFac) -> E — urban ring / valley sweep!)
+            var northFacs = new List<int>();
+            var southFacs = new List<int>();
+            for (int u = 3; u < 3 + k; u++)
+            {
+                if (nodes[u].y > ControlPoint.y + 100f) northFacs.Add(u);
+                else if (nodes[u].y < ControlPoint.y - 100f) southFacs.Add(u);
+            }
+
+            var stylePool = new List<int> { 0 };
+            if (k >= 1) { stylePool.Add(1); stylePool.Add(1); }
+            if (northFacs.Count > 0 && southFacs.Count > 0)
+            {
+                stylePool.Add(2); stylePool.Add(2); stylePool.Add(3);
+                if (city) stylePool.Add(3);
+            }
+            int spineStyle = stylePool[random.Next(stylePool.Count)];
+
+            bool primaryOk = false;
+            if (spineStyle == 1 && k >= 1)
+            {
+                int fIdx = 3 + random.Next(k);
+                primaryOk = CommitSymmetricChain(new[] { 0, fIdx, 2 }, isPrimary: true, baseCost, avoidExisting: false, maxNearOverlap: 1.0f);
+            }
+            else if ((spineStyle == 2 || spineStyle == 3) && northFacs.Count > 0 && southFacs.Count > 0)
+            {
+                int fa = spineStyle == 3
+                    ? northFacs[0]
+                    : northFacs[random.Next(northFacs.Count)];
+                if (spineStyle == 3)
+                {
+                    foreach (int u in northFacs) if (nodes[u].y > nodes[fa].y) fa = u;
+                }
+                int fb = spineStyle == 3
+                    ? southFacs[0]
+                    : southFacs[random.Next(southFacs.Count)];
+                if (spineStyle == 3)
+                {
+                    foreach (int u in southFacs) if (nodes[u].y < nodes[fb].y) fb = u;
+                }
+                float[] northHemiCost = BuildHemisphereCostGrid(baseCost, +1f);
+                primaryOk = CommitSymmetricChain(new[] { 0, fa, MirrorNode(fb), 1 }, isPrimary: true, northHemiCost, avoidExisting: false, maxNearOverlap: 1.0f);
+            }
+
+            if (!primaryOk)
+            {
+                spineStyle = 0;
+                if (!CommitSymmetricChain(new[] { 0, 2 }, isPrimary: true, baseCost, avoidExisting: false, maxNearOverlap: 1.0f))
+                {
+                    AddMirroredRoadPolyline(new[] { _westBase, ControlPoint }, primaryHalfW, true);
+                    Union(0, 2); Union(1, 2);
                 }
             }
-            var crossCells = RouteCellsBetween(northSeam, ControlPoint, !city, turnPenalty,
-                strictBlocked, relaxedBlocked, crossCost, allRoadMask, flankNearMask, nearPenalty: 4.0f, shareCost: 0.45f);
-            if (crossCells != null && crossCells.Count >= 2)
-                CommitMirroredCellPath(crossCells, northSeam, ControlPoint, secondaryHalfW, isPrimary: false, city: city,
-                    allRoadMask, primaryMask, primaryNearMask, flankNearMask);
+
+            // Facilities already sitting directly alongside a routed road join that component (no awkward micro-stubs!)
+            for (int fId = 3; fId < 3 + k; fId++)
+            {
+                if (Find(fId) == Find(0)) continue;
+                int cell = WorldToRouteCell(nodes[fId]);
+                int gx = cell % RouteCols, gy = cell / RouteCols;
+                bool nearRoad = false;
+                for (int dy = -3; dy <= 3 && !nearRoad; dy++)
+                for (int dx = -3; dx <= 3 && !nearRoad; dx++)
+                {
+                    int nx = gx + dx, ny = gy + dy;
+                    if (nx > 0 && nx < RouteCols - 1 && ny > 0 && ny < RouteRows - 1 && roadMask[ny * RouteCols + nx])
+                        nearRoad = true;
+                }
+                if (nearRoad)
+                {
+                    int bestConn = 0;
+                    float bestSq = float.PositiveInfinity;
+                    for (int u = 0; u < nCnt; u++)
+                    {
+                        if (Find(u) != Find(0)) continue;
+                        float dSq = (nodes[u] - nodes[fId]).sqrMagnitude;
+                        if (dSq < bestSq) { bestSq = dSq; bestConn = u; }
+                    }
+                    Union(fId, bestConn);
+                    Union(MirrorNode(fId), MirrorNode(bestConn));
+                }
+            }
+
+            // Stage 2: Symmetric MST — guarantee ControlPoint, Bases, and EVERY real artificial facility are connected!
+            var allPairs = new List<(float dist, int u, int v)>();
+            var seenPairs = new HashSet<(int, int)>();
+            for (int u = 0; u < nCnt; u++)
+            {
+                for (int v = u + 1; v < nCnt; v++)
+                {
+                    if (v == MirrorNode(u)) continue;
+                    int mu = MirrorNode(u), mv = MirrorNode(v);
+                    var key1 = u < v ? (u, v) : (v, u);
+                    var key2 = mu < mv ? (mu, mv) : (mv, mu);
+                    var canon = (key1.Item1 < key2.Item1 || (key1.Item1 == key2.Item1 && key1.Item2 <= key2.Item2)) ? key1 : key2;
+                    if (!seenPairs.Add(canon)) continue;
+                    float dist = Vector2.Distance(nodes[u], nodes[v]);
+                    if (dist < 130f || dist > 950f) continue;
+                    allPairs.Add((dist, u, v));
+                }
+            }
+            allPairs.Sort((a, b) => a.dist.CompareTo(b.dist));
+
+            foreach (var (_, u, v) in allPairs)
+            {
+                if (Find(u) == Find(v)) continue;
+                if (!CommitSymmetricChain(new[] { u, v }, isPrimary: false, baseCost, avoidExisting: true, maxNearOverlap: 0.70f))
+                    CommitSymmetricChain(new[] { u, v }, isPrimary: false, baseCost, avoidExisting: false, maxNearOverlap: 1.0f);
+            }
+
+            // Stage 3: Organic Non-Overlapping Loop Closure (free-form density per biome & seed!)
+            int extraBudget = map switch
+            {
+                BattleMap.City => random.Next(2, 4),   // 2..3 urban cross-streets forming authentic blocks
+                BattleMap.Desert => random.Next(0, 3), // 0..2 desert bypasses / oasis cutbacks
+                _ => random.Next(0, 2)                 // 0..1 scenic forest loop (leaves wild woods open!)
+            };
+
+            int added = 0;
+            // First offer clean loop closure to any degree-1 facility if a genuinely distinct road exists
+            for (int fId = 3; fId < 3 + k && added < extraBudget; fId++)
+            {
+                if (adj[fId].Count != 1) continue;
+                var cands = new List<(float dist, int other)>();
+                foreach (var (dist, u, v) in allPairs)
+                {
+                    int other = u == fId ? v : (v == fId ? u : -1);
+                    if (other < 0 || adj[fId].Contains(other) || other == MirrorNode(fId)) continue;
+                    if (dist >= 200f && dist <= 780f && GraphDist(fId, other) >= 3)
+                        cands.Add((dist, other));
+                }
+                cands.Sort((a, b) => a.dist.CompareTo(b.dist));
+                int tryLim = Mathf.Min(2, cands.Count);
+                for (int c = 0; c < tryLim; c++)
+                {
+                    if (CommitSymmetricChain(new[] { fId, cands[c].other }, isPrimary: false, baseCost, avoidExisting: true, maxNearOverlap: 0.26f))
+                    {
+                        added++;
+                        break;
+                    }
+                }
+            }
+
+            // Shuffle remaining candidate pairs for organic cross-links (preserving non-3-lane silhouette!)
+            for (int i = allPairs.Count - 1; i > 0; i--)
+            {
+                int j = random.Next(i + 1);
+                (allPairs[i], allPairs[j]) = (allPairs[j], allPairs[i]);
+            }
+            foreach (var (dist, u, v) in allPairs)
+            {
+                if (added >= extraBudget) break;
+                if (adj[u].Contains(v) || v == MirrorNode(u)) continue;
+                if (dist < 240f || dist > 760f || GraphDist(u, v) < 3) continue;
+                // Preserve S-Curve / Twin-Arc identity by not forcing a straight WestBase<->ControlPoint line
+                if ((spineStyle == 1 || spineStyle == 2) &&
+                    ((u == 0 && v == 2) || (u == 2 && v == 0) || (u == 1 && v == 2) || (u == 2 && v == 1)))
+                    continue;
+                if (CommitSymmetricChain(new[] { u, v }, isPrimary: false, baseCost, avoidExisting: true, maxNearOverlap: 0.24f))
+                    added++;
+            }
 
             // Detect real street intersections / junctions for crisp City crosswalks & dash breaks!
             RebuildRoadIntersections(city);
         }
 
-        private float[] BuildFlankCostGrid(float[] baseCost, bool[] primaryMask, bool[] primaryNearMask, float signY)
+        private float[] BuildHemisphereCostGrid(float[] baseCost, float signY)
         {
-            var fc = (float[])baseCost.Clone();
+            var hc = (float[])baseCost.Clone();
             for (int gy = 0; gy < RouteRows; gy++)
             {
                 float py = (gy + 0.5f) * RouteCell;
                 int rowOff = gy * RouteCols;
                 for (int gx = 0; gx < RouteCols; gx++)
                 {
-                    int idx = rowOff + gx;
                     float px = (gx + 0.5f) * RouteCell;
-                    if (primaryMask[idx] && Vector2.Distance(new Vector2(px, py), _westBase) > 140f)
-                        fc[idx] += 6.5f;
-                    else if (primaryNearMask[idx])
-                        fc[idx] += 5.0f;
-
-                    if (px > _westBase.x + 150f)
+                    if (Mathf.Abs(px - ControlPoint.x) < 620f)
                     {
-                        if (signY > 0f && py < ControlPoint.y + 120f) fc[idx] += 7.0f;
-                        else if (signY < 0f && py > ControlPoint.y - 120f) fc[idx] += 7.0f;
+                        if (signY > 0f && py < ControlPoint.y + 90f) hc[rowOff + gx] += 6.5f;
+                        else if (signY < 0f && py > ControlPoint.y - 90f) hc[rowOff + gx] += 6.5f;
                     }
                 }
             }
-            return fc;
+            return hc;
         }
 
-        private static List<Vector2> FilterSpacedWaypoints(List<Vector2> sortedByX, float minDeltaX)
+        private static List<int> CollapseBacktrackLoops(List<int> cells, int lookBack = 14)
         {
-            var result = new List<Vector2>(sortedByX.Count);
-            for (int i = 0; i < sortedByX.Count; i++)
-            {
-                if (result.Count == 0 || sortedByX[i].x - result[^1].x >= minDeltaX)
-                    result.Add(sortedByX[i]);
-            }
-            return result;
-        }
-
-        private void RouteAndCommitChain(List<Vector2> waypoints, bool allowDiagonal, float turnPenalty,
-            bool[] strictBlocked, bool[] relaxedBlocked, float[] costGrid, bool[] flankNearMask,
-            float halfWidth, bool city, bool[] allRoadMask, bool[] primaryMask, bool[] primaryNearMask)
-        {
-            var combined = new List<int>();
-            for (int i = 0; i < waypoints.Count - 1; i++)
-            {
-                var leg = RouteCellsBetween(waypoints[i], waypoints[i + 1], allowDiagonal, turnPenalty,
-                    strictBlocked, relaxedBlocked, costGrid, null, flankNearMask, nearPenalty: 4.5f, shareCost: 0.35f);
-                if (leg == null || leg.Count < 2) continue;
-                int startIdx = (combined.Count > 0 && leg[0] == combined[^1]) ? 1 : 0;
-                for (int k = startIdx; k < leg.Count; k++)
-                    combined.Add(leg[k]);
-            }
-            if (combined.Count < 2) return;
-            combined = CollapseBacktrackLoops(combined);
-            CommitMirroredCellPath(combined, waypoints[0], waypoints[^1], halfWidth, isPrimary: false, city: city,
-                allRoadMask, primaryMask, primaryNearMask, flankNearMask);
-        }
-
-        private static List<int> CollapseBacktrackLoops(List<int> cells)
-        {
-            // Eliminate any 1-to-3 cell U-turn stubs caused where chained legs meet a waypoint!
+            // Eliminate any short U-turn stubs or micro-loops where chained legs meet a waypoint!
             var stack = new List<int>(cells.Count);
             for (int i = 0; i < cells.Count; i++)
             {
                 int c = cells[i];
                 int revisit = -1;
-                int lookBack = Mathf.Max(0, stack.Count - 6);
-                for (int j = stack.Count - 1; j >= lookBack; j--)
+                int start = Mathf.Max(0, stack.Count - lookBack);
+                for (int j = stack.Count - 1; j >= start; j--)
                 {
                     if (stack[j] == c) { revisit = j; break; }
                 }
@@ -569,15 +717,15 @@ namespace Modern8bitTanks
         }
 
         private static List<int> RouteCellsBetween(Vector2 from, Vector2 to, bool allowDiagonal, float turnPenalty,
-            bool[] strictBlocked, bool[] relaxedBlocked, float[] baseCost, bool[] shareRoadMask, bool[] nearRoadMask,
-            float nearPenalty = 5.5f, float shareCost = 0.35f)
+            bool[] strictBlocked, bool[] relaxedBlocked, float[] baseCost, bool[] roadMask, bool[] nearRoadMask,
+            bool avoidExistingRoad = false, float nearPenalty = 5.8f, float shareCost = 0.35f, float avoidRoadPenalty = 8.0f)
         {
             int startCell = FindNearestOpenCell(from, strictBlocked);
             int goalCell = FindNearestOpenCell(to, strictBlocked);
             List<int> cellPath = null;
             if (startCell >= 0 && goalCell >= 0)
                 cellPath = RunGridAStar(startCell, goalCell, allowDiagonal, turnPenalty, strictBlocked, baseCost,
-                    shareRoadMask, nearRoadMask, nearPenalty, shareCost);
+                    roadMask, nearRoadMask, avoidExistingRoad, nearPenalty, shareCost, avoidRoadPenalty, from, to, 96f);
 
             if (cellPath == null)
             {
@@ -585,42 +733,10 @@ namespace Modern8bitTanks
                 goalCell = FindNearestOpenCell(to, relaxedBlocked);
                 if (startCell >= 0 && goalCell >= 0)
                     cellPath = RunGridAStar(startCell, goalCell, allowDiagonal, turnPenalty, relaxedBlocked, baseCost,
-                        shareRoadMask, nearRoadMask, nearPenalty, shareCost);
+                        roadMask, nearRoadMask, avoidExistingRoad, nearPenalty, shareCost, avoidRoadPenalty, from, to, 96f);
             }
 
             return (cellPath != null && cellPath.Count >= 2) ? cellPath : null;
-        }
-
-        private void CommitMirroredCellPath(List<int> cellPath, Vector2 exactFrom, Vector2 exactTo,
-            float halfWidth, bool isPrimary, bool city,
-            bool[] allRoadMask, bool[] primaryMask, bool[] primaryNearMask, bool[] flankNearMask)
-        {
-            if (cellPath == null || cellPath.Count < 2) return;
-            var worldPts = new List<Vector2>(cellPath.Count);
-            for (int i = 0; i < cellPath.Count; i++)
-            {
-                int c = cellPath[i];
-                int mc = MirrorRouteCell(c);
-                allRoadMask[c] = true;
-                allRoadMask[mc] = true;
-                if (isPrimary)
-                {
-                    primaryMask[c] = true;
-                    primaryMask[mc] = true;
-                    MarkNearRoad(c, primaryNearMask, radius: 4);
-                    MarkNearRoad(mc, primaryNearMask, radius: 4);
-                }
-                else
-                {
-                    MarkNearRoad(c, flankNearMask, radius: 3);
-                    MarkNearRoad(mc, flankNearMask, radius: 3);
-                }
-                worldPts.Add(RouteCellCenter(c % RouteCols, c / RouteCols));
-            }
-            if (Vector2.Distance(worldPts[0], exactFrom) < 36f) worldPts[0] = exactFrom;
-            if (Vector2.Distance(worldPts[^1], exactTo) < 36f) worldPts[^1] = exactTo;
-            var pts = SimplifyAndSmoothPath(worldPts, orthogonal: city, checkClearance: 12f);
-            AddMirroredRoadPolyline(pts, halfWidth, isPrimary);
         }
 
         private static void MarkNearRoad(int cell, bool[] nearRoadMask, int radius)
@@ -774,7 +890,8 @@ namespace Modern8bitTanks
 
         private static List<int> RunGridAStar(int start, int goal, bool allowDiagonal, float turnPenalty,
             bool[] blocked, float[] baseCost, bool[] roadMask, bool[] nearRoadMask,
-            float nearPenalty = 5.5f, float shareCost = 0.35f)
+            bool avoidExistingRoad = false, float nearPenalty = 5.8f, float shareCost = 0.35f, float avoidRoadPenalty = 8.0f,
+            Vector2? freeA = null, Vector2? freeB = null, float freeRadius = 96f)
         {
             if (start == goal) return new List<int> { start };
 
@@ -867,9 +984,22 @@ namespace Modern8bitTanks
                         continue;
 
                     float step = allowDiagonal ? DirCost8[d] : 1f;
-                    float terrainMult = (roadMask != null && roadMask[next])
-                        ? shareCost
-                        : (nearRoadMask != null && nearRoadMask[next] ? baseCost[next] + nearPenalty : baseCost[next]);
+                    bool nearEnd = false;
+                    if (freeA.HasValue || freeB.HasValue)
+                    {
+                        float frSq = freeRadius * freeRadius;
+                        Vector2 np = RouteCellCenter(nx, ny);
+                        if ((freeA.HasValue && (np - freeA.Value).sqrMagnitude < frSq) ||
+                            (freeB.HasValue && (np - freeB.Value).sqrMagnitude < frSq))
+                            nearEnd = true;
+                    }
+                    float terrainMult;
+                    if (!nearEnd && roadMask != null && roadMask[next])
+                        terrainMult = avoidExistingRoad ? baseCost[next] + avoidRoadPenalty : shareCost;
+                    else if (!nearEnd && nearRoadMask != null && nearRoadMask[next])
+                        terrainMult = baseCost[next] + nearPenalty;
+                    else
+                        terrainMult = baseCost[next];
                     float turn = (prevDir >= 0 && prevDir != d) ? turnPenalty : 0f;
                     float tentative = curG + step * terrainMult + turn;
 
@@ -921,29 +1051,18 @@ namespace Modern8bitTanks
             return -1;
         }
 
-        private Vector2 FindCorridorAccessPoint(Vector2 center, Vector2 groundSize, bool[] strictBlocked, bool[] relaxedBlocked, bool preferInner)
+        private Vector2 FindFacilityAccessPoint(Vector2 center, Vector2 groundSize, bool[] strictBlocked, bool[] relaxedBlocked)
         {
-            // Pick a clean roadside point along the horizontal corridor edge so flank roads sweep smoothly past each facility!
-            float signY = center.y >= ControlPoint.y ? 1f : -1f;
-            float offY = Mathf.Clamp(groundSize.y * 0.45f, 44f, 84f);
-            float offX = Mathf.Clamp(groundSize.x * 0.45f, 44f, 84f);
-            Vector2[] candidates = preferInner
-                ? new[]
-                {
-                    new Vector2(center.x, center.y - signY * offY),
-                    new Vector2(center.x, center.y + signY * offY),
-                    new Vector2(center.x + offX, center.y),
-                    new Vector2(center.x - offX, center.y),
-                    center
-                }
-                : new[]
-                {
-                    new Vector2(center.x, center.y + signY * offY),
-                    new Vector2(center.x, center.y - signY * offY),
-                    new Vector2(center.x + offX, center.y),
-                    new Vector2(center.x - offX, center.y),
-                    center
-                };
+            Vector2 toCenter = (ControlPoint - center).normalized;
+            float off = Mathf.Clamp(Mathf.Min(groundSize.x, groundSize.y) * 0.44f, 40f, 80f);
+            Vector2[] candidates =
+            {
+                center + toCenter * off,
+                center + Vector2.Perpendicular(toCenter) * off,
+                center - Vector2.Perpendicular(toCenter) * off,
+                center - toCenter * off,
+                center
+            };
             foreach (var cand in candidates)
             {
                 int cell = WorldToRouteCell(cand);
