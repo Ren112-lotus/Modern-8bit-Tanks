@@ -39,6 +39,7 @@ namespace Modern8bitTanks
         {
             _waitForPrimaryRelease = Mouse.current?.leftButton.isPressed == true;
             _phase = GamePhase.Playing;
+            _multiplayer.Transport?.CloseBriefingDrawing();
             _hud.HideBriefing();
             StartPlayerEngineAudio(GetPlayerTank());
             _hud.ShowWaveToast("BATTLE START", 2f);

@@ -13,7 +13,7 @@ namespace Modern8bitTanks
     {
         public const int PlayersPerTeam = 5;
         public const int MaxPlayers = 2 * PlayersPerTeam;
-        private const ushort ProtocolVersion = 17;
+        private const ushort ProtocolVersion = 18;
         private const float RoomSyncTimeout = 15f;
 
         [SerializeField] private NetworkManager _network;

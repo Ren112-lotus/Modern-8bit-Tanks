@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,6 +14,7 @@ namespace Modern8bitTanks
         [SerializeField] private Text briefingLocation;
         [SerializeField] private Text briefingObjective;
         [SerializeField] private Text briefingReadyLabel;
+        [SerializeField] private Text briefingInkLegend;
         [SerializeField] private Image briefingFriendlyMarker;
         [SerializeField] private Text briefingFriendlyLabel;
         [SerializeField] private Image briefingHostileMarker;
@@ -27,7 +30,9 @@ namespace Modern8bitTanks
             _briefingMapName = mapName;
             _briefingVisible = true;
             _briefingReady = false;
-            briefingSketch.Clear();
+            var transport = _multiplayer.IsInBattle ? _multiplayer.Transport : null;
+            transport?.BeginBriefingDrawing();
+            briefingSketch.Bind(transport, _multiplayer.LocalSlot);
             briefingReady.GetComponent<Button>().interactable = true;
             if (_multiplayer.IsInBattle)
             {
@@ -59,7 +64,7 @@ namespace Modern8bitTanks
         internal void HideBriefing()
         {
             _briefingVisible = false;
-            briefingSketch.Clear();
+            briefingSketch.Bind(null);
             RefreshBriefingVisibility();
         }
 
@@ -79,6 +84,30 @@ namespace Modern8bitTanks
             briefingLocation.text = $"{UiText.Get(_briefingMapName)}  /  {mode}";
             briefingObjective.text = UiText.Get("CAPTURE THE CENTER");
             briefingReadyLabel.text = UiText.Get(_briefingReady ? "WAITING FOR PLAYERS" : "READY [ENTER]");
+            RefreshBriefingInkLegend();
+        }
+
+        private void RefreshBriefingInkLegend()
+        {
+            var room = _multiplayer.IsInBattle ? _multiplayer.Connection?.Room : null;
+            briefingInkLegend.gameObject.SetActive(room != null);
+            if (room == null) return;
+
+            const int teamSize = MultiplayerSessionConnection.PlayersPerTeam;
+            int firstSlot = _mgr.IsLocalAlpha ? 0 : teamSize;
+            var legend = new StringBuilder();
+            for (int slot = firstSlot; slot < firstSlot + teamSize; slot++)
+            {
+                if (!room.TryGetMemberAtSlot(slot, out var member)) continue;
+                string name = member.DisplayName.IsEmpty ? $"#{slot + 1}" : member.DisplayName.ToString();
+                var characters = new StringInfo(name);
+                if (characters.LengthInTextElements > 6) name = characters.SubstringByTextElements(0, 5) + "…";
+                name = name.Replace('<', '‹').Replace('>', '›');
+                if (legend.Length > 0) legend.Append("   ");
+                legend.Append("<color=#").Append(ColorUtility.ToHtmlStringRGB(BriefingSketch.ColorForSlot(slot)))
+                    .Append('>').Append(name).Append("</color>");
+            }
+            briefingInkLegend.text = legend.ToString();
         }
 
         private void RefreshBriefingVisibility()

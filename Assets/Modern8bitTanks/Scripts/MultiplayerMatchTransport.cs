@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Modern8bitTanks
 {
     /// <summary>Transports player controls to the host and authoritative battle state to clients.</summary>
-    public sealed class MultiplayerMatchTransport : MonoBehaviour
+    public sealed partial class MultiplayerMatchTransport : MonoBehaviour
     {
         public struct Control
         {
@@ -112,6 +112,7 @@ namespace Modern8bitTanks
             network.CustomMessagingManager.RegisterNamedMessageHandler(WeaponMessage, OnWeaponFired);
             network.CustomMessagingManager.RegisterNamedMessageHandler(ReadyMessage, OnReady);
             network.CustomMessagingManager.RegisterNamedMessageHandler(EffectMessage, OnEffect);
+            network.CustomMessagingManager.RegisterNamedMessageHandler(BriefingInkMessage, OnBriefingDrawing);
         }
 
         public void SendControl(Control control)
@@ -431,6 +432,7 @@ namespace Modern8bitTanks
             if (_room.ExpectedMask == 0 || _room.Round != round) return false;
             if (_round == round) return true;
             _round = round;
+            ResetBriefingDrawing();
             Array.Clear(_briefingReady, 0, _briefingReady.Length);
             Array.Fill(_lastControl, float.NegativeInfinity);
             Array.Fill(_pendingActionTimes, float.NegativeInfinity);
@@ -448,6 +450,7 @@ namespace Modern8bitTanks
             var messages = _network != null ? _network.CustomMessagingManager : null;
             _network = null;
             _room = null;
+            ResetBriefingDrawing();
             if (messages == null) return;
             messages.UnregisterNamedMessageHandler(ControlMessage);
             messages.UnregisterNamedMessageHandler(ActionMessage);
@@ -457,6 +460,7 @@ namespace Modern8bitTanks
             messages.UnregisterNamedMessageHandler(WeaponMessage);
             messages.UnregisterNamedMessageHandler(ReadyMessage);
             messages.UnregisterNamedMessageHandler(EffectMessage);
+            messages.UnregisterNamedMessageHandler(BriefingInkMessage);
         }
     }
 }
