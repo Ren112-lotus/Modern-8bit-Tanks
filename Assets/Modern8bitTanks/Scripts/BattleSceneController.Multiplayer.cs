@@ -1,6 +1,7 @@
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using RoundState = Modern8bitTanks.MultiplayerMatchTransport.RoundState;
 
 namespace Modern8bitTanks
 {
@@ -215,23 +216,36 @@ namespace Modern8bitTanks
                 shots[i] = new MultiplayerMatchTransport.ShotState { Id = shot.networkId, Position = shot.visualPos,
                     Velocity = shot.vel, Kind = shot.kind, Ammo = shot.ammo };
             }
-            byte result = _phase == GamePhase.RoundOver ? (_pendingWinner == "ally" ? (byte)1 : (byte)2) : _networkBattleStarted ? (byte)3 : (byte)0;
+            RoundState roundState = _phase == GamePhase.RoundOver
+                ? (_pendingWinner == "ally" ? RoundState.AlphaWon : RoundState.BravoWon)
+                : (_networkBattleStarted ? RoundState.Playing : RoundState.Waiting);
             UpdateRadarContacts();
-            transport.Broadcast(states, shots, count, result, _visibility.NetworkContacts, _killFocusPos, ControlPoint, ControlScores, _wonByControl);
+            transport.Broadcast(new MultiplayerMatchTransport.Snapshot
+            {
+                Tanks = states,
+                Projectiles = shots,
+                ProjectileCount = count,
+                RoundState = roundState,
+                HostTime = Time.unscaledTime,
+                Contacts = _visibility.NetworkContacts,
+                Focus = _killFocusPos,
+                ControlPoint = ControlPoint,
+                ControlScores = ControlScores,
+                WonByControl = _wonByControl
+            });
         }
 
-        private void ApplyMultiplayerState(MultiplayerMatchTransport.TankState[] states, MultiplayerMatchTransport.ShotState[] shots,
-            int shotCount, byte result, float hostTime, ushort[] spots, Vector2 focus,
-            ControlPointState controlPoint, Vector2 controlScores, bool wonByControl)
+        private void ApplyMultiplayerState(MultiplayerMatchTransport.Snapshot snapshot)
         {
+            var states = snapshot.Tanks;
             if (_networkTanks == null || states.Length != _networkTanks.Length) return;
-            System.Array.Copy(spots, _visibility.NetworkContacts, _visibility.NetworkContacts.Length);
-            _controlPoints.ApplySnapshot(controlPoint, controlScores);
+            System.Array.Copy(snapshot.Contacts, _visibility.NetworkContacts, _visibility.NetworkContacts.Length);
+            _controlPoints.ApplySnapshot(snapshot.ControlPoint, snapshot.ControlScores);
             SyncControlPointVoice();
             float now = Time.unscaledTime;
-            float sampleOffset = now - hostTime;
+            float sampleOffset = now - snapshot.HostTime;
             _clockOffset = _poseCount == 0 ? sampleOffset : Mathf.Min(sampleOffset, _clockOffset + MultiplayerMatchTransport.SnapshotInterval * .02f);
-            _poseTimes[_poseIndex] = hostTime;
+            _poseTimes[_poseIndex] = snapshot.HostTime;
             for (var i = 0; i < states.Length; i++)
             {
                 var tank = _networkTanks[i];
@@ -264,17 +278,17 @@ namespace Modern8bitTanks
             }
             _poseIndex = (_poseIndex + 1) % SnapshotHistorySize;
             _poseCount = Mathf.Min(_poseCount + 1, SnapshotHistorySize);
-            ApplyMultiplayerProjectiles(shots, shotCount, hostTime);
-            if (result != 0 && !_networkBattleStarted)
+            ApplyMultiplayerProjectiles(snapshot.Projectiles, snapshot.ProjectileCount, snapshot.HostTime);
+            if (snapshot.RoundState != RoundState.Waiting && !_networkBattleStarted)
             {
                 _networkBattleStarted = true;
                 BeginBattle();
             }
-            if ((result == 1 || result == 2) && !_networkResultShown)
+            if (!_networkResultShown && (snapshot.RoundState is RoundState.AlphaWon or RoundState.BravoWon))
             {
                 _networkResultShown = true;
-                FinishRound(result == 1 ? "ally" : "enemy", wonByControl ? ControlVictorySubtitle : "ONLINE BATTLE",
-                    focus, wonByControl);
+                FinishRound(snapshot.RoundState == RoundState.AlphaWon ? "ally" : "enemy",
+                    snapshot.WonByControl ? ControlVictorySubtitle : "ONLINE BATTLE", snapshot.Focus, snapshot.WonByControl);
             }
         }
 

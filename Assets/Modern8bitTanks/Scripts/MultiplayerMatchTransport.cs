@@ -18,38 +18,13 @@ namespace Modern8bitTanks
             public float ViewRoll;
         }
 
-        public struct TankState
-        {
-            public bool Present, Alive;
-            public float X, Y, Hull, Turret;
-            public float MoveSpeed, Reload, FireTime, RepairTime, ActiveReload;
-            public int Crew, Modules;
-            public byte Ammo, Loss;
-            public bool Extinguisher;
-        }
-
-        public struct ShotState
-        {
-            public ushort Id;
-            public Vector2 Position, Velocity;
-            public ProjectileKind Kind;
-            public AmmoType Ammo;
-        }
-
         public const int MaxProjectiles = 32;
         public const float SnapshotInterval = 1f / 20f;
         private const float ControlInterval = 1f / 30f;
         private const float ControlHeartbeat = 0.15f;
         private const byte ActionMask = 0xC0;
-        private const int TankStateBytes = 48;
-        private const int ShotStateBytes = 16;
         private const int ControlBytes = 2 * sizeof(byte) + 5 * sizeof(float);
         private const int RoundBytes = sizeof(ushort);
-        private const int SnapshotHeaderBytes = 6 * sizeof(float) + sizeof(byte) + sizeof(sbyte) +
-            2 * sizeof(bool) + (MultiplayerSessionConnection.MaxPlayers + 1) * sizeof(ushort);
-        private const int MaxSnapshotBytes = SnapshotHeaderBytes + sizeof(byte) +
-            MultiplayerSessionConnection.MaxPlayers * TankStateBytes + MaxProjectiles * ShotStateBytes;
-
         private const string ControlMessage = "m8t.control.v4";
         private const string ActionMessage = "m8t.actions.v2";
         private const string StateMessage = "m8t.state.v5";
@@ -62,9 +37,6 @@ namespace Modern8bitTanks
         private readonly float[] _lastControl = new float[MultiplayerSessionConnection.MaxPlayers];
         private readonly float[] _pendingActionTimes = new float[MultiplayerSessionConnection.MaxPlayers];
         private readonly Control[] _pendingActions = new Control[MultiplayerSessionConnection.MaxPlayers];
-        private readonly TankState[] _receivedTanks = new TankState[MultiplayerSessionConnection.MaxPlayers];
-        private readonly ShotState[] _receivedProjectiles = new ShotState[MaxProjectiles];
-        private readonly ushort[] _receivedSpots = new ushort[MultiplayerSessionConnection.MaxPlayers];
         private Control _lastSentControl;
         private Control _queuedActions = new() { Ammo = -1 };
         private float _nextControlTime;
@@ -88,7 +60,6 @@ namespace Modern8bitTanks
                 return true;
             }
         }
-        internal event Action<TankState[], ShotState[], int, byte, float, ushort[], Vector2, ControlPointState, Vector2, bool> StateReceived;
         internal event Action<BattleEffect> EffectReceived;
         public event Action<int, Vector2, float, bool, int> PropImpactReceived;
         public event Action<int> SmokeReceived;
@@ -212,51 +183,6 @@ namespace Modern8bitTanks
             return true;
         }
 
-        internal void Broadcast(TankState[] tanks, ShotState[] projectiles, int projectileCount, byte result,
-            ushort[] spots, Vector2 focus, ControlPointState controlPoint, Vector2 controlScores, bool wonByControl)
-        {
-            if (!Ready || !IsHost) return;
-            ushort presentMask = 0;
-            for (int i = 0; i < tanks.Length; i++)
-                if (tanks[i].Present) presentMask |= (ushort)(1 << i);
-
-            using var writer = CreateRoundWriter(MaxSnapshotBytes);
-            writer.WriteValueSafe(Time.unscaledTime);
-            writer.WriteValueSafe(result);
-            foreach (ushort observerSpots in spots) writer.WriteValueSafe(observerSpots);
-            writer.WriteValueSafe(focus);
-            writer.WriteValueSafe(controlScores);
-            writer.WriteValueSafe(wonByControl);
-            writer.WriteValueSafe((float)controlPoint.Owner);
-            writer.WriteValueSafe(controlPoint.Owner);
-            writer.WriteValueSafe(controlPoint.Contested);
-            writer.WriteValueSafe(presentMask);
-            foreach (var tank in tanks)
-            {
-                if (!tank.Present) continue;
-                writer.WriteValueSafe(tank.Alive);
-                writer.WriteValueSafe(tank.X); writer.WriteValueSafe(tank.Y);
-                writer.WriteValueSafe(tank.Hull); writer.WriteValueSafe(tank.Turret);
-                writer.WriteValueSafe(tank.MoveSpeed); writer.WriteValueSafe(tank.Reload);
-                writer.WriteValueSafe(tank.FireTime); writer.WriteValueSafe(tank.RepairTime);
-                writer.WriteValueSafe(tank.ActiveReload);
-                writer.WriteValueSafe(tank.Crew); writer.WriteValueSafe(tank.Modules);
-                writer.WriteValueSafe(tank.Ammo); writer.WriteValueSafe(tank.Loss);
-                writer.WriteValueSafe(tank.Extinguisher);
-            }
-            writer.WriteValueSafe((byte)projectileCount);
-            for (int i = 0; i < projectileCount; i++)
-            {
-                var shot = projectiles[i];
-                writer.WriteValueSafe(shot.Id);
-                writer.WriteValueSafe(shot.Position.x); writer.WriteValueSafe(shot.Position.y);
-                writer.WriteValueSafe((short)Mathf.RoundToInt(shot.Velocity.x * 256f));
-                writer.WriteValueSafe((short)Mathf.RoundToInt(shot.Velocity.y * 256f));
-                writer.WriteValueSafe((byte)shot.Kind); writer.WriteValueSafe((byte)shot.Ammo);
-            }
-            _network.CustomMessagingManager.SendNamedMessageToAll(StateMessage, writer, NetworkDelivery.UnreliableSequenced);
-        }
-
         private void OnControl(ulong sender, FastBufferReader reader)
         {
             if (!IsHost || !ReadRound(ref reader, ControlBytes)) return;
@@ -288,57 +214,6 @@ namespace Modern8bitTanks
             _pendingActionTimes[slot] = Time.unscaledTime;
             _pendingActions[slot].Buttons |= (byte)(buttons & ActionMask);
             if (ammo is >= 0 and < 3) _pendingActions[slot].Ammo = ammo;
-        }
-
-        private void OnState(ulong sender, FastBufferReader reader)
-        {
-            if (_network == null || _network.IsServer || sender != NetworkManager.ServerClientId
-                || !ReadRound(ref reader, SnapshotHeaderBytes)) return;
-            reader.ReadValueSafe(out float hostTime);
-            reader.ReadValueSafe(out byte result);
-            for (int observer = 0; observer < _receivedSpots.Length; observer++)
-                reader.ReadValueSafe(out _receivedSpots[observer]);
-            reader.ReadValueSafe(out Vector2 focus);
-            reader.ReadValueSafe(out Vector2 controlScores);
-            reader.ReadValueSafe(out bool wonByControl);
-            reader.ReadValueSafe(out float _);
-            reader.ReadValueSafe(out sbyte owner);
-            reader.ReadValueSafe(out bool contested);
-            var controlPoint = new ControlPointState { Owner = owner, Contested = contested };
-            reader.ReadValueSafe(out ushort presentMask);
-            var tanks = _receivedTanks;
-            for (int i = 0; i < tanks.Length; i++)
-            {
-                tanks[i].Present = (presentMask & (1 << i)) != 0;
-                if (!tanks[i].Present) continue;
-                if (!reader.TryBeginRead(TankStateBytes)) return;
-                reader.ReadValueSafe(out tanks[i].Alive);
-                reader.ReadValueSafe(out tanks[i].X); reader.ReadValueSafe(out tanks[i].Y);
-                reader.ReadValueSafe(out tanks[i].Hull); reader.ReadValueSafe(out tanks[i].Turret);
-                reader.ReadValueSafe(out tanks[i].MoveSpeed); reader.ReadValueSafe(out tanks[i].Reload);
-                reader.ReadValueSafe(out tanks[i].FireTime); reader.ReadValueSafe(out tanks[i].RepairTime);
-                reader.ReadValueSafe(out tanks[i].ActiveReload);
-                reader.ReadValueSafe(out tanks[i].Crew); reader.ReadValueSafe(out tanks[i].Modules);
-                reader.ReadValueSafe(out tanks[i].Ammo); reader.ReadValueSafe(out tanks[i].Loss);
-                reader.ReadValueSafe(out tanks[i].Extinguisher);
-            }
-            if (!reader.TryBeginRead(1)) return;
-            reader.ReadValueSafe(out byte count);
-            if (count > MaxProjectiles || !reader.TryBeginRead(count * ShotStateBytes)) return;
-            for (int i = 0; i < count; i++)
-            {
-                reader.ReadValueSafe(out ushort id);
-                reader.ReadValueSafe(out float x);
-                reader.ReadValueSafe(out float y);
-                reader.ReadValueSafe(out short vx);
-                reader.ReadValueSafe(out short vy);
-                reader.ReadValueSafe(out byte kind);
-                reader.ReadValueSafe(out byte ammo);
-                _receivedProjectiles[i] = new ShotState { Id = id, Position = new Vector2(x, y), Velocity = new Vector2(vx, vy) / 256f,
-                    Kind = (ProjectileKind)kind, Ammo = (AmmoType)ammo };
-            }
-            StateReceived?.Invoke(tanks, _receivedProjectiles, count, result, hostTime, _receivedSpots, focus,
-                controlPoint, controlScores, wonByControl);
         }
 
         public void BroadcastPropImpact(int index, Vector2 position, float radius, bool heavy, int seed)
