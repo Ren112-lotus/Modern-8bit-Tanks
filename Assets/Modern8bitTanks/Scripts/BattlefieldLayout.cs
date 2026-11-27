@@ -79,8 +79,9 @@ namespace Modern8bitTanks
         private readonly List<DistrictGround> _farmGround = new();
         private readonly List<DistrictGround> _ridgeGround = new();
         private readonly List<RoadSegment> _roads = new();
-        private readonly List<Vector2> _intersections = new();
+        private readonly List<RoadIntersection> _intersections = new();
         private readonly List<RoadSegment> _waterStreams = new();
+        private int _nextPolylineId;
         private Color32[] _ground;
 
         internal BattlefieldLayout(BattleMap map, int seed, BattlefieldPlan plan, BattlefieldTheme theme, BattleSpawnAssets assets)
@@ -409,7 +410,26 @@ namespace Modern8bitTanks
                 if (Vector2.Distance(worldPts[^1], exactB) < 36f) worldPts[^1] = exactB;
 
                 var smoothed = SimplifyAndSmoothPath(worldPts, orthogonal: city, checkClearance: 12f);
+
+                // Snap secondary road endpoints precisely onto the centerline of any existing road they join,
+                // eliminating gaps, notches, and protruding triangles at T-junctions & Y-forks!
+                if (!isPrimary && smoothed.Count >= 2)
+                {
+                    SnapPolylineEndpointsToExistingRoads(smoothed, city);
+                }
+
                 AddMirroredRoadPolyline(smoothed, isPrimary ? primaryHalfW : secondaryHalfW, isPrimary);
+
+                // Update intermediate graph node positions onto the actual smoothed curve so later branches
+                // connect dead-center onto Chaikin-smoothed highways rather than the pre-smoothed corner!
+                for (int i = 1; i < seq.Length - 1; i++)
+                {
+                    int midNode = seq[i];
+                    if (midNode <= 2) continue;
+                    Vector2 snapped = ClosestPointOnPolyline(smoothed, nodes[midNode]);
+                    nodes[midNode] = snapped;
+                    nodes[MirrorNode(midNode)] = Mirror(snapped);
+                }
 
                 for (int i = 0; i < seq.Length - 1; i++)
                 {
@@ -837,33 +857,120 @@ namespace Modern8bitTanks
             return true;
         }
 
+        private void SnapPolylineEndpointsToExistingRoads(List<Vector2> pts, bool city)
+        {
+            if (_roads.Count == 0 || pts.Count < 2) return;
+            SnapSingleEndpoint(pts, atStart: true, city);
+            SnapSingleEndpoint(pts, atStart: false, city);
+        }
+
+        private void SnapSingleEndpoint(List<Vector2> pts, bool atStart, bool city)
+        {
+            int endIdx = atStart ? 0 : pts.Count - 1;
+            int prevIdx = atStart ? 1 : pts.Count - 2;
+            Vector2 endPt = pts[endIdx];
+            Vector2 prevPt = pts[prevIdx];
+            // Never disturb map-edge or base/plaza center anchors
+            if (endPt.x < 16f || endPt.x > Width - 16f ||
+                Vector2.Distance(endPt, _westBase) < 28f ||
+                Vector2.Distance(endPt, Mirror(_westBase)) < 28f ||
+                Vector2.Distance(endPt, ControlPoint) < 28f)
+                return;
+
+            float bestDist = 56f;
+            Vector2 bestSnap = endPt;
+            bool found = false;
+            RoadSegment hitSeg = default;
+
+            for (int i = 0; i < _roads.Count; i++)
+            {
+                var seg = _roads[i];
+                float d = seg.DistanceTo(endPt, out float along, out _);
+                if (d < bestDist)
+                {
+                    bestDist = d;
+                    bestSnap = seg.A + seg.Dir * along;
+                    hitSeg = seg;
+                    found = true;
+                }
+            }
+            if (!found) return;
+
+            if (city)
+            {
+                // Preserve crisp 90-degree City T-junctions by aligning the endpoint orthogonally onto the hit street!
+                Vector2 segDir = hitSeg.Dir;
+                if (Mathf.Abs(segDir.x) > 0.7f)
+                {
+                    float snappedY = hitSeg.A.y;
+                    float x = Mathf.Clamp(prevPt.x, hitSeg.MinX, hitSeg.MaxX);
+                    if (Mathf.Abs(x - endPt.x) < 40f)
+                        bestSnap = new Vector2(x, snappedY);
+                }
+                else if (Mathf.Abs(segDir.y) > 0.7f)
+                {
+                    float snappedX = hitSeg.A.x;
+                    float y = Mathf.Clamp(prevPt.y, hitSeg.MinY, hitSeg.MaxY);
+                    if (Mathf.Abs(y - endPt.y) < 40f)
+                        bestSnap = new Vector2(snappedX, y);
+                }
+            }
+
+            pts[endIdx] = bestSnap;
+        }
+
+        private static Vector2 ClosestPointOnPolyline(List<Vector2> pts, Vector2 target)
+        {
+            Vector2 best = pts[0];
+            float bestSq = float.PositiveInfinity;
+            for (int i = 0; i < pts.Count - 1; i++)
+            {
+                Vector2 a = pts[i];
+                Vector2 ab = pts[i + 1] - a;
+                float lenSq = ab.sqrMagnitude;
+                float t = lenSq > 0.001f ? Mathf.Clamp01(Vector2.Dot(target - a, ab) / lenSq) : 0f;
+                Vector2 c = a + ab * t;
+                float dSq = (target - c).sqrMagnitude;
+                if (dSq < bestSq) { bestSq = dSq; best = c; }
+            }
+            return best;
+        }
+
         private void RebuildRoadIntersections(bool city)
         {
             _intersections.Clear();
-            _intersections.Add(ControlPoint);
+            _intersections.Add(new RoadIntersection(ControlPoint, 72f));
             if (!city) return;
 
-            // Collect every true orthogonal junction (L-corner, T-junction, or 4-way crossing) between City streets!
+            // Collect ONLY true street-to-street junctions (two DIFFERENT polylines meeting orthogonally),
+            // never plain 90-degree bends within a single street!
             for (int i = 0; i < _roads.Count; i++)
             {
                 var s1 = _roads[i];
                 for (int j = i + 1; j < _roads.Count; j++)
                 {
                     var s2 = _roads[j];
+                    if (s1.PolylineId == s2.PolylineId) continue;
                     if (Mathf.Abs(Vector2.Dot(s1.Dir, s2.Dir)) > 0.35f) continue;
 
-                    // Check segment-segment intersection or endpoint touch within 18px
-                    if (TrySegmentIntersection(s1.A, s1.B, s2.A, s2.B, 16f, out Vector2 hit))
-                        AddUniqueIntersection(hit);
+                    if (TrySegmentIntersection(s1.A, s1.B, s2.A, s2.B, 18f, out Vector2 hit))
+                        AddUniqueIntersection(hit, Mathf.Max(s1.HalfWidth, s2.HalfWidth));
                 }
             }
         }
 
-        private void AddUniqueIntersection(Vector2 pt)
+        private void AddUniqueIntersection(Vector2 pt, float radius)
         {
             for (int i = 0; i < _intersections.Count; i++)
-                if ((_intersections[i] - pt).sqrMagnitude < 28f * 28f) return;
-            _intersections.Add(pt);
+            {
+                if ((_intersections[i].Position - pt).sqrMagnitude < 32f * 32f)
+                {
+                    if (radius > _intersections[i].Radius)
+                        _intersections[i] = new RoadIntersection(_intersections[i].Position, radius);
+                    return;
+                }
+            }
+            _intersections.Add(new RoadIntersection(pt, radius));
         }
 
         private static bool TrySegmentIntersection(Vector2 a1, Vector2 a2, Vector2 b1, Vector2 b2, float pad, out Vector2 hit)
@@ -1103,7 +1210,7 @@ namespace Modern8bitTanks
 
             int placed = 0;
             int maxRoadside = map == BattleMap.City ? 5 : 3;
-            for (int i = 0; i < _roads.Count && placed < maxRoadside; i += 2)
+            for (int i = 0; i < _roads.Count && placed < maxRoadside; i++)
             {
                 var seg = _roads[i];
                 if (seg.Length < 88f) continue;
@@ -1114,7 +1221,7 @@ namespace Modern8bitTanks
                 // Skip intersections & stream bridges
                 bool nearInter = false;
                 for (int k = 0; k < _intersections.Count; k++)
-                    if (Vector2.Distance(mid, _intersections[k]) < 68f) { nearInter = true; break; }
+                    if (Vector2.Distance(mid, _intersections[k].Position) < _intersections[k].Radius + 42f) { nearInter = true; break; }
                 if (nearInter || IsInWater(mid, 30f)) continue;
 
                 float roadAngle = Mathf.Atan2(seg.Dir.y, seg.Dir.x) * Mathf.Rad2Deg;
@@ -1135,17 +1242,25 @@ namespace Modern8bitTanks
 
         private void AddMirroredRoadPolyline(IReadOnlyList<Vector2> points, float halfWidth, bool isPrimary)
         {
+            // Store each polyline's segments contiguously with its own PolylineId and continuous arc length
+            // so the pixel renderer computes exact Smooth-Min junctions and unbroken center dashes!
+            int pidA = _nextPolylineId++;
+            float alongA = 0f;
             for (int i = 0; i < points.Count - 1; i++)
-            {
-                AddRoadSegment(points[i], points[i + 1], halfWidth, isPrimary);
-                AddRoadSegment(Mirror(points[i]), Mirror(points[i + 1]), halfWidth, isPrimary);
-            }
+                alongA += AddRoadSegment(points[i], points[i + 1], halfWidth, isPrimary, alongA, pidA);
+
+            int pidB = _nextPolylineId++;
+            float alongB = 0f;
+            for (int i = 0; i < points.Count - 1; i++)
+                alongB += AddRoadSegment(Mirror(points[i]), Mirror(points[i + 1]), halfWidth, isPrimary, alongB, pidB);
         }
 
-        private void AddRoadSegment(Vector2 a, Vector2 b, float halfWidth, bool isPrimary)
+        private float AddRoadSegment(Vector2 a, Vector2 b, float halfWidth, bool isPrimary, float alongStart, int polylineId)
         {
-            if ((b - a).sqrMagnitude < 1f) return;
-            _roads.Add(new RoadSegment(a, b, halfWidth, isPrimary));
+            float len = Vector2.Distance(a, b);
+            if (len < 1f) return 0f;
+            _roads.Add(new RoadSegment(a, b, halfWidth, isPrimary, alongStart, polylineId));
+            return len;
         }
 
         private static RegionalScenario PickRegionalScenario(BattleMap map, System.Random random) => map switch
@@ -2245,6 +2360,18 @@ namespace Modern8bitTanks
             }
         }
 
+        private readonly struct RoadIntersection
+        {
+            internal readonly Vector2 Position;
+            internal readonly float Radius;
+
+            internal RoadIntersection(Vector2 position, float radius)
+            {
+                Position = position;
+                Radius = radius;
+            }
+        }
+
         private readonly struct RoadSegment
         {
             internal readonly Vector2 A;
@@ -2253,9 +2380,11 @@ namespace Modern8bitTanks
             internal readonly float Length;
             internal readonly float HalfWidth;
             internal readonly bool IsPrimary;
+            internal readonly float AlongStart;
+            internal readonly int PolylineId;
             internal readonly float MinX, MaxX, MinY, MaxY;
 
-            internal RoadSegment(Vector2 a, Vector2 b, float halfWidth, bool isPrimary)
+            internal RoadSegment(Vector2 a, Vector2 b, float halfWidth, bool isPrimary, float alongStart = 0f, int polylineId = 0)
             {
                 A = a;
                 B = b;
@@ -2264,22 +2393,40 @@ namespace Modern8bitTanks
                 Dir = Length > 0.001f ? delta / Length : Vector2.right;
                 HalfWidth = halfWidth;
                 IsPrimary = isPrimary;
+                AlongStart = alongStart;
+                PolylineId = polylineId;
                 MinX = Mathf.Min(a.x, b.x);
                 MaxX = Mathf.Max(a.x, b.x);
                 MinY = Mathf.Min(a.y, b.y);
                 MaxY = Mathf.Max(a.y, b.y);
             }
 
-            internal float DistanceTo(Vector2 p, out float along, out float signedPerp)
+            internal float DistanceTo(Vector2 p, out float along, out float signedPerp) =>
+                DistanceTo(p, out along, out signedPerp, out _);
+
+            internal float DistanceTo(Vector2 p, out float along, out float signedPerp, out bool insideSpan)
             {
                 Vector2 ap = p - A;
                 float proj = Vector2.Dot(ap, Dir);
+                insideSpan = proj >= 0f && proj <= Length;
                 along = Mathf.Clamp(proj, 0f, Length);
                 Vector2 closest = A + Dir * along;
                 Vector2 diff = p - closest;
                 signedPerp = Vector2.Dot(diff, Vector2.Perpendicular(Dir));
                 return diff.magnitude;
             }
+        }
+
+        private static float SmoothMin(float a, float b, float k)
+        {
+            float h = Mathf.Max(k - Mathf.Abs(a - b), 0f) / k;
+            return Mathf.Min(a, b) - h * h * k * 0.25f;
+        }
+
+        private static void FoldPolylineDistance(float sd, ref float min1, ref float min2)
+        {
+            if (sd < min1) { min2 = min1; min1 = sd; }
+            else if (sd < min2) { min2 = sd; }
         }
 
         internal bool IsWallAt(Vector2 position)
@@ -2474,78 +2621,114 @@ namespace Modern8bitTanks
         private Color32 PaintCityRoadNetwork(Vector2 point, Color32 terrain, Color32 dark,
             Color32 trim, float patch, float grain)
         {
-            float bestAsphalt = 0f;
-            float bestSidewalk = 0f;
-            float bestCurb = 0f;
+            float min1 = 1e6f, min2 = 1e6f;
+            int curPid = -1;
+            float curPolySd = 1e6f;
             float bestDash = 0f;
             float bestCrosswalk = 0f;
+            float bestStopBar = 0f;
 
-            // Check Chebyshev (box) distance to nearest intersection so zebra crosswalks are razor-straight rectangles!
-            float minInterBox = 999f;
+            // Find closest true intersection by Chebyshev margin outside its junction box (so crosswalks sit cleanly outside wider avenues!)
+            float bestInterMargin = 999f;
+            float nearInterBox = 999f;
+            float nearInterRadius = 28f;
             for (int k = 0; k < _intersections.Count; k++)
             {
-                Vector2 d = point - _intersections[k];
+                var inter = _intersections[k];
+                Vector2 d = point - inter.Position;
                 float box = Mathf.Max(Mathf.Abs(d.x), Mathf.Abs(d.y));
-                if (box < minInterBox) minInterBox = box;
+                float margin = box - inter.Radius;
+                if (margin < bestInterMargin)
+                {
+                    bestInterMargin = margin;
+                    nearInterBox = box;
+                    nearInterRadius = inter.Radius;
+                }
             }
+
+            const float sidewalkOuter = 14f;
+            const float cullMargin = sidewalkOuter + 14f;
 
             for (int i = 0; i < _roads.Count; i++)
             {
                 var seg = _roads[i];
-                float outer = seg.HalfWidth + 14f;
-                if (point.x < seg.MinX - outer || point.x > seg.MaxX + outer ||
-                    point.y < seg.MinY - outer || point.y > seg.MaxY + outer) continue;
-
-                float dist = seg.DistanceTo(point, out float along, out float signedPerp);
-                if (dist >= outer) continue;
-
-                float hw = seg.HalfWidth;
-                if (dist <= hw)
+                if (seg.PolylineId != curPid)
                 {
-                    float w = Mathf.SmoothStep(0f, 1f, (hw - dist) * 0.55f);
-                    bestAsphalt = Mathf.Max(bestAsphalt, w);
+                    if (curPid >= 0 && curPolySd < 1e5f)
+                        FoldPolylineDistance(curPolySd, ref min1, ref min2);
+                    curPid = seg.PolylineId;
+                    curPolySd = 1e6f;
+                }
 
-                    // Clean yellow/ivory dashed center line outside intersections & central plaza
-                    if (minInterBox > hw + 15f && Vector2.Distance(point, ControlPoint) > 78f)
+                float bound = seg.HalfWidth + cullMargin;
+                if (point.x < seg.MinX - bound || point.x > seg.MaxX + bound ||
+                    point.y < seg.MinY - bound || point.y > seg.MaxY + bound) continue;
+
+                float dist = seg.DistanceTo(point, out float segAlong, out float signedPerp, out bool insideSpan);
+                float sd = dist - seg.HalfWidth;
+                if (sd < curPolySd) curPolySd = sd;
+
+                if (insideSpan && sd <= 0f)
+                {
+                    float w = Mathf.SmoothStep(0f, 1f, -sd * 0.55f);
+                    float hw = seg.HalfWidth;
+                    float totalAlong = seg.AlongStart + segAlong;
+
+                    // Continuous yellow/ivory dashed center line stopped cleanly before crosswalks & central plaza
+                    if (nearInterBox > nearInterRadius + 20f && Vector2.Distance(point, ControlPoint) > 78f)
                     {
-                        if (Mathf.Abs(signedPerp) < (seg.IsPrimary ? 1.45f : 1.15f) && Mathf.Repeat(along + 8f, 34f) < 17f)
+                        if (Mathf.Abs(signedPerp) < (seg.IsPrimary ? 1.45f : 1.15f) && Mathf.Repeat(totalAlong + 8f, 34f) < 17f)
                             bestDash = Mathf.Max(bestDash, w);
                     }
 
-                    // Razor-straight white zebra crosswalk stripes right outside every real street junction!
-                    if (minInterBox >= hw + 5f && minInterBox <= hw + 14f && Mathf.Abs(signedPerp) < hw - 3.5f)
+                    // Razor-straight white zebra crosswalk & stop bar right outside every true multi-street junction!
+                    if (nearInterRadius < 50f)
                     {
-                        if (Mathf.Repeat(Mathf.Abs(signedPerp) + 2f, 7f) < 3.5f)
-                            bestCrosswalk = Mathf.Max(bestCrosswalk, w);
+                        if (nearInterBox >= nearInterRadius + 5f && nearInterBox <= nearInterRadius + 14f && Mathf.Abs(signedPerp) < hw - 3.5f)
+                        {
+                            if (Mathf.Repeat(Mathf.Abs(signedPerp) + 2f, 7f) < 3.5f)
+                                bestCrosswalk = Mathf.Max(bestCrosswalk, w);
+                        }
+                        else if (nearInterBox >= nearInterRadius + 16f && nearInterBox <= nearInterRadius + 18.2f && Mathf.Abs(signedPerp) < hw - 2.5f)
+                        {
+                            bestStopBar = Mathf.Max(bestStopBar, w);
+                        }
                     }
                 }
-                else
-                {
-                    float swInset = outer - dist;
-                    float sw = Mathf.SmoothStep(0f, 1f, swInset * 0.35f);
-                    bestSidewalk = Mathf.Max(bestSidewalk, sw);
-                    if (dist <= hw + 3.2f)
-                        bestCurb = Mathf.Max(bestCurb, 1f - (dist - hw) / 3.2f);
-                }
             }
+            if (curPid >= 0 && curPolySd < 1e5f)
+                FoldPolylineDistance(curPolySd, ref min1, ref min2);
 
-            if (bestAsphalt <= 0f && bestSidewalk <= 0f) return terrain;
+            if (min1 > sidewalkOuter + 6f) return terrain;
+
+            // Smooth-Min across the 2 closest distinct streets gives realistic curved turning-radius curbs without bowing opposite curbs!
+            float unifiedSd = min2 < 1e5f ? SmoothMin(min1, min2, 10.5f) : min1;
+            if (unifiedSd >= sidewalkOuter) return terrain;
+
+            // Gently fade center dashes inside any multi-street junction fillet
+            if (min2 < 14f)
+                bestDash *= Mathf.SmoothStep(5f, 14f, min2);
 
             Color32 color = terrain;
-            if (bestSidewalk > 0f)
+            if (unifiedSd < sidewalkOuter)
             {
+                float sw = Mathf.SmoothStep(0f, 1f, (sidewalkOuter - unifiedSd) * 0.35f);
                 bool tileJoint = Mathf.Repeat(point.x, 16f) < 1.1f || Mathf.Repeat(point.y, 16f) < 1.1f;
                 var sidewalkCol = new Color32(158, 154, 145, 255);
                 var curbCol = new Color32(106, 104, 98, 255);
-                Color32 sw = tileJoint ? Color32.Lerp(sidewalkCol, curbCol, 0.32f) : sidewalkCol;
-                sw = Color32.Lerp(sw, dark, 0.08f * grain + 0.08f * patch);
-                color = Color32.Lerp(color, sw, bestSidewalk * 0.90f);
-                if (bestCurb > 0f)
-                    color = Color32.Lerp(color, curbCol, bestCurb * 0.78f);
+                Color32 swCol = tileJoint ? Color32.Lerp(sidewalkCol, curbCol, 0.32f) : sidewalkCol;
+                swCol = Color32.Lerp(swCol, dark, 0.08f * grain + 0.08f * patch);
+                color = Color32.Lerp(color, swCol, sw * 0.90f);
+                if (unifiedSd > 0f && unifiedSd <= 3.2f)
+                {
+                    float curb = 1f - unifiedSd / 3.2f;
+                    color = Color32.Lerp(color, curbCol, curb * 0.80f);
+                }
             }
 
-            if (bestAsphalt > 0f)
+            if (unifiedSd <= 0.5f)
             {
+                float bestAsphalt = Mathf.SmoothStep(0f, 1f, (0.5f - unifiedSd) * 0.55f);
                 var asphaltBase = new Color32(68, 72, 78, 255);
                 var asphaltDark = new Color32(54, 58, 64, 255);
                 Color32 road = Color32.Lerp(asphaltBase, asphaltDark, 0.25f * grain + 0.22f * patch);
@@ -2553,7 +2736,9 @@ namespace Modern8bitTanks
                 if (bestDash > 0f)
                     color = Color32.Lerp(color, new Color32(214, 196, 126, 255), bestDash * 0.85f);
                 if (bestCrosswalk > 0f)
-                    color = Color32.Lerp(color, new Color32(204, 202, 192, 255), bestCrosswalk * 0.68f);
+                    color = Color32.Lerp(color, new Color32(206, 204, 194, 255), bestCrosswalk * 0.72f);
+                if (bestStopBar > 0f)
+                    color = Color32.Lerp(color, new Color32(206, 204, 194, 255), bestStopBar * 0.55f);
             }
 
             return color;
@@ -2740,48 +2925,79 @@ namespace Modern8bitTanks
         private Color32 PaintForestRoadNetwork(Vector2 point, Color32 terrain, Color32 dark,
             Color32 verge, float patch, float grain, bool inWater)
         {
-            float bestRoad = 0f;
-            float bestShoulder = 0f;
+            float min1 = 1e6f, min2 = 1e6f;
+            int curPid = -1;
+            float curPolySd = 1e6f;
+            float bestBridgeRoad = 0f;
             float bestRut = 0f;
             float bestPlank = 0f;
             float bestBridgeRail = 0f;
 
+            const float shoulderOuter = 10f;
+            const float cullMargin = shoulderOuter + 18f;
+            float edgeWobble = inWater ? 0f : (patch - 0.5f) * 4.5f;
+
             for (int i = 0; i < _roads.Count; i++)
             {
                 var seg = _roads[i];
-                float outer = seg.HalfWidth + 10f;
-                if (point.x < seg.MinX - outer || point.x > seg.MaxX + outer ||
-                    point.y < seg.MinY - outer || point.y > seg.MaxY + outer) continue;
-
-                float dist = seg.DistanceTo(point, out float along, out float signedPerp);
-                float edgeWobble = inWater ? 0f : (patch - 0.5f) * 4.5f;
-                float adj = dist + edgeWobble;
-                float effectiveW = inWater ? seg.HalfWidth + 2.5f : seg.HalfWidth;
-                if (adj >= outer) continue;
-
-                if (adj < effectiveW)
+                if (seg.PolylineId != curPid)
                 {
-                    float w = Mathf.SmoothStep(0f, 1f, (effectiveW - adj) * 0.42f);
-                    bestRoad = Mathf.Max(bestRoad, w);
+                    if (curPid >= 0 && curPolySd < 1e5f)
+                        FoldPolylineDistance(curPolySd, ref min1, ref min2);
+                    curPid = seg.PolylineId;
+                    curPolySd = 1e6f;
+                }
+
+                float bound = seg.HalfWidth + cullMargin;
+                if (point.x < seg.MinX - bound || point.x > seg.MaxX + bound ||
+                    point.y < seg.MinY - bound || point.y > seg.MaxY + bound) continue;
+
+                float dist = seg.DistanceTo(point, out float segAlong, out float signedPerp, out bool insideSpan);
+                float effectiveW = inWater ? seg.HalfWidth + 2.5f : seg.HalfWidth;
+                float sd = dist + edgeWobble - effectiveW;
+                if (sd < curPolySd) curPolySd = sd;
+
+                if (inWater && sd < 0f)
+                {
+                    float w = Mathf.SmoothStep(0f, 1f, -sd * 0.45f);
+                    bestBridgeRoad = Mathf.Max(bestBridgeRoad, w);
+                    if (Mathf.Abs(signedPerp) > effectiveW - 3.2f)
+                        bestBridgeRail = Mathf.Max(bestBridgeRail, w);
+                    else if (Mathf.Repeat(seg.AlongStart + segAlong, 6f) < 4.5f)
+                        bestPlank = Mathf.Max(bestPlank, w);
+                }
+                else if (!inWater && insideSpan && sd < 0f)
+                {
+                    float w = Mathf.SmoothStep(0f, 1f, -sd * 0.42f);
                     float rutTarget = seg.HalfWidth * 0.42f;
                     float rutDist = Mathf.Abs(Mathf.Abs(signedPerp) - rutTarget);
                     if (rutDist < 3.0f)
                         bestRut = Mathf.Max(bestRut, (1f - rutDist / 3.0f) * w);
-                    if (inWater)
-                    {
-                        if (Mathf.Abs(signedPerp) > effectiveW - 3.2f)
-                            bestBridgeRail = Mathf.Max(bestBridgeRail, w);
-                        else if (Mathf.Repeat(along, 6f) < 4.5f)
-                            bestPlank = Mathf.Max(bestPlank, w);
-                    }
-                }
-                else
-                {
-                    bestShoulder = Mathf.Max(bestShoulder, Mathf.SmoothStep(0f, 1f, (outer - adj) / 10f));
                 }
             }
+            if (curPid >= 0 && curPolySd < 1e5f)
+                FoldPolylineDistance(curPolySd, ref min1, ref min2);
 
-            if (bestRoad <= 0f && bestShoulder <= 0f) return terrain;
+            if (inWater)
+            {
+                if (bestBridgeRoad <= 0f) return terrain;
+                var rail = new Color32(66, 48, 32, 255);
+                var timber = new Color32(146, 108, 68, 255);
+                var timberGap = new Color32(82, 60, 38, 255);
+                Color32 bridge = bestBridgeRail > 0.35f ? rail
+                    : (bestPlank > 0f ? Color32.Lerp(timber, timberGap, grain * 0.22f) : timberGap);
+                return Color32.Lerp(terrain, bridge, bestBridgeRoad * 0.94f);
+            }
+
+            if (min1 > shoulderOuter + 12f) return terrain;
+
+            // Smooth-Min flares Y-forks & T-junctions into natural bell-mouthed compacted dirt clearings!
+            float unifiedSd = min2 < 1e5f ? SmoothMin(min1, min2, 18f) : min1;
+            if (unifiedSd >= shoulderOuter) return terrain;
+
+            // Fade dual tire ruts cleanly inside forks so ruts never X-cross messily!
+            if (min2 < 14f)
+                bestRut *= Mathf.SmoothStep(4f, 14f, min2);
 
             Color32 roadBase = _scenario switch
             {
@@ -2794,28 +3010,17 @@ namespace Modern8bitTanks
             Color32 shoulderCol = Color32.Lerp(roadBase, dark, 0.28f);
 
             Color32 color = terrain;
-            if (bestShoulder > 0f && !inWater)
+            float bestShoulder = Mathf.SmoothStep(0f, 1f, (shoulderOuter - unifiedSd) / shoulderOuter);
+            if (bestShoulder > 0f)
                 color = Color32.Lerp(color, shoulderCol, bestShoulder * 0.48f);
 
-            if (bestRoad > 0f)
+            if (unifiedSd < 0f)
             {
-                if (inWater)
-                {
-                    // Sturdy wooden timber bridge with dark guardrails spanning the woodland creek!
-                    var rail = new Color32(66, 48, 32, 255);
-                    var timber = new Color32(146, 108, 68, 255);
-                    var timberGap = new Color32(82, 60, 38, 255);
-                    Color32 bridge = bestBridgeRail > 0.35f ? rail
-                        : (bestPlank > 0f ? Color32.Lerp(timber, timberGap, grain * 0.22f) : timberGap);
-                    color = Color32.Lerp(color, bridge, bestRoad * 0.94f);
-                }
-                else
-                {
-                    Color32 dirt = Color32.Lerp(roadBase, verge, (grain - 0.5f) * 0.14f);
-                    color = Color32.Lerp(color, dirt, bestRoad * 0.88f);
-                    if (bestRut > 0f)
-                        color = Color32.Lerp(color, rutCol, bestRut * 0.52f);
-                }
+                float bestRoad = Mathf.SmoothStep(0f, 1f, -unifiedSd * 0.42f);
+                Color32 dirt = Color32.Lerp(roadBase, verge, (grain - 0.5f) * 0.14f);
+                color = Color32.Lerp(color, dirt, bestRoad * 0.88f);
+                if (bestRut > 0f)
+                    color = Color32.Lerp(color, rutCol, bestRut * 0.50f);
             }
 
             return color;
@@ -2827,74 +3032,89 @@ namespace Modern8bitTanks
         private Color32 PaintDesertRoadNetwork(Vector2 point, Color32 terrain, Color32 earth, Color32 dark,
             Color32 verge, float patch, float grain)
         {
-            float bestPrimary = 0f;
-            float bestTrack = 0f;
-            float bestShoulder = 0f;
+            float min1 = 1e6f, min2 = 1e6f;
+            int curPid = -1;
+            float curPolySd = 1e6f;
+            float priSd = 1e6f;
             float bestRut = 0f;
             float bestDash = 0f;
+
+            const float shoulderOuter = 10f;
+            const float cullMargin = shoulderOuter + 20f;
 
             for (int i = 0; i < _roads.Count; i++)
             {
                 var seg = _roads[i];
-                float outer = seg.HalfWidth + 10f;
-                if (point.x < seg.MinX - outer || point.x > seg.MaxX + outer ||
-                    point.y < seg.MinY - outer || point.y > seg.MaxY + outer) continue;
-
-                float dist = seg.DistanceTo(point, out float along, out float signedPerp);
-                float drift = (patch - 0.5f) * (seg.IsPrimary ? 3.5f : 5.0f);
-                float adj = dist + drift;
-                if (adj >= outer) continue;
-
-                if (adj < seg.HalfWidth)
+                if (seg.PolylineId != curPid)
                 {
-                    float w = Mathf.SmoothStep(0f, 1f, (seg.HalfWidth - adj) * 0.42f);
-                    if (seg.IsPrimary)
-                    {
-                        bestPrimary = Mathf.Max(bestPrimary, w);
-                        if (Mathf.Abs(signedPerp) < 1.2f && Mathf.Repeat(along + 6f, 40f) < 16f && Vector2.Distance(point, ControlPoint) > 78f)
-                            bestDash = Mathf.Max(bestDash, w);
-                    }
-                    else
-                    {
-                        bestTrack = Mathf.Max(bestTrack, w);
-                    }
+                    if (curPid >= 0 && curPolySd < 1e5f)
+                        FoldPolylineDistance(curPolySd, ref min1, ref min2);
+                    curPid = seg.PolylineId;
+                    curPolySd = 1e6f;
+                }
+
+                float bound = seg.HalfWidth + cullMargin;
+                if (point.x < seg.MinX - bound || point.x > seg.MaxX + bound ||
+                    point.y < seg.MinY - bound || point.y > seg.MaxY + bound) continue;
+
+                float dist = seg.DistanceTo(point, out float segAlong, out float signedPerp, out bool insideSpan);
+                float drift = (patch - 0.5f) * (seg.IsPrimary ? 3.5f : 5.0f);
+                float sd = dist + drift - seg.HalfWidth;
+                if (sd < curPolySd) curPolySd = sd;
+                if (seg.IsPrimary && sd < priSd) priSd = sd;
+
+                if (insideSpan && sd < 0f)
+                {
+                    float w = Mathf.SmoothStep(0f, 1f, -sd * 0.42f);
+                    if (seg.IsPrimary && Mathf.Abs(signedPerp) < 1.25f &&
+                        Mathf.Repeat(seg.AlongStart + segAlong + 6f, 40f) < 16f &&
+                        Vector2.Distance(point, ControlPoint) > 78f)
+                        bestDash = Mathf.Max(bestDash, w);
 
                     float rutTarget = seg.HalfWidth * 0.44f;
                     float rutDist = Mathf.Abs(Mathf.Abs(signedPerp) - rutTarget);
                     if (rutDist < 2.8f)
                         bestRut = Mathf.Max(bestRut, (1f - rutDist / 2.8f) * w);
                 }
-                else
-                {
-                    bestShoulder = Mathf.Max(bestShoulder, Mathf.SmoothStep(0f, 1f, (outer - adj) / 10f));
-                }
+            }
+            if (curPid >= 0 && curPolySd < 1e5f)
+                FoldPolylineDistance(curPolySd, ref min1, ref min2);
+
+            if (min1 > shoulderOuter + 12f) return terrain;
+
+            float unifiedSd = min2 < 1e5f ? SmoothMin(min1, min2, 18f) : min1;
+            if (unifiedSd >= shoulderOuter) return terrain;
+
+            // Fade highway dashes & tire ruts cleanly inside junction merges!
+            if (min2 < 16f)
+            {
+                float fade = Mathf.SmoothStep(4f, 16f, min2);
+                bestDash *= fade;
+                bestRut *= fade;
             }
 
-            if (bestPrimary <= 0f && bestTrack <= 0f && bestShoulder <= 0f) return terrain;
-
             Color32 color = terrain;
+            float bestShoulder = Mathf.SmoothStep(0f, 1f, (shoulderOuter - unifiedSd) / shoulderOuter);
             if (bestShoulder > 0f)
                 color = Color32.Lerp(color, new Color32(158, 128, 86, 255), bestShoulder * 0.46f);
 
-            if (bestTrack > 0f)
+            if (unifiedSd < 0f)
             {
+                float bestRoad = Mathf.SmoothStep(0f, 1f, -unifiedSd * 0.42f);
+                // Smooth windblown gravel apron transition where secondary desert tracks meet primary tarmac!
+                float priBlend = Mathf.SmoothStep(26f, -4f, priSd);
                 Color32 trackCol = Color32.Lerp(new Color32(134, 104, 68, 255), dark, 0.16f * grain);
-                color = Color32.Lerp(color, trackCol, bestTrack * 0.84f);
-            }
-
-            if (bestPrimary > 0f)
-            {
-                // Sun-baked sand-dusted military tarmac/gravel supply highway
                 var tarmac = new Color32(114, 104, 88, 255);
                 var sandDust = new Color32(162, 136, 98, 255);
-                Color32 road = Color32.Lerp(tarmac, sandDust, Mathf.Clamp01(patch * 0.42f + grain * 0.15f));
-                color = Color32.Lerp(color, road, bestPrimary * 0.90f);
-                if (bestDash > 0f)
-                    color = Color32.Lerp(color, new Color32(220, 200, 140, 255), bestDash * 0.60f);
-            }
+                Color32 highwayCol = Color32.Lerp(tarmac, sandDust, Mathf.Clamp01(patch * 0.42f + grain * 0.15f));
+                Color32 surface = Color32.Lerp(trackCol, highwayCol, priBlend);
 
-            if (bestRut > 0f)
-                color = Color32.Lerp(color, dark, bestRut * 0.38f);
+                color = Color32.Lerp(color, surface, bestRoad * 0.90f);
+                if (bestDash > 0f)
+                    color = Color32.Lerp(color, new Color32(220, 200, 140, 255), bestDash * 0.62f);
+                if (bestRut > 0f)
+                    color = Color32.Lerp(color, dark, bestRut * 0.36f);
+            }
 
             return color;
         }
