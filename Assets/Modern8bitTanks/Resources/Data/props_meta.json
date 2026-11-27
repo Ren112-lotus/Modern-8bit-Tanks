@@ -140,5 +140,56 @@
     "destructible": true,
     "ricochetHeavy": true,
     "heavyStructure": true
+  },
+  "cargo_container": {
+    "slices": 14,
+    "width": 38,
+    "length": 18,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": false
+  },
+  "radar_station": {
+    "slices": 22,
+    "width": 24,
+    "length": 24,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "timber_stack": {
+    "slices": 12,
+    "width": 34,
+    "length": 18,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false
+  },
+  "desert_scrub": {
+    "slices": 12,
+    "width": 22,
+    "length": 22,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "broadleaf_grove": {
+    "slices": 22,
+    "width": 44,
+    "length": 42,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": true,
+    "roundedFootprint": true
+  },
+  "moss_rocks": {
+    "slices": 13,
+    "width": 28,
+    "length": 24,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": false,
+    "roundedFootprint": true
   }
 }

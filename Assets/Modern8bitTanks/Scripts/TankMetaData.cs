@@ -135,6 +135,13 @@ namespace Modern8bitTanks
         public PropMetaEntry forest_cabin;
         public PropMetaEntry desert_mesa;
         public PropMetaEntry desert_compound;
+        // Additional artificial & natural props
+        public PropMetaEntry cargo_container;
+        public PropMetaEntry radar_station;
+        public PropMetaEntry timber_stack;
+        public PropMetaEntry desert_scrub;
+        public PropMetaEntry broadleaf_grove;
+        public PropMetaEntry moss_rocks;
 
         public PropMetaEntry GetByKind(string kind)
         {
@@ -159,6 +166,12 @@ namespace Modern8bitTanks
                 "forest_cabin" => forest_cabin,
                 "desert_mesa" => desert_mesa,
                 "desert_compound" => desert_compound,
+                "cargo_container" => cargo_container,
+                "radar_station" => radar_station,
+                "timber_stack" => timber_stack,
+                "desert_scrub" => desert_scrub,
+                "broadleaf_grove" => broadleaf_grove,
+                "moss_rocks" => moss_rocks,
                 _ => desert_rock
             };
         }
@@ -419,7 +432,13 @@ namespace Modern8bitTanks
                 fuel_tank = new PropMetaEntry { slices = 13, width = 30, length = 18, destructible = true },
                 palm_tree = new PropMetaEntry { slices = 20, width = 28, length = 28, destructible = true },
                 desert_rock = new PropMetaEntry { slices = 15, width = 32, length = 24, destructible = true, ricochetHeavy = true },
-                tank_trap = new PropMetaEntry { slices = 12, width = 18, length = 18, destructible = true, ricochetHeavy = true }
+                tank_trap = new PropMetaEntry { slices = 12, width = 18, length = 18, destructible = true, ricochetHeavy = true },
+                cargo_container = new PropMetaEntry { slices = 14, width = 38, length = 18, destructible = true, ricochetHeavy = true },
+                radar_station = new PropMetaEntry { slices = 22, width = 24, length = 24, destructible = true },
+                timber_stack = new PropMetaEntry { slices = 12, width = 34, length = 18, destructible = true },
+                desert_scrub = new PropMetaEntry { slices = 12, width = 22, length = 22, destructible = true, roundedFootprint = true },
+                broadleaf_grove = new PropMetaEntry { slices = 22, width = 44, length = 42, destructible = true, heavyStructure = true, roundedFootprint = true },
+                moss_rocks = new PropMetaEntry { slices = 13, width = 28, length = 24, destructible = true, ricochetHeavy = true, roundedFootprint = true }
             };
         }
     }

@@ -644,9 +644,9 @@ namespace Modern8bitTanks
                 }
                 bool isHuge = prop.meta != null && prop.meta.heavyStructure;
                 Color32 pCol = (prop.kind == "supply_crate" || prop.kind == "fuel_tank") ? explosiveCol
-                    : (prop.kind == "palm_tree" || prop.kind == "pine_cluster" ? treeCol
-                    : (prop.kind.StartsWith("city_") || prop.kind == "forest_cabin" || prop.kind == "desert_compound" ? bldgCol
-                    : (prop.kind == "desert_bunker" || prop.kind == "desert_rock" || prop.kind == "desert_mesa" || prop.kind == "forest_boulder" ? rockCol : propCol)));
+                    : (prop.kind == "palm_tree" || prop.kind == "pine_cluster" || prop.kind == "broadleaf_grove" || prop.kind == "desert_scrub" ? treeCol
+                    : (prop.kind.StartsWith("city_") || prop.kind == "forest_cabin" || prop.kind == "desert_compound" || prop.kind == "cargo_container" || prop.kind == "radar_station" ? bldgCol
+                    : (prop.kind == "desert_bunker" || prop.kind == "desert_rock" || prop.kind == "desert_mesa" || prop.kind == "forest_boulder" || prop.kind == "moss_rocks" ? rockCol : propCol)));
                 int radius = isHuge ? 1 : (prop.kind == "desert_bunker" || prop.kind == "desert_rock" ? 1 : 0);
                 PlotDot(px, py, radius, pCol);
             }
