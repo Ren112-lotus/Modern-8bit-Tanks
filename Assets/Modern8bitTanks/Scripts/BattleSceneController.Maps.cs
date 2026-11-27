@@ -542,155 +542,312 @@ namespace Modern8bitTanks
         }
 
         // =====================================================================
-        // HANDCRAFTED EXPANDED 2048x1360 TACTICAL MAP LAYOUTS (LARGE OBSTACLES!)
+        // SURVIVAL 2048x1360 TACTICAL MAP LAYOUTS (COHESIVE SCENARIO VARIATION)
+        // Artificial facilities stay axis-aligned; natural clusters scatter organically.
         // =====================================================================
+        private void SpawnSurvivalNaturalCluster(float cx, float cy, float rx, float ry, int count, string[] pool, System.Random rng)
+        {
+            float baseDeg = (float)(rng.NextDouble() * 360.0);
+            for (int i = 0; i < count; i++)
+            {
+                float theta = (baseDeg + i * 137.5f + rng.Next(-25, 26)) * Mathf.Deg2Rad;
+                float scale = 0.42f + (float)rng.NextDouble() * 0.58f;
+                float nx = Mathf.Clamp(cx + Mathf.Cos(theta) * rx * scale, 0.14f, 0.86f);
+                float ny = Mathf.Clamp(cy + Mathf.Sin(theta) * ry * scale, 0.10f, 0.90f);
+                string kind = pool[i % pool.Length];
+                SpawnMapProp(kind, nx, ny, rng.Next(0, 360));
+            }
+        }
+
         private void BuildDesertLayout()
         {
-            // 1. Towering Sandstone Mesas (HUGE natural flank cover!)
-            SpawnMapProp("desert_mesa", 0.27f, 0.80f, 8f);
-            SpawnMapProp("desert_mesa", 0.73f, 0.80f, -12f);
-            SpawnMapProp("desert_mesa", 0.25f, 0.22f, -6f);
-            SpawnMapProp("desert_mesa", 0.75f, 0.22f, 10f);
+            var rng = new System.Random(UnityEngine.Random.Range(1, int.MaxValue));
+            int theme = rng.Next(3); // 0: Airbase, 1: Oasis Highway, 2: Canyon Artillery Front
 
-            // 2. Massive Fortified Desert Compounds & Aligned Supply Yard (major mid-lane strongholds!)
-            SpawnMapProp("desert_compound", 0.36f, 0.62f, 0f);
-            SpawnMapProp("desert_compound", 0.64f, 0.38f, 180f);
-            SpawnMapProp("radar_station", 0.32f, 0.66f, 0f);
-            SpawnMapProp("radar_station", 0.68f, 0.34f, 180f);
-            SpawnMapProp("cargo_container", 0.34f, 0.56f, 0f);
-            SpawnMapProp("cargo_container", 0.34f, 0.53f, 0f);
-            SpawnMapProp("cargo_container", 0.66f, 0.44f, 180f);
-            SpawnMapProp("cargo_container", 0.66f, 0.47f, 180f);
+            // 1. Towering Natural Flanks (organic free rotations)
+            string flankRock = theme == 0 ? "desert_mesa" : (theme == 1 ? "rock_arch" : "rock_pillar");
+            string subRock = theme == 2 ? "cliff_overhang" : "desert_mesa";
+            SpawnMapProp(flankRock, 0.27f, 0.81f, rng.Next(0, 360));
+            SpawnMapProp(flankRock, 0.73f, 0.81f, rng.Next(0, 360));
+            SpawnMapProp(subRock, 0.24f, 0.21f, rng.Next(0, 360));
+            SpawnMapProp(subRock, 0.76f, 0.21f, rng.Next(0, 360));
 
-            // 3. Central Outpost Bunkers, Watch Towers & Fuel Depots
-            SpawnMapProp("desert_bunker", 0.44f, 0.54f, 0f);
-            SpawnMapProp("desert_bunker", 0.56f, 0.46f, 180f);
-            SpawnMapProp("watch_tower", 0.50f, 0.72f, 0f);
-            SpawnMapProp("watch_tower", 0.50f, 0.29f, 0f);
-            SpawnMapProp("fuel_tank", 0.46f, 0.45f, 0f);
-            SpawnMapProp("fuel_tank", 0.54f, 0.55f, 0f);
+            // 2. Aligned Artificial Strongholds & Theme-Specific Functional Facilities
+            if (theme == 0)
+            {
+                // Desert Air Defense Base
+                SpawnMapProp("radar_dome", 0.36f, 0.64f, 0f);
+                SpawnMapProp("radar_dome", 0.64f, 0.36f, 180f);
+                SpawnMapProp("sam_launcher", 0.42f, 0.56f, 0f);
+                SpawnMapProp("sam_launcher", 0.58f, 0.44f, 180f);
+                SpawnMapProp("generator_unit", 0.31f, 0.66f, 0f);
+                SpawnMapProp("generator_unit", 0.69f, 0.34f, 180f);
+                SpawnMapProp("military_tent", 0.34f, 0.42f, 0f);
+                SpawnMapProp("military_tent", 0.34f, 0.37f, 0f);
+                SpawnMapProp("military_tent", 0.66f, 0.58f, 180f);
+                SpawnMapProp("military_tent", 0.66f, 0.63f, 180f);
+                SpawnMapProp("ammo_depot", 0.45f, 0.46f, 0f);
+                SpawnMapProp("ammo_depot", 0.55f, 0.54f, 180f);
+                SpawnMapProp("radio_mast", 0.50f, 0.73f, 0f);
+                SpawnMapProp("watch_tower", 0.50f, 0.28f, 0f);
+                SpawnMapProp("checkpoint_gate", 0.27f, 0.50f, 90f);
+                SpawnMapProp("guard_booth", 0.27f, 0.56f, 90f);
+                SpawnMapProp("checkpoint_gate", 0.73f, 0.50f, 90f);
+                SpawnMapProp("guard_booth", 0.73f, 0.44f, 90f);
+                SpawnMapProp("concrete_wall", 0.38f, 0.50f, 90f);
+                SpawnMapProp("concrete_wall", 0.62f, 0.50f, 90f);
+                SpawnMapProp("crashed_heli", 0.50f, 0.50f, 24f);
+                SpawnMapProp("crater_boulders", 0.47f, 0.54f, 110f);
+            }
+            else if (theme == 1)
+            {
+                // Desert Oasis Route & Solar Outpost
+                SpawnMapProp("desert_compound", 0.36f, 0.63f, 0f);
+                SpawnMapProp("desert_compound", 0.64f, 0.37f, 180f);
+                SpawnMapProp("solar_array", 0.33f, 0.55f, 0f);
+                SpawnMapProp("solar_array", 0.33f, 0.51f, 0f);
+                SpawnMapProp("solar_array", 0.67f, 0.45f, 180f);
+                SpawnMapProp("solar_array", 0.67f, 0.49f, 180f);
+                SpawnMapProp("water_tower", 0.42f, 0.68f, 0f);
+                SpawnMapProp("radar_station", 0.58f, 0.32f, 180f);
+                SpawnMapProp("fuel_pump_island", 0.46f, 0.50f, 0f);
+                SpawnMapProp("fuel_pump_island", 0.54f, 0.50f, 180f);
+                SpawnMapProp("abandoned_car", 0.46f, 0.44f, 0f);
+                SpawnMapProp("abandoned_car", 0.54f, 0.56f, 180f);
+                SpawnMapProp("cargo_container", 0.34f, 0.36f, 0f);
+                SpawnMapProp("cargo_container", 0.34f, 0.33f, 0f);
+                SpawnMapProp("cargo_container", 0.66f, 0.64f, 180f);
+                SpawnMapProp("cargo_container", 0.66f, 0.67f, 180f);
+                SpawnMapProp("oil_drum_stack", 0.40f, 0.35f, 0f);
+                SpawnMapProp("oil_drum_stack", 0.60f, 0.65f, 180f);
+                SpawnMapProp("hesco_barrier", 0.24f, 0.56f, 0f);
+                SpawnMapProp("hesco_barrier", 0.76f, 0.44f, 0f);
+                SpawnMapProp("sandbag_wall", 0.30f, 0.50f, 90f);
+                SpawnMapProp("sandbag_wall", 0.70f, 0.50f, 90f);
+            }
+            else
+            {
+                // Desert Canyon Artillery Front
+                SpawnMapProp("desert_bunker", 0.37f, 0.62f, 0f);
+                SpawnMapProp("desert_bunker", 0.63f, 0.38f, 180f);
+                SpawnMapProp("field_artillery", 0.43f, 0.55f, 0f);
+                SpawnMapProp("field_artillery", 0.57f, 0.45f, 180f);
+                SpawnMapProp("ammo_depot", 0.39f, 0.54f, 0f);
+                SpawnMapProp("ammo_depot", 0.61f, 0.46f, 180f);
+                SpawnMapProp("cargo_container", 0.33f, 0.39f, 0f);
+                SpawnMapProp("forklift_wreck", 0.38f, 0.39f, 0f);
+                SpawnMapProp("cargo_container", 0.67f, 0.61f, 180f);
+                SpawnMapProp("forklift_wreck", 0.62f, 0.61f, 180f);
+                SpawnMapProp("watch_tower", 0.50f, 0.72f, 0f);
+                SpawnMapProp("watch_tower", 0.50f, 0.28f, 0f);
+                SpawnMapProp("concrete_wall", 0.29f, 0.50f, 90f);
+                SpawnMapProp("concrete_wall", 0.71f, 0.50f, 90f);
+                SpawnMapProp("wrecked_tank", 0.50f, 0.50f, -18f);
+                SpawnMapProp("crater_boulders", 0.53f, 0.54f, 200f);
+                SpawnMapProp("tank_trap", 0.24f, 0.42f, 0f);
+                SpawnMapProp("tank_trap", 0.76f, 0.58f, 0f);
+            }
 
-            // 4. Dry Southern Palm Grove & Natural Mesa Foothill Scrub (organic free-angle clusters!)
-            SpawnMapProp("palm_tree", 0.43f, 0.19f, 10f);
-            SpawnMapProp("palm_tree", 0.48f, 0.14f, -20f);
-            SpawnMapProp("palm_tree", 0.53f, 0.21f, 35f);
-            SpawnMapProp("palm_tree", 0.58f, 0.15f, -15f);
-            SpawnMapProp("palm_tree", 0.46f, 0.24f, 50f);
-            SpawnMapProp("palm_tree", 0.55f, 0.24f, -40f);
-            SpawnMapProp("desert_scrub", 0.41f, 0.15f, 74f);
-            SpawnMapProp("desert_scrub", 0.59f, 0.21f, 212f);
-            SpawnMapProp("desert_scrub", 0.24f, 0.75f, 145f);
-            SpawnMapProp("desert_scrub", 0.76f, 0.26f, 308f);
-            SpawnMapProp("desert_rock", 0.50f, 0.17f, 12f);
-            SpawnMapProp("desert_rock", 0.39f, 0.84f, -18f);
-            SpawnMapProp("desert_rock", 0.61f, 0.84f, 22f);
-
-            // 5. Tactical Mid-Field Cover (HESCO, Ruins, Sandbags, Explosive Crates, Tank Traps)
-            SpawnMapProp("desert_ruin", 0.34f, 0.36f, 15f);
-            SpawnMapProp("desert_ruin", 0.66f, 0.64f, -15f);
-            SpawnMapProp("hesco_barrier", 0.22f, 0.56f, 0f);
-            SpawnMapProp("hesco_barrier", 0.78f, 0.44f, 0f);
-            SpawnMapProp("sandbag_wall", 0.30f, 0.50f, 90f);
-            SpawnMapProp("sandbag_wall", 0.70f, 0.50f, 90f);
-            SpawnMapProp("supply_crate", 0.42f, 0.68f, 0f);
-            SpawnMapProp("supply_crate", 0.58f, 0.32f, 0f);
-            SpawnMapProp("tank_trap", 0.23f, 0.42f, 12f);
-            SpawnMapProp("tank_trap", 0.77f, 0.58f, -12f);
+            // 3. Organic Natural Southern Basin & Canyon Verge Clusters
+            if (theme == 1)
+            {
+                SpawnMapProp("oasis_spring", 0.50f, 0.18f, rng.Next(0, 360));
+                SpawnSurvivalNaturalCluster(0.50f, 0.18f, 0.10f, 0.06f, 6,
+                    new[] { "palm_tree", "palm_tree", "cactus_cluster", "desert_rock", "desert_scrub", "palm_tree" }, rng);
+            }
+            else
+            {
+                SpawnSurvivalNaturalCluster(0.50f, 0.18f, 0.11f, 0.06f, 6,
+                    theme == 0
+                        ? new[] { "rock_pillar", "desert_rock", "desert_scrub", "dead_tree", "desert_rock", "desert_scrub" }
+                        : new[] { "cactus_cluster", "cliff_overhang", "dead_tree", "desert_rock", "desert_scrub", "stone_monolith" }, rng);
+            }
+            SpawnSurvivalNaturalCluster(0.40f, 0.84f, 0.06f, 0.04f, 3, new[] { "desert_rock", "desert_scrub", "cactus_cluster" }, rng);
+            SpawnSurvivalNaturalCluster(0.60f, 0.84f, 0.06f, 0.04f, 3, new[] { "desert_rock", "desert_scrub", "cactus_cluster" }, rng);
         }
 
         private void BuildCityLayout()
         {
-            // 1. Massive Industrial Factories & Parallel Freight Containers anchoring the Northern District!
-            SpawnMapProp("city_factory", 0.37f, 0.87f, 0f);
-            SpawnMapProp("city_factory", 0.63f, 0.87f, 0f);
-            SpawnMapProp("cargo_container", 0.29f, 0.88f, 0f);
-            SpawnMapProp("cargo_container", 0.29f, 0.85f, 0f);
-            SpawnMapProp("cargo_container", 0.71f, 0.88f, 0f);
-            SpawnMapProp("cargo_container", 0.71f, 0.85f, 0f);
-            SpawnMapProp("radar_station", 0.50f, 0.79f, 0f);
+            var rng = new System.Random(UnityEngine.Random.Range(1, int.MaxValue));
+            int theme = rng.Next(3); // 0: Rail Freight Yard, 1: Downtown Avenue, 2: Command Citadel
 
-            // 2. Towering 3-Story European Apartment Blocks creating real city boulevards & flanking alleys!
-            SpawnMapProp("city_apartment", 0.37f, 0.63f, 0f);
-            SpawnMapProp("city_apartment", 0.63f, 0.63f, 0f);
-            SpawnMapProp("city_apartment", 0.37f, 0.37f, 0f);
-            SpawnMapProp("city_apartment", 0.63f, 0.37f, 0f);
-            SpawnMapProp("city_apartment", 0.37f, 0.13f, 0f);
-            SpawnMapProp("city_apartment", 0.63f, 0.13f, 0f);
+            // 1. Core City Architecture (strict 90-degree urban grid!)
+            if (theme == 0)
+            {
+                // Industrial Freight Rail & Power Yard
+                SpawnMapProp("city_factory", 0.37f, 0.87f, 0f);
+                SpawnMapProp("city_factory", 0.63f, 0.87f, 0f);
+                SpawnMapProp("rail_boxcar", 0.28f, 0.86f, 0f);
+                SpawnMapProp("rail_boxcar", 0.28f, 0.82f, 0f);
+                SpawnMapProp("rail_boxcar", 0.72f, 0.86f, 0f);
+                SpawnMapProp("rail_boxcar", 0.72f, 0.82f, 0f);
+                SpawnMapProp("steel_silo", 0.50f, 0.84f, 0f);
+                SpawnMapProp("water_tower", 0.50f, 0.14f, 0f);
 
-            // 3. Fortified Corner Townhouses / Blockhouses framing West & East urban approaches!
-            SpawnMapProp("city_blockhouse", 0.17f, 0.64f, 0f);
-            SpawnMapProp("city_blockhouse", 0.17f, 0.36f, 0f);
-            SpawnMapProp("city_blockhouse", 0.83f, 0.64f, 180f);
-            SpawnMapProp("city_blockhouse", 0.83f, 0.36f, 180f);
-            SpawnMapProp("city_blockhouse", 0.50f, 0.87f, 0f);
-            SpawnMapProp("city_blockhouse", 0.50f, 0.13f, 180f);
+                SpawnMapProp("city_blockhouse", 0.37f, 0.63f, 0f);
+                SpawnMapProp("city_blockhouse", 0.63f, 0.37f, 180f);
+                SpawnMapProp("transformer_substation", 0.63f, 0.63f, 0f);
+                SpawnMapProp("generator_unit", 0.68f, 0.63f, 0f);
+                SpawnMapProp("transformer_substation", 0.37f, 0.37f, 180f);
+                SpawnMapProp("generator_unit", 0.32f, 0.37f, 180f);
 
-            // 4. Street Barricades, Anti-Tank Traps, Fuel Tanks & Sandbags along avenues & central plaza
-            SpawnMapProp("city_barricade", 0.45f, 0.50f, 90f);
-            SpawnMapProp("city_barricade", 0.55f, 0.50f, 90f);
-            SpawnMapProp("city_barricade", 0.50f, 0.60f, 0f);
-            SpawnMapProp("city_barricade", 0.50f, 0.40f, 0f);
-            SpawnMapProp("city_barricade", 0.24f, 0.76f, 0f);
-            SpawnMapProp("city_barricade", 0.76f, 0.24f, 0f);
+                SpawnMapProp("cargo_container", 0.37f, 0.15f, 0f);
+                SpawnMapProp("cargo_container", 0.37f, 0.12f, 0f);
+                SpawnMapProp("forklift_wreck", 0.43f, 0.14f, 0f);
+                SpawnMapProp("cargo_container", 0.63f, 0.15f, 0f);
+                SpawnMapProp("oil_drum_stack", 0.58f, 0.14f, 0f);
 
-            SpawnMapProp("fuel_tank", 0.43f, 0.76f, 0f);
-            SpawnMapProp("fuel_tank", 0.57f, 0.24f, 0f);
-            SpawnMapProp("supply_crate", 0.29f, 0.50f, 0f);
-            SpawnMapProp("supply_crate", 0.71f, 0.50f, 0f);
-            SpawnMapProp("tank_trap", 0.24f, 0.56f, 15f);
-            SpawnMapProp("tank_trap", 0.76f, 0.44f, -15f);
-            SpawnMapProp("sandbag_wall", 0.47f, 0.44f, 0f);
-            SpawnMapProp("sandbag_wall", 0.53f, 0.56f, 0f);
+                SpawnMapProp("checkpoint_gate", 0.44f, 0.50f, 90f);
+                SpawnMapProp("guard_booth", 0.44f, 0.56f, 90f);
+                SpawnMapProp("checkpoint_gate", 0.56f, 0.50f, 90f);
+                SpawnMapProp("guard_booth", 0.56f, 0.44f, 90f);
+                SpawnMapProp("concrete_wall", 0.50f, 0.60f, 0f);
+                SpawnMapProp("concrete_wall", 0.50f, 0.40f, 0f);
+            }
+            else if (theme == 1)
+            {
+                // Downtown Commercial Avenue & City Park
+                SpawnMapProp("city_apartment", 0.37f, 0.86f, 0f);
+                SpawnMapProp("city_apartment", 0.63f, 0.86f, 0f);
+                SpawnMapProp("city_apartment", 0.37f, 0.63f, 0f);
+                SpawnMapProp("city_apartment", 0.63f, 0.37f, 180f);
+                SpawnMapProp("city_blockhouse", 0.37f, 0.37f, 0f);
+                SpawnMapProp("city_blockhouse", 0.63f, 0.63f, 180f);
+                SpawnMapProp("city_apartment", 0.37f, 0.14f, 0f);
+                SpawnMapProp("city_apartment", 0.63f, 0.14f, 0f);
+
+                SpawnMapProp("fuel_pump_island", 0.50f, 0.84f, 0f);
+                SpawnMapProp("abandoned_car", 0.50f, 0.78f, 0f);
+                SpawnMapProp("bus_stop", 0.27f, 0.76f, 0f);
+                SpawnMapProp("street_kiosk", 0.24f, 0.66f, 0f);
+                SpawnMapProp("bus_stop", 0.73f, 0.24f, 180f);
+                SpawnMapProp("street_kiosk", 0.76f, 0.34f, 180f);
+                SpawnMapProp("brick_wall", 0.44f, 0.50f, 90f);
+                SpawnMapProp("brick_wall", 0.56f, 0.50f, 90f);
+                SpawnMapProp("abandoned_car", 0.46f, 0.42f, 0f);
+                SpawnMapProp("abandoned_car", 0.54f, 0.58f, 180f);
+                SpawnMapProp("wrecked_tank", 0.50f, 0.50f, 14f);
+                SpawnMapProp("crater_boulders", 0.53f, 0.47f, 120f);
+
+                // Small organic botanical park on Southern Plaza
+                SpawnMapProp("stone_well", 0.50f, 0.16f, 0f);
+                SpawnSurvivalNaturalCluster(0.50f, 0.16f, 0.08f, 0.05f, 4,
+                    new[] { "cherry_tree", "weeping_willow", "bush_cluster", "moss_rocks" }, rng);
+            }
+            else
+            {
+                // Urban Command Citadel & Air Defense Square
+                SpawnMapProp("city_blockhouse", 0.37f, 0.86f, 0f);
+                SpawnMapProp("city_blockhouse", 0.63f, 0.86f, 0f);
+                SpawnMapProp("radar_dome", 0.50f, 0.83f, 0f);
+                SpawnMapProp("city_apartment", 0.37f, 0.63f, 0f);
+                SpawnMapProp("city_apartment", 0.63f, 0.37f, 180f);
+                SpawnMapProp("sam_launcher", 0.63f, 0.63f, 180f);
+                SpawnMapProp("sam_launcher", 0.37f, 0.37f, 0f);
+                SpawnMapProp("military_tent", 0.26f, 0.62f, 0f);
+                SpawnMapProp("ammo_depot", 0.26f, 0.56f, 0f);
+                SpawnMapProp("military_tent", 0.74f, 0.38f, 180f);
+                SpawnMapProp("ammo_depot", 0.74f, 0.44f, 180f);
+                SpawnMapProp("radio_mast", 0.37f, 0.16f, 0f);
+                SpawnMapProp("generator_unit", 0.63f, 0.16f, 0f);
+                SpawnMapProp("concrete_wall", 0.44f, 0.50f, 90f);
+                SpawnMapProp("concrete_wall", 0.56f, 0.50f, 90f);
+                SpawnMapProp("hesco_barrier", 0.50f, 0.60f, 0f);
+                SpawnMapProp("hesco_barrier", 0.50f, 0.40f, 0f);
+                SpawnMapProp("crashed_heli", 0.50f, 0.50f, -22f);
+
+                // Formal Memorial Park on South-Center
+                SpawnMapProp("stone_monolith", 0.50f, 0.15f, 0f);
+                SpawnSurvivalNaturalCluster(0.50f, 0.15f, 0.08f, 0.04f, 4,
+                    new[] { "cypress_tree", "cypress_tree", "bush_cluster", "broadleaf_grove" }, rng);
+            }
+
+            // Outer approach corner townhouses & street traps
+            SpawnMapProp("city_blockhouse", 0.17f, 0.65f, 0f);
+            SpawnMapProp("city_blockhouse", 0.17f, 0.35f, 0f);
+            SpawnMapProp("city_blockhouse", 0.83f, 0.65f, 180f);
+            SpawnMapProp("city_blockhouse", 0.83f, 0.35f, 180f);
+            SpawnMapProp("tank_trap", 0.24f, 0.55f, 0f);
+            SpawnMapProp("tank_trap", 0.76f, 0.45f, 0f);
         }
 
         private void BuildForestLayout()
         {
-            // 1. Massive Mossy Granite Cliff Ridges (immovable tactical bastions!)
-            SpawnMapProp("forest_boulder", 0.34f, 0.76f, 12f);
-            SpawnMapProp("forest_boulder", 0.66f, 0.76f, -14f);
-            SpawnMapProp("forest_boulder", 0.34f, 0.24f, -10f);
-            SpawnMapProp("forest_boulder", 0.66f, 0.24f, 16f);
-            SpawnMapProp("forest_boulder", 0.50f, 0.50f, 5f);
+            var rng = new System.Random(UnityEngine.Random.Range(1, int.MaxValue));
+            int theme = rng.Next(3); // 0: Rural Windmill Valley, 1: Autumn Highland, 2: Wetland Bamboo Front
 
-            // 2. Sturdy Woodland Log Cabins with Aligned Timber Stacks
-            SpawnMapProp("forest_cabin", 0.43f, 0.64f, 0f);
-            SpawnMapProp("timber_stack", 0.39f, 0.65f, 0f);
-            SpawnMapProp("timber_stack", 0.39f, 0.62f, 0f);
-            SpawnMapProp("forest_cabin", 0.57f, 0.36f, 180f);
-            SpawnMapProp("timber_stack", 0.61f, 0.35f, 180f);
-            SpawnMapProp("timber_stack", 0.61f, 0.38f, 180f);
-            SpawnMapProp("forest_cabin", 0.22f, 0.58f, 14f);
-            SpawnMapProp("forest_cabin", 0.78f, 0.42f, -14f);
+            // 1. Massive Natural Rock Bastions (organic angles)
+            string rockHero = theme == 0 ? "forest_boulder" : (theme == 1 ? "basalt_rocks" : "limestone_karst");
+            SpawnMapProp(rockHero, 0.34f, 0.77f, rng.Next(0, 360));
+            SpawnMapProp(rockHero, 0.66f, 0.77f, rng.Next(0, 360));
+            SpawnMapProp(rockHero, 0.34f, 0.23f, rng.Next(0, 360));
+            SpawnMapProp(rockHero, 0.66f, 0.23f, rng.Next(0, 360));
 
-            // 3. Organic Mixed Pine & Broadleaf Woodland Clusters + Mossy Boulder Outcrops!
-            SpawnMapProp("pine_cluster", 0.20f, 0.82f, 0f);
-            SpawnMapProp("broadleaf_grove", 0.26f, 0.72f, 48f);
-            SpawnMapProp("pine_cluster", 0.80f, 0.82f, -20f);
-            SpawnMapProp("broadleaf_grove", 0.74f, 0.72f, 132f);
-            SpawnMapProp("pine_cluster", 0.20f, 0.18f, 35f);
-            SpawnMapProp("broadleaf_grove", 0.26f, 0.29f, 215f);
-            SpawnMapProp("pine_cluster", 0.80f, 0.18f, -30f);
-            SpawnMapProp("broadleaf_grove", 0.74f, 0.29f, 294f);
-            SpawnMapProp("pine_cluster", 0.48f, 0.82f, 8f);
-            SpawnMapProp("pine_cluster", 0.52f, 0.18f, -18f);
-            SpawnMapProp("broadleaf_grove", 0.33f, 0.48f, 76f);
-            SpawnMapProp("broadleaf_grove", 0.67f, 0.52f, 252f);
-            SpawnMapProp("moss_rocks", 0.31f, 0.79f, 38f);
-            SpawnMapProp("moss_rocks", 0.69f, 0.21f, 198f);
-            SpawnMapProp("moss_rocks", 0.37f, 0.22f, 118f);
-            SpawnMapProp("moss_rocks", 0.63f, 0.78f, 286f);
+            // 2. Aligned Artificial Woodland Camps / Farmsteads / Outposts
+            if (theme == 0)
+            {
+                // Rural Windmill Valley & Sawmill
+                SpawnMapProp("windmill_tower", 0.43f, 0.64f, 0f);
+                SpawnMapProp("wooden_shed", 0.38f, 0.64f, 0f);
+                SpawnMapProp("hay_bale", 0.38f, 0.59f, 0f);
+                SpawnMapProp("stone_well", 0.47f, 0.60f, 0f);
+                SpawnMapProp("forest_cabin", 0.57f, 0.36f, 180f);
+                SpawnMapProp("timber_stack", 0.62f, 0.35f, 180f);
+                SpawnMapProp("timber_stack", 0.62f, 0.38f, 180f);
+                SpawnMapProp("forklift_wreck", 0.53f, 0.38f, 180f);
+                SpawnMapProp("field_artillery", 0.44f, 0.46f, 0f);
+                SpawnMapProp("field_artillery", 0.56f, 0.54f, 180f);
+                SpawnMapProp("watch_tower", 0.42f, 0.33f, 0f);
+                SpawnMapProp("watch_tower", 0.58f, 0.67f, 0f);
+                SpawnMapProp("sandbag_wall", 0.26f, 0.44f, 90f);
+                SpawnMapProp("sandbag_wall", 0.74f, 0.56f, 90f);
+            }
+            else if (theme == 1)
+            {
+                // Autumn Highland Radar & Ambush
+                SpawnMapProp("forest_cabin", 0.43f, 0.64f, 0f);
+                SpawnMapProp("radar_station", 0.38f, 0.66f, 0f);
+                SpawnMapProp("transformer_substation", 0.47f, 0.62f, 0f);
+                SpawnMapProp("forest_cabin", 0.57f, 0.36f, 180f);
+                SpawnMapProp("radio_mast", 0.62f, 0.34f, 0f);
+                SpawnMapProp("generator_unit", 0.53f, 0.38f, 180f);
+                SpawnMapProp("concrete_wall", 0.28f, 0.46f, 90f);
+                SpawnMapProp("concrete_wall", 0.72f, 0.54f, 90f);
+                SpawnMapProp("wrecked_tank", 0.50f, 0.50f, 22f);
+                SpawnMapProp("crater_boulders", 0.47f, 0.47f, 140f);
+                SpawnMapProp("crashed_heli", 0.42f, 0.34f, -15f);
+                SpawnMapProp("oil_drum_stack", 0.58f, 0.66f, 0f);
+            }
+            else
+            {
+                // Wetland Bamboo Camp & River Crossing
+                SpawnMapProp("military_tent", 0.42f, 0.64f, 0f);
+                SpawnMapProp("military_tent", 0.42f, 0.59f, 0f);
+                SpawnMapProp("ammo_depot", 0.47f, 0.61f, 0f);
+                SpawnMapProp("forest_cabin", 0.58f, 0.36f, 180f);
+                SpawnMapProp("wooden_shed", 0.63f, 0.36f, 180f);
+                SpawnMapProp("oil_drum_stack", 0.53f, 0.38f, 0f);
+                SpawnMapProp("field_artillery", 0.45f, 0.45f, 0f);
+                SpawnMapProp("field_artillery", 0.55f, 0.55f, 180f);
+                SpawnMapProp("wrecked_truck", 0.50f, 0.50f, -16f);
+                SpawnMapProp("sandbag_wall", 0.26f, 0.45f, 90f);
+                SpawnMapProp("sandbag_wall", 0.74f, 0.55f, 90f);
+                SpawnMapProp("watch_tower", 0.58f, 0.66f, 0f);
+            }
 
-            // 4. Forest Fire-Lookout Towers, Timber Supply Depots & Field Defenses
-            SpawnMapProp("watch_tower", 0.42f, 0.34f, 0f);
-            SpawnMapProp("watch_tower", 0.58f, 0.66f, 0f);
-            SpawnMapProp("fuel_tank", 0.46f, 0.60f, 0f);
-            SpawnMapProp("fuel_tank", 0.54f, 0.40f, 0f);
-            SpawnMapProp("supply_crate", 0.38f, 0.56f, 0f);
-            SpawnMapProp("supply_crate", 0.62f, 0.44f, 0f);
-            SpawnMapProp("sandbag_wall", 0.26f, 0.44f, 90f);
-            SpawnMapProp("sandbag_wall", 0.74f, 0.56f, 90f);
-            SpawnMapProp("tank_trap", 0.44f, 0.44f, 20f);
-            SpawnMapProp("tank_trap", 0.56f, 0.56f, -20f);
+            // 3. Organic Woodland / Autumn / Wetland Natural Clusters (free angles, layered sizing)
+            string[] grovePool = theme switch
+            {
+                0 => new[] { "hollow_oak", "birch_clump", "broadleaf_grove", "fallen_log", "bush_cluster", "tree_stump" },
+                1 => new[] { "autumn_tree", "birch_clump", "dead_tree", "stone_monolith", "fallen_log", "basalt_rocks" },
+                _ => new[] { "weeping_willow", "mangrove_roots", "bamboo_grove", "reed_marsh", "cherry_tree", "moss_rocks" }
+            };
+            SpawnSurvivalNaturalCluster(0.22f, 0.78f, 0.08f, 0.09f, 4, grovePool, rng);
+            SpawnSurvivalNaturalCluster(0.78f, 0.78f, 0.08f, 0.09f, 4, grovePool, rng);
+            SpawnSurvivalNaturalCluster(0.22f, 0.22f, 0.08f, 0.09f, 4, grovePool, rng);
+            SpawnSurvivalNaturalCluster(0.78f, 0.22f, 0.08f, 0.09f, 4, grovePool, rng);
+            SpawnSurvivalNaturalCluster(0.50f, 0.83f, 0.07f, 0.05f, 3, grovePool, rng);
+            SpawnSurvivalNaturalCluster(0.50f, 0.17f, 0.07f, 0.05f, 3, grovePool, rng);
         }
     }
 }
