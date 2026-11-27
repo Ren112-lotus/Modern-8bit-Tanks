@@ -543,5 +543,94 @@
     "destructible": true,
     "ricochetHeavy": true,
     "heavyStructure": false
+  },
+  "weeping_willow": {
+    "slices": 24,
+    "width": 36,
+    "length": 34,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "hollow_oak": {
+    "slices": 24,
+    "width": 34,
+    "length": 32,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "snow_pine": {
+    "slices": 26,
+    "width": 26,
+    "length": 26,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "cherry_tree": {
+    "slices": 22,
+    "width": 32,
+    "length": 32,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "oasis_spring": {
+    "slices": 20,
+    "width": 34,
+    "length": 30,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "limestone_karst": {
+    "slices": 24,
+    "width": 30,
+    "length": 26,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": true,
+    "roundedFootprint": true
+  },
+  "crater_boulders": {
+    "slices": 12,
+    "width": 34,
+    "length": 30,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "stone_monolith": {
+    "slices": 24,
+    "width": 24,
+    "length": 22,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": true,
+    "roundedFootprint": true
+  },
+  "mangrove_roots": {
+    "slices": 20,
+    "width": 32,
+    "length": 28,
+    "destructible": true,
+    "ricochetHeavy": false,
+    "heavyStructure": false,
+    "roundedFootprint": true
+  },
+  "cliff_overhang": {
+    "slices": 20,
+    "width": 40,
+    "length": 24,
+    "destructible": true,
+    "ricochetHeavy": true,
+    "heavyStructure": false
   }
 }

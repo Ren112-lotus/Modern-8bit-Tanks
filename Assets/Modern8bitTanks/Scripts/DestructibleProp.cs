@@ -187,9 +187,11 @@ namespace Modern8bitTanks
 
             float fillRatio = meta.fixedCover ? 0.50f
                 : (kind == "palm_tree" || kind == "desert_scrub" || kind == "dead_tree" || kind == "autumn_tree" || kind == "bush_cluster" || kind == "tree_stump" ||
-                   kind == "cactus_cluster" || kind == "cypress_tree" || kind == "birch_clump" || kind == "reed_marsh" || kind == "bamboo_grove") ? 0.22f
+                   kind == "cactus_cluster" || kind == "cypress_tree" || kind == "birch_clump" || kind == "reed_marsh" || kind == "bamboo_grove" ||
+                   kind == "weeping_willow" || kind == "hollow_oak" || kind == "snow_pine" || kind == "cherry_tree" || kind == "mangrove_roots") ? 0.22f
                 : (kind == "pine_cluster" || kind == "broadleaf_grove" || kind == "desert_mesa" || kind == "forest_boulder" || kind == "moss_rocks" || kind == "rock_arch" || kind == "steel_silo" ||
-                   kind == "rock_pillar" || kind == "basalt_rocks" || kind == "hay_bale" || kind == "windmill_tower" || kind == "radar_dome" || kind == "stone_well") ? 0.38f
+                   kind == "rock_pillar" || kind == "basalt_rocks" || kind == "hay_bale" || kind == "windmill_tower" || kind == "radar_dome" || kind == "stone_well" ||
+                   kind == "oasis_spring" || kind == "limestone_karst" || kind == "crater_boulders" || kind == "stone_monolith" || kind == "cliff_overhang") ? 0.38f
                 : 0.44f;
             float halfW = Mathf.Max(0.30f, (meta.width * fillRatio) / pixelsPerUnit);
             float halfL = Mathf.Max(0.30f, (meta.length * fillRatio) / pixelsPerUnit);
@@ -332,7 +334,8 @@ namespace Modern8bitTanks
             bool treeOrTowerSnap = (kind == "palm_tree" || kind == "desert_scrub" || kind == "dead_tree" || kind == "autumn_tree" ||
                                     kind == "bush_cluster" || kind == "watch_tower" || kind == "radar_station" ||
                                     kind == "water_tower" || kind == "guard_booth" || kind == "radio_mast" || kind == "bus_stop" ||
-                                    kind == "cactus_cluster" || kind == "cypress_tree" || kind == "birch_clump" || kind == "reed_marsh" || kind == "bamboo_grove") && isCannon && ratio < 0.62f;
+                                    kind == "cactus_cluster" || kind == "cypress_tree" || kind == "birch_clump" || kind == "reed_marsh" || kind == "bamboo_grove" ||
+                                    kind == "weeping_willow" || kind == "hollow_oak" || kind == "snow_pine" || kind == "cherry_tree" || kind == "mangrove_roots") && isCannon && ratio < 0.62f;
             float collapseThresh = isHeavy ? 0.16f : 0.30f;
 
             if (ratio < collapseThresh || explosiveCollapse || treeOrTowerSnap)

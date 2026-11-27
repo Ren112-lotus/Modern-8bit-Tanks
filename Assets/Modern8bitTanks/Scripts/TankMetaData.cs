@@ -184,6 +184,16 @@ namespace Modern8bitTanks
         public PropMetaEntry field_artillery;
         public PropMetaEntry fuel_pump_island;
         public PropMetaEntry crashed_heli;
+        public PropMetaEntry weeping_willow;
+        public PropMetaEntry hollow_oak;
+        public PropMetaEntry snow_pine;
+        public PropMetaEntry cherry_tree;
+        public PropMetaEntry oasis_spring;
+        public PropMetaEntry limestone_karst;
+        public PropMetaEntry crater_boulders;
+        public PropMetaEntry stone_monolith;
+        public PropMetaEntry mangrove_roots;
+        public PropMetaEntry cliff_overhang;
 
         public PropMetaEntry GetByKind(string kind)
         {
@@ -256,6 +266,16 @@ namespace Modern8bitTanks
                 "field_artillery" => field_artillery,
                 "fuel_pump_island" => fuel_pump_island,
                 "crashed_heli" => crashed_heli,
+                "weeping_willow" => weeping_willow,
+                "hollow_oak" => hollow_oak,
+                "snow_pine" => snow_pine,
+                "cherry_tree" => cherry_tree,
+                "oasis_spring" => oasis_spring,
+                "limestone_karst" => limestone_karst,
+                "crater_boulders" => crater_boulders,
+                "stone_monolith" => stone_monolith,
+                "mangrove_roots" => mangrove_roots,
+                "cliff_overhang" => cliff_overhang,
                 _ => desert_rock
             };
         }
@@ -564,7 +584,17 @@ namespace Modern8bitTanks
                 radar_dome = new PropMetaEntry { slices = 26, width = 32, length = 32, destructible = true, ricochetHeavy = true, heavyStructure = true, roundedFootprint = true },
                 field_artillery = new PropMetaEntry { slices = 14, width = 36, length = 24, destructible = true, ricochetHeavy = true },
                 fuel_pump_island = new PropMetaEntry { slices = 18, width = 34, length = 18, destructible = true },
-                crashed_heli = new PropMetaEntry { slices = 15, width = 44, length = 28, destructible = true, ricochetHeavy = true }
+                crashed_heli = new PropMetaEntry { slices = 15, width = 44, length = 28, destructible = true, ricochetHeavy = true },
+                weeping_willow = new PropMetaEntry { slices = 24, width = 36, length = 34, destructible = true, roundedFootprint = true },
+                hollow_oak = new PropMetaEntry { slices = 24, width = 34, length = 32, destructible = true, roundedFootprint = true },
+                snow_pine = new PropMetaEntry { slices = 26, width = 26, length = 26, destructible = true, roundedFootprint = true },
+                cherry_tree = new PropMetaEntry { slices = 22, width = 32, length = 32, destructible = true, roundedFootprint = true },
+                oasis_spring = new PropMetaEntry { slices = 20, width = 34, length = 30, destructible = true, roundedFootprint = true },
+                limestone_karst = new PropMetaEntry { slices = 24, width = 30, length = 26, destructible = true, ricochetHeavy = true, heavyStructure = true, roundedFootprint = true },
+                crater_boulders = new PropMetaEntry { slices = 12, width = 34, length = 30, destructible = true, ricochetHeavy = true, roundedFootprint = true },
+                stone_monolith = new PropMetaEntry { slices = 24, width = 24, length = 22, destructible = true, ricochetHeavy = true, heavyStructure = true, roundedFootprint = true },
+                mangrove_roots = new PropMetaEntry { slices = 20, width = 32, length = 28, destructible = true, roundedFootprint = true },
+                cliff_overhang = new PropMetaEntry { slices = 20, width = 40, length = 24, destructible = true, ricochetHeavy = true }
             };
         }
     }
