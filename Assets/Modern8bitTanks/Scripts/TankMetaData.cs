@@ -174,6 +174,16 @@ namespace Modern8bitTanks
         public PropMetaEntry basalt_rocks;
         public PropMetaEntry reed_marsh;
         public PropMetaEntry bamboo_grove;
+        public PropMetaEntry rail_boxcar;
+        public PropMetaEntry forklift_wreck;
+        public PropMetaEntry sam_launcher;
+        public PropMetaEntry transformer_substation;
+        public PropMetaEntry stone_well;
+        public PropMetaEntry windmill_tower;
+        public PropMetaEntry radar_dome;
+        public PropMetaEntry field_artillery;
+        public PropMetaEntry fuel_pump_island;
+        public PropMetaEntry crashed_heli;
 
         public PropMetaEntry GetByKind(string kind)
         {
@@ -236,6 +246,16 @@ namespace Modern8bitTanks
                 "basalt_rocks" => basalt_rocks,
                 "reed_marsh" => reed_marsh,
                 "bamboo_grove" => bamboo_grove,
+                "rail_boxcar" => rail_boxcar,
+                "forklift_wreck" => forklift_wreck,
+                "sam_launcher" => sam_launcher,
+                "transformer_substation" => transformer_substation,
+                "stone_well" => stone_well,
+                "windmill_tower" => windmill_tower,
+                "radar_dome" => radar_dome,
+                "field_artillery" => field_artillery,
+                "fuel_pump_island" => fuel_pump_island,
+                "crashed_heli" => crashed_heli,
                 _ => desert_rock
             };
         }
@@ -534,7 +554,17 @@ namespace Modern8bitTanks
                 hay_bale = new PropMetaEntry { slices = 12, width = 26, length = 22, destructible = true, roundedFootprint = true },
                 basalt_rocks = new PropMetaEntry { slices = 18, width = 32, length = 28, destructible = true, ricochetHeavy = true, heavyStructure = true, roundedFootprint = true },
                 reed_marsh = new PropMetaEntry { slices = 13, width = 30, length = 26, destructible = true, roundedFootprint = true },
-                bamboo_grove = new PropMetaEntry { slices = 24, width = 28, length = 26, destructible = true, roundedFootprint = true }
+                bamboo_grove = new PropMetaEntry { slices = 24, width = 28, length = 26, destructible = true, roundedFootprint = true },
+                rail_boxcar = new PropMetaEntry { slices = 17, width = 48, length = 18, destructible = true, ricochetHeavy = true, heavyStructure = true },
+                forklift_wreck = new PropMetaEntry { slices = 14, width = 24, length = 16, destructible = true },
+                sam_launcher = new PropMetaEntry { slices = 18, width = 34, length = 22, destructible = true, ricochetHeavy = true },
+                transformer_substation = new PropMetaEntry { slices = 20, width = 32, length = 24, destructible = true, ricochetHeavy = true },
+                stone_well = new PropMetaEntry { slices = 17, width = 22, length = 22, destructible = true, roundedFootprint = true },
+                windmill_tower = new PropMetaEntry { slices = 28, width = 28, length = 28, destructible = true, ricochetHeavy = true, heavyStructure = true, roundedFootprint = true },
+                radar_dome = new PropMetaEntry { slices = 26, width = 32, length = 32, destructible = true, ricochetHeavy = true, heavyStructure = true, roundedFootprint = true },
+                field_artillery = new PropMetaEntry { slices = 14, width = 36, length = 24, destructible = true, ricochetHeavy = true },
+                fuel_pump_island = new PropMetaEntry { slices = 18, width = 34, length = 18, destructible = true },
+                crashed_heli = new PropMetaEntry { slices = 15, width = 44, length = 28, destructible = true, ricochetHeavy = true }
             };
         }
     }
